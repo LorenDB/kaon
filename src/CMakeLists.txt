@@ -6,7 +6,6 @@ qt_add_qml_module(kaon
     URI dev.lorendb.kaon
     VERSION 1.0
     QML_FILES
-        LoadingPage.qml
         Main.qml
     SOURCES
         Steam.cpp
