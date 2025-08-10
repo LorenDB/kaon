@@ -35,55 +35,66 @@ Frame {
 
             width: grid.cellWidth
             height: grid.cardHeight
+            scale: ma.containsMouse ? 1.07 : 1.0
 
+            Behavior on scale {
+                NumberAnimation {
+                    duration: 200
+                    easing.type: Easing.InOutQuad
+                }
+            }
+
+            Image {
+                id: cardImage
+
+                anchors.centerIn: card
+                source: card.cardImage
+                fillMode: Image.PreserveAspectCrop
+                asynchronous: true
+                width: grid.cardWidth
+                height: grid.cardHeight
+                visible: false
+            }
+
+            MultiEffect {
+                source: cardImage
+                anchors.fill: cardImage
+                maskEnabled: true
+                maskSource: textFallback
+
+                // needed for smooth corners
+                // https://forum.qt.io/post/815710
+                maskThresholdMin: 0.5
+                maskSpreadAtMin: 1.0
+            }
+
+            // fallback for no image
             Rectangle {
+                id: textFallback
+
+                visible: cardImage.status != Image.Ready
                 width: grid.cardWidth
                 height: grid.cardHeight
                 radius: 5
                 color: "#4f4f4f"
-                scale: ma.containsMouse ? 1.07 : 1.0
                 anchors.centerIn: card
+                layer.enabled: true
+                layer.smooth: true
 
-                Behavior on scale {
-                    NumberAnimation {
-                        duration: 200
-                        easing.type: Easing.InOutQuad
-                    }
+                Label {
+                    anchors.fill: textFallback
+                    anchors.margins: 5
+                    wrapMode: Label.WordWrap
+                    text: card.name
                 }
+            }
 
-                Image {
-                    id: cardImage
-                    anchors.fill: parent
-                    source: card.cardImage
-                    fillMode: Image.PreserveAspectCrop
-                    asynchronous: true
+            MouseArea {
+                id: ma
 
-                    layer.enabled: true
-                    layer.effect: MultiEffect {
-                        maskSource: Rectangle {
-                            width: 90
-                            height: 135
-                            radius: 3
-                        }
-                    }
-
-                    // fallback for no image
-                    Label {
-                        anchors.fill: cardImage
-                        anchors.margins: 3
-                        wrapMode: Label.WordWrap
-                        text: card.name
-                        visible: cardImage.status != Image.Ready
-                    }
-                }
-
-                MouseArea {
-                    id: ma
-
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                }
+                anchors.fill: card
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
             }
         }
     }

@@ -70,6 +70,8 @@ void Steam::scanSteam()
 
             g.name = QString::fromStdString(app.attribs["name"]);
             g.installDir = QString::fromStdString(app.attribs["installdir"]);
+            g.cardImage = "file://"_L1 + QDir::homePath() + "/.local/share/Steam/appcache/librarycache/"_L1 +
+                    QString::number(g.id) + "/library_600x900.jpg"_L1;
             g.lastPlayed = QDateTime::fromSecsSinceEpoch(std::stoi(app.attribs["LastPlayed"]));
 
             m_games.push_back(g);
