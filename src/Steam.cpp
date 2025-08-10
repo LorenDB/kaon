@@ -14,22 +14,32 @@ Steam::Steam(QObject *parent)
 
 int Steam::rowCount(const QModelIndex &parent) const
 {
-    return 0;
+    return m_games.count();
 }
 
 QVariant Steam::data(const QModelIndex &index, int role) const
 {
+    if (!index.isValid() || index.row() < 0 || index.row() >= m_games.size())
+        return {};
+    const auto &item = m_games.at(index.row());
+    switch (role)
+    {
+    case Qt::DisplayRole:
+        return item.name;
+    }
+
     return {};
 }
 
 QHash<int, QByteArray> Steam::roleNames() const
 {
-    return {};
+    return {{Qt::DisplayRole, "name"_ba}};
 }
 
 void Steam::scanSteam()
 {
     beginResetModel();
+    m_games.clear();
 
     // TODO: use more intelligent Steam location detection algorithm
     // maybe check Rai Pal or Protontricks for inspiration
@@ -42,15 +52,20 @@ void Steam::scanSteam()
     {
         for (const auto &[appId, _] : folder->childs["apps"]->attribs)
         {
+            Game g;
+            g.id = std::stoi(appId);
+
             std::ifstream acfFile{basepath.toStdString() + "/appmanifest_" + appId + ".acf"};
             auto app = tyti::vdf::read(acfFile);
 
-            for (const auto &[key, value] : app.attribs)
-            {
-                // TODO: build model
-            }
+            g.name = QString::fromStdString(app.attribs["name"]);
+            g.installDir = QString::fromStdString(app.attribs["installdir"]);
+            g.lastPlayed = QDateTime::fromSecsSinceEpoch(std::stoi(app.attribs["LastPlayed"]));
+
+            m_games.push_back(g);
         }
     }
 
+    std::sort(m_games.begin(), m_games.end(), [](const auto &a, const auto &b) { return a.lastPlayed > b.lastPlayed; });
     endResetModel();
 }

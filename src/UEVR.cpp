@@ -59,9 +59,7 @@ QVariant UEVR::data(const QModelIndex &index, int role) const
 
 QHash<int, QByteArray> UEVR::roleNames() const
 {
-    QHash<int, QByteArray> roles;
-    roles[Qt::DisplayRole] = "name";
-    return roles;
+    return {{Qt::DisplayRole, "name"_ba}};
 }
 
 const QString &UEVR::uevrPath() const

@@ -16,8 +16,18 @@ public:
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
     QHash<int, QByteArray> roleNames() const override;
 
+    struct Game
+    {
+        int id = 0;
+        QString name;
+        QString installDir;
+        QDateTime lastPlayed;
+    };
+
 signals:
 
 private:
     void scanSteam();
+
+    QList<Game> m_games;
 };
