@@ -1,6 +1,7 @@
 #include "Steam.h"
 
 #include <QDir>
+#include <QDirIterator>
 
 #include "vdf_parser.hpp"
 
@@ -70,9 +71,19 @@ void Steam::scanSteam()
 
             g.name = QString::fromStdString(app.attribs["name"]);
             g.installDir = QString::fromStdString(app.attribs["installdir"]);
-            g.cardImage = "file://"_L1 + QDir::homePath() + "/.local/share/Steam/appcache/librarycache/"_L1 +
-                    QString::number(g.id) + "/library_600x900.jpg"_L1;
             g.lastPlayed = QDateTime::fromSecsSinceEpoch(std::stoi(app.attribs["LastPlayed"]));
+
+            const auto imageDir = QDir::homePath() + "/.local/share/Steam/appcache/librarycache/"_L1 + QString::number(g.id);
+            QDirIterator images{imageDir, QDirIterator::Subdirectories};
+            while (images.hasNext())
+            {
+                images.next();
+                if (images.fileName() == "library_600x900.jpg"_L1)
+                {
+                    g.cardImage = "file://"_L1 + images.filePath();
+                    break;
+                }
+            }
 
             m_games.push_back(g);
         }
