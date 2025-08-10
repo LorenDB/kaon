@@ -18,22 +18,19 @@ ApplicationWindow {
         spacing: 10
 
         RowLayout {
-            spacing: 105
+            spacing: 10
+
+            Item { Layout.fillWidth: true }
+
+            Label { text: "UEVR version:" }
 
             ComboBox {
                 model: UEVR
             }
         }
 
-        RowLayout {
-            spacing: 105
-
-            ComboBox {
-                model: Steam
-            }
-        }
-
-        Item {
+        SteamGrid {
+            Layout.fillWidth: true
             Layout.fillHeight: true
         }
     }

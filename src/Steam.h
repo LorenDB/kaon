@@ -12,6 +12,14 @@ class Steam : public QAbstractListModel
 public:
     explicit Steam(QObject *parent = nullptr);
 
+    enum Roles
+    {
+        Name = Qt::UserRole + 1,
+        InstallDir,
+        CardImage,
+        LastPlayed,
+    };
+
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
     QHash<int, QByteArray> roleNames() const override;
@@ -21,6 +29,7 @@ public:
         int id = 0;
         QString name;
         QString installDir;
+        QString cardImage;
         QDateTime lastPlayed;
     };
 

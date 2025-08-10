@@ -7,6 +7,7 @@ qt_add_qml_module(kaon
     VERSION 1.0
     QML_FILES
         Main.qml
+        SteamGrid.qml
     SOURCES
         Steam.cpp
         Steam.h
