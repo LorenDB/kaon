@@ -56,6 +56,7 @@ void Dotnet::downloadDotnetDesktopRuntime(int steamId)
     emit dotnetDownloadInProgressChanged(true);
     DownloadManager::instance()->download(
                 QNetworkRequest{url},
+                ".NET Desktop Runtime 6.0.36"_L1,
                 [this, exePath](const QByteArray &data) {
         // TODO: this is not working. Probably has to do with the file not being saved or something.
         // Might be nice to get it working at some point but I'm not holding my breath.

@@ -16,24 +16,28 @@ DownloadManager::DownloadManager(QObject *parent)
 
 DownloadManager *DownloadManager::instance()
 {
-    if (!s_instance)
-        s_instance = new DownloadManager;
     return s_instance;
 }
 
 void DownloadManager::download(const QNetworkRequest &request,
+                               const QString &prettyName,
                                std::function<void(QByteArray)> successCallback,
                                std::function<void(QNetworkReply::NetworkError, QString)> failureCallback,
                                std::function<void()> finallyCallback)
 {
-    m_queue.enqueue({request, successCallback, failureCallback, finallyCallback});
+    m_queue.enqueue({request, prettyName, successCallback, failureCallback, finallyCallback});
     if (m_queue.count() == 1)
         downloadNextInQueue();
 }
 
 void DownloadManager::downloadNextInQueue()
 {
+    m_downloading = true;
+    emit downloadingChanged();
+
     const auto download = m_queue.dequeue();
+    m_currentDownloadName = download.prettyName;
+    emit currentDownloadNameChanged();
 
     static QNetworkAccessManager manager;
     manager.setAutoDeleteReplies(true);
@@ -54,5 +58,12 @@ void DownloadManager::downloadNextInQueue()
 
         if (!m_queue.empty())
             downloadNextInQueue();
+        else
+        {
+            m_downloading = false;
+            emit downloadingChanged();
+            m_currentDownloadName = {};
+            emit currentDownloadNameChanged();
+        }
     });
 }

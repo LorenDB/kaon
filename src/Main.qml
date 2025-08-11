@@ -48,13 +48,13 @@ ApplicationWindow {
     }
 
     footer: Pane {
-        visible: Dotnet.dotnetDownloadInProgress
+        visible: DownloadManager.downloading
 
         RowLayout {
             spacing: 10
 
             Label {
-                text: "Downloading..."
+                text: "Downloading " + DownloadManager.currentDownloadName
             }
 
             ProgressBar {

@@ -7,6 +7,7 @@
 #include <QSettings>
 #include <QStandardPaths>
 #include <QTemporaryDir>
+#include <QTimer>
 
 #include "DownloadManager.h"
 
@@ -33,8 +34,8 @@ UEVR::UEVR(QObject *parent)
         endResetModel();
     });
 
-    parseReleaseInfoJson();
-    updateAvailableReleases();
+        parseReleaseInfoJson();
+        updateAvailableReleases();
 }
 
 UEVR::~UEVR()
@@ -180,6 +181,7 @@ void UEVR::updateAvailableReleases()
 
         DownloadManager::instance()->download(
                     req,
+                    "UEVR release information"_L1,
                     [this, cachePath, semaphore](const QByteArray &data) {
             QFile cache{cachePath};
             if (cache.open(QFile::WriteOnly))
@@ -280,6 +282,7 @@ void UEVR::downloadRelease(const UEVRRelease &release)
 
     DownloadManager::instance()->download(
                 QNetworkRequest{url},
+                release.name,
                 [this, zipPath, id = release.id](const QByteArray &data) {
         QFile file(zipPath);
         if (file.open(QIODevice::WriteOnly))
