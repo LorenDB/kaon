@@ -21,9 +21,9 @@ Frame {
         anchors.fill: parent
         cellWidth: {
             let usableWidth = width - (leftMargin + rightMargin + sb.width)
-            return usableWidth / Math.floor(usableWidth / (cardWidth * 1.16))
+            return usableWidth / Math.floor(usableWidth / (cardWidth * 1.1))
         }
-        cellHeight: cardHeight * 1.16
+        cellHeight: cardHeight * 1.1
         bottomMargin: 15
         topMargin: 15
         leftMargin: 15
