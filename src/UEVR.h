@@ -14,6 +14,9 @@ class UEVR : public QAbstractListModel
     Q_PROPERTY(int currentUevr READ currentUevr WRITE setCurrentUevr NOTIFY currentUevrChanged FINAL)
     Q_PROPERTY(bool showNightlies MEMBER m_showNightlies NOTIFY showNightliesChanged FINAL)
 
+    Q_PROPERTY(bool hasDotnetCached READ hasDotnetCached NOTIFY hasDotnetCachedChanged FINAL)
+    Q_PROPERTY(bool dotnetDownloadInProgress READ dotnetDownloadInProgress NOTIFY dotnetDownloadInProgressChanged FINAL)
+
 public:
     explicit UEVR(QObject *parent = nullptr);
     static UEVR *instance() { return s_instance; }
@@ -25,11 +28,16 @@ public:
     const QString &uevrPath() const;
     int currentUevr() const;
 
+    bool hasDotnetCached() const;
+    bool dotnetDownloadInProgress() const;
+
     void setUevrPath(const QString &path);
     void setCurrentUevr(const int id);
 
 public slots:
     void installDotnetDesktopRuntime(int steamId);
+    void downloadDotnetDesktopRuntime(int steamId = 0);
+
     void launchUEVR(const int steamId);
 
 signals:
@@ -37,7 +45,9 @@ signals:
     void currentUevrChanged(const int);
     void showNightliesChanged();
 
-    void downloadedDotnetRuntime();
+    void hasDotnetCachedChanged(const bool);
+    void dotnetDownloadInProgressChanged(const bool);
+    void promptDotnetDownload(const int steamId = 0);
     void dotnetDownloadFailed();
 
 private:
@@ -62,7 +72,6 @@ private:
 
     void updateAvailableReleases();
     void downloadRelease(const UEVRRelease &release) const;
-    void downloadDotnetDesktopRuntime();
 
     void rebuild();
 
@@ -71,6 +80,7 @@ private:
     QList<UEVRRelease> m_mergedReleases;
 
     bool m_showNightlies{false};
+    bool m_dotnetDownloadInProgress{false};
 
     QString m_uevrPath;
     int m_currentUevr = 0;

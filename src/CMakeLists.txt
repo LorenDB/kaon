@@ -6,6 +6,8 @@ qt_add_qml_module(kaon
     URI dev.lorendb.kaon
     VERSION 1.0
     QML_FILES
+        DotnetDownloadDialog.qml
+        GameDetails.qml
         Main.qml
         SteamGrid.qml
     SOURCES
@@ -13,7 +15,6 @@ qt_add_qml_module(kaon
         Steam.h
         UEVR.cpp
         UEVR.h
-        QML_FILES GameDetails.qml
 )
 
 target_link_libraries(kaon

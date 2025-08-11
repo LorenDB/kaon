@@ -2,6 +2,8 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
+import dev.lorendb.kaon
+
 Pane {
     id: gameDetailsRoot
 
@@ -13,6 +15,7 @@ Pane {
 
         Button {
             text: "Install .NET desktop runtime"
+            enabled: !UEVR.dotnetDownloadInProgress
             onClicked: UEVR.installDotnetDesktopRuntime(gameDetailsRoot.steamId)
         }
 
