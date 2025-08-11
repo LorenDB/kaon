@@ -34,8 +34,12 @@ UEVR::UEVR(QObject *parent)
         endResetModel();
     });
 
+    // Execute downloads on the first event tick to give time for the download
+    // manager to initialize
+    QTimer::singleShot(0, [this] {
         parseReleaseInfoJson();
         updateAvailableReleases();
+    });
 }
 
 UEVR::~UEVR()
