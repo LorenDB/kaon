@@ -14,7 +14,7 @@ Dialog {
     modal: true
     standardButtons: Dialog.Ok | Dialog.Cancel
     onAccepted: {
-        UEVR.downloadDotnetDesktopRuntime(steamId);
+        Dotnet.downloadDotnetDesktopRuntime(steamId);
         steamId = 0;
     }
 

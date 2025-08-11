@@ -1,6 +1,5 @@
 #include "UEVR.h"
 
-#include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QNetworkAccessManager>
@@ -72,17 +71,6 @@ int UEVR::currentUevr() const
     return m_currentUevr;
 }
 
-bool UEVR::hasDotnetCached() const
-{
-    return QFileInfo::exists(QStandardPaths::writableLocation(QStandardPaths::CacheLocation) +
-                             "/windowsdesktop-runtime-6.0.36-win-x64.exe"_L1);
-}
-
-bool UEVR::dotnetDownloadInProgress() const
-{
-    return m_dotnetDownloadInProgress;
-}
-
 void UEVR::setUevrPath(const QString &path)
 {
     auto normalized = path;
@@ -126,6 +114,20 @@ void UEVR::setCurrentUevr(const int id)
     QSettings settings;
     settings.beginGroup("uevr"_L1);
     settings.setValue("currentUevr"_L1, id);
+}
+
+void UEVR::launchUEVR(const int steamId)
+{
+    auto injector = new QProcess;
+    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+    env.insert("WINEPREFIX"_L1,
+               QDir::homePath() + "/.local/share/Steam/steamapps/compatdata/" + QString::number(steamId) + "/pfx"_L1);
+    env.insert("WINEFSYNC"_L1, "1"_L1);
+    injector->setProcessEnvironment(env);
+    // TODO: hook this into actual UEVR installations
+    injector->start(QDir::homePath() + "/.local/share/Steam/steamapps/common/Proton - Experimental/files/bin/wine"_L1,
+                    {QDir::homePath() + "/.uevr/UEVRInjector.exe"_L1});
+    connect(injector, &QProcess::finished, injector, &QObject::deleteLater);
 }
 
 void UEVR::updateAvailableReleases()
@@ -240,94 +242,6 @@ void UEVR::downloadRelease(const UEVRRelease &release) const
     });
 }
 
-void UEVR::downloadDotnetDesktopRuntime(int steamId)
-{
-    if (steamId != 0)
-    {
-        // Uh, clang-format, you feeling OK?
-        connect(
-                    this,
-                    &UEVR::hasDotnetCachedChanged,
-                    this,
-                    [this, steamId](bool isCached) {
-            if (isCached)
-                installDotnetDesktopRuntime(steamId);
-        },
-        Qt::SingleShotConnection);
-    }
-
-    QUrl url{
-        "https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/6.0.36/windowsdesktop-runtime-6.0.36-win-x64.exe"_L1};
-    const QString exePath =
-            QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + "/windowsdesktop-runtime-6.0.36-win-x64.exe"_L1;
-
-    static QNetworkAccessManager manager;
-    manager.setAutoDeleteReplies(true);
-
-    auto reply = manager.get(QNetworkRequest{url});
-    m_dotnetDownloadInProgress = true;
-    emit dotnetDownloadInProgressChanged(true);
-    connect(reply, &QNetworkReply::finished, this, [this, reply, exePath] {
-        if (reply->error() != QNetworkReply::NoError)
-        {
-            qDebug() << "Download error:" << reply->errorString();
-            emit dotnetDownloadFailed();
-            return;
-        }
-
-        const auto data = reply->readAll();
-        // TODO: this is not working. Probably has to do with the file not being saved or something.
-        // Might be nice to get it working at some point but I'm not holding my breath.
-        // constexpr auto sha512sum_v6_0_36 =
-        // "86fa63997e7e0dc6f3bf609e00880388dcf8d985c8f6417d07ebbbb1ecc957bf90214c8ff93f559a"
-        //                                    "0e762b5626ba8c56c581f4d506aa4de7555f9792c2da254d";
-        // if (QCryptographicHash::hash(data, QCryptographicHash::Sha512) != sha512sum_v6_0_36)
-        // {
-        //     qDebug() << "Downloaded file did not match compile-time hash";
-        //     emit dotnetDownloadFailed();
-        //     return;
-        // }
-
-        QFile file(exePath);
-        if (file.open(QIODevice::WriteOnly))
-        {
-            file.write(data);
-            file.close();
-        }
-        else
-        {
-            qDebug() << "Failed to save downloaded file";
-            emit dotnetDownloadFailed();
-        }
-    });
-
-    connect(reply, &QNetworkReply::finished, this, [this] {
-        m_dotnetDownloadInProgress = false;
-        emit dotnetDownloadInProgressChanged(false);
-        emit hasDotnetCachedChanged(hasDotnetCached());
-    });
-}
-
-void UEVR::installDotnetDesktopRuntime(int steamId)
-{
-    if (!hasDotnetCached())
-    {
-        emit promptDotnetDownload(steamId);
-        return;
-    }
-
-    auto installer = new QProcess;
-    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
-    env.insert("WINEPREFIX"_L1,
-               QDir::homePath() + "/.local/share/Steam/steamapps/compatdata/" + QString::number(steamId) + "/pfx"_L1);
-    env.insert("WINEFSYNC"_L1, "1"_L1);
-    installer->setProcessEnvironment(env);
-    installer->start(
-                QDir::homePath() + "/.local/share/Steam/steamapps/common/Proton - Experimental/files/bin/wine"_L1,
-                {QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + "/windowsdesktop-runtime-6.0.36-win-x64.exe"_L1});
-    connect(installer, &QProcess::finished, installer, &QObject::deleteLater);
-}
-
 void UEVR::rebuild()
 {
     beginResetModel();
@@ -338,18 +252,4 @@ void UEVR::rebuild()
         return a.timestamp < b.timestamp;
     });
     endResetModel();
-}
-
-void UEVR::launchUEVR(const int steamId)
-{
-    auto injector = new QProcess;
-    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
-    env.insert("WINEPREFIX"_L1,
-               QDir::homePath() + "/.local/share/Steam/steamapps/compatdata/" + QString::number(steamId) + "/pfx"_L1);
-    env.insert("WINEFSYNC"_L1, "1"_L1);
-    injector->setProcessEnvironment(env);
-    // TODO: hook this into actual UEVR installations
-    injector->start(QDir::homePath() + "/.local/share/Steam/steamapps/common/Proton - Experimental/files/bin/wine"_L1,
-                    {QDir::homePath() + "/.uevr/UEVRInjector.exe"_L1});
-    connect(injector, &QProcess::finished, injector, &QObject::deleteLater);
 }

@@ -34,7 +34,7 @@ ApplicationWindow {
     }
 
     footer: Pane {
-        visible: UEVR.dotnetDownloadInProgress
+        visible: Dotnet.dotnetDownloadInProgress
 
         RowLayout {
             spacing: 10
@@ -96,7 +96,7 @@ ApplicationWindow {
             downloadFailedDialog.open();
         }
 
-        target: UEVR
+        target: Dotnet
     }
 
 }

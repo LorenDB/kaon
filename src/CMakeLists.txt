@@ -11,6 +11,8 @@ qt_add_qml_module(kaon
         Main.qml
         SteamGrid.qml
     SOURCES
+        Dotnet.cpp
+        Dotnet.h
         Steam.cpp
         Steam.h
         UEVR.cpp

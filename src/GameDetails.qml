@@ -15,8 +15,8 @@ Pane {
 
         Button {
             text: "Install .NET desktop runtime"
-            enabled: !UEVR.dotnetDownloadInProgress
-            onClicked: UEVR.installDotnetDesktopRuntime(gameDetailsRoot.steamId)
+            enabled: !Dotnet.dotnetDownloadInProgress
+            onClicked: Dotnet.installDotnetDesktopRuntime(gameDetailsRoot.steamId)
         }
 
         Button {
