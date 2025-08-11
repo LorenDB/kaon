@@ -14,6 +14,13 @@ DownloadManager::DownloadManager(QObject *parent)
         s_instance = this;
 }
 
+DownloadManager *DownloadManager::instance()
+{
+    if (!s_instance)
+        s_instance = new DownloadManager;
+    return s_instance;
+}
+
 void DownloadManager::download(const QNetworkRequest &request,
                                std::function<void(QByteArray)> successCallback,
                                std::function<void(QNetworkReply::NetworkError, QString)> failureCallback,
