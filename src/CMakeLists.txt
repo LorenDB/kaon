@@ -13,6 +13,7 @@ qt_add_qml_module(kaon
         Steam.h
         UEVR.cpp
         UEVR.h
+        QML_FILES GameDetails.qml
 )
 
 target_link_libraries(kaon

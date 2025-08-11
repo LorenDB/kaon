@@ -7,6 +7,10 @@ pragma ComponentBehavior: Bound
 import dev.lorendb.kaon
 
 Frame {
+    id: gridRoot
+
+    signal gameClicked(int steamId)
+
     GridView {
         id: grid
 
@@ -32,6 +36,7 @@ Frame {
 
             required property string cardImage
             required property string name
+            required property int steamId
 
             width: grid.cellWidth
             height: grid.cardHeight
@@ -95,6 +100,7 @@ Frame {
                 anchors.fill: card
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
+                onClicked: gridRoot.gameClicked(card.steamId)
             }
         }
     }

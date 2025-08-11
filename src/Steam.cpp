@@ -28,6 +28,8 @@ QVariant Steam::data(const QModelIndex &index, int role) const
     case Qt::DisplayRole:
     case Roles::Name:
         return item.name;
+    case Roles::SteamID:
+        return item.id;
     case Roles::InstallDir:
         return item.installDir;
     case Roles::CardImage:
@@ -42,6 +44,7 @@ QVariant Steam::data(const QModelIndex &index, int role) const
 QHash<int, QByteArray> Steam::roleNames() const
 {
     return {{Roles::Name, "name"_ba},
+        {Roles::SteamID, "steamId"_ba},
         {Roles::InstallDir, "installDir"_ba},
         {Roles::CardImage, "cardImage"_ba},
         {Roles::LastPlayed, "lastPlayed"_ba}};

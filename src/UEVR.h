@@ -28,10 +28,17 @@ public:
     void setUevrPath(const QString &path);
     void setCurrentUevr(const int id);
 
+public slots:
+    void installDotnetDesktopRuntime(int steamId);
+    void launchUEVR(const int steamId);
+
 signals:
     void uevrPathChanged(const QString &);
     void currentUevrChanged(const int);
     void showNightliesChanged();
+
+    void downloadedDotnetRuntime();
+    void dotnetDownloadFailed();
 
 private:
     static UEVR *s_instance;
@@ -55,10 +62,9 @@ private:
 
     void updateAvailableReleases();
     void downloadRelease(const UEVRRelease &release) const;
+    void downloadDotnetDesktopRuntime();
 
     void rebuild();
-
-    void launchUEVR(const int steamId);
 
     QList<UEVRRelease> m_releases;
     QList<UEVRRelease> m_nightlies;

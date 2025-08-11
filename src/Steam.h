@@ -15,6 +15,7 @@ public:
     enum Roles
     {
         Name = Qt::UserRole + 1,
+        SteamID,
         InstallDir,
         CardImage,
         LastPlayed,

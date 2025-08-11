@@ -29,9 +29,24 @@ ApplicationWindow {
             }
         }
 
-        SteamGrid {
+        StackView {
+            id: theStack
+
             Layout.fillWidth: true
             Layout.fillHeight: true
+
+            SteamGrid {
+                anchors.fill: parent
+                onGameClicked: (steamId) => {
+                    gameDetails.createObject(theStack, { steamId: steamId })
+                }
+            }
         }
+    }
+
+    Component {
+        id: gameDetails
+
+        GameDetails { anchors.fill: parent }
     }
 }
