@@ -74,7 +74,8 @@ void Steam::scanSteam()
 
             g.name = QString::fromStdString(app.attribs["name"]);
             g.installDir = QString::fromStdString(app.attribs["installdir"]);
-            g.lastPlayed = QDateTime::fromSecsSinceEpoch(std::stoi(app.attribs["LastPlayed"]));
+            if (app.attribs.contains("LastPlayed"))
+                g.lastPlayed = QDateTime::fromSecsSinceEpoch(std::stoi(app.attribs["LastPlayed"]));
 
             const auto imageDir = QDir::homePath() + "/.local/share/Steam/appcache/librarycache/"_L1 + QString::number(g.id);
             QDirIterator images{imageDir, QDirIterator::Subdirectories};
