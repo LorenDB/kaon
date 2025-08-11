@@ -2,10 +2,10 @@
 
 #include <QDir>
 #include <QFileInfo>
-#include <QNetworkAccessManager>
-#include <QNetworkReply>
 #include <QProcess>
 #include <QStandardPaths>
+
+#include "DownloadManager.h"
 
 using namespace Qt::Literals;
 
@@ -52,21 +52,11 @@ void Dotnet::downloadDotnetDesktopRuntime(int steamId)
     const QString exePath =
             QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + "/windowsdesktop-runtime-6.0.36-win-x64.exe"_L1;
 
-    static QNetworkAccessManager manager;
-    manager.setAutoDeleteReplies(true);
-
-    auto reply = manager.get(QNetworkRequest{url});
     m_dotnetDownloadInProgress = true;
     emit dotnetDownloadInProgressChanged(true);
-    connect(reply, &QNetworkReply::finished, this, [this, reply, exePath] {
-        if (reply->error() != QNetworkReply::NoError)
-        {
-            qDebug() << "Download error:" << reply->errorString();
-            emit dotnetDownloadFailed();
-            return;
-        }
-
-        const auto data = reply->readAll();
+    DownloadManager::instance()->download(
+                QNetworkRequest{url},
+                [this, exePath](const QByteArray &data) {
         // TODO: this is not working. Probably has to do with the file not being saved or something.
         // Might be nice to get it working at some point but I'm not holding my breath.
         // constexpr auto sha512sum_v6_0_36 =
@@ -79,20 +69,20 @@ void Dotnet::downloadDotnetDesktopRuntime(int steamId)
         //     return;
         // }
 
-        QFile file(exePath);
+        QFile file{exePath};
         if (file.open(QIODevice::WriteOnly))
         {
             file.write(data);
             file.close();
         }
         else
-        {
-            qDebug() << "Failed to save downloaded file";
-            emit dotnetDownloadFailed();
-        }
-    });
-
-    connect(reply, &QNetworkReply::finished, this, [this] {
+            qDebug() << "Failed to save downloaded .NET desktop runtime";
+    },
+    [this](const QNetworkReply::NetworkError error, const QString &errorMessage) {
+        qDebug() << ".NET desktop runtime download failed:" << errorMessage;
+        emit dotnetDownloadFailed();
+    },
+    [this] {
         m_dotnetDownloadInProgress = false;
         emit dotnetDownloadInProgressChanged(false);
         emit hasDotnetCachedChanged(hasDotnetCached());

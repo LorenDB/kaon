@@ -13,6 +13,8 @@ qt_add_qml_module(kaon
     SOURCES
         Dotnet.cpp
         Dotnet.h
+        DownloadManager.cpp
+        DownloadManager.h
         Steam.cpp
         Steam.h
         UEVR.cpp

@@ -2,13 +2,13 @@
 
 #include <QJsonArray>
 #include <QJsonDocument>
-#include <QNetworkAccessManager>
-#include <QNetworkReply>
 #include <QProcess>
+#include <QSemaphore>
 #include <QSettings>
 #include <QStandardPaths>
 #include <QTemporaryDir>
-#include <QSemaphore>
+
+#include "DownloadManager.h"
 
 using namespace Qt::Literals;
 
@@ -150,7 +150,8 @@ QString UEVR::path(const Paths path) const
     switch (path)
     {
     case Paths::CurrentUEVR:
-        return QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/uevr/"_L1 + QString::number(m_currentUevr);
+        return QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/uevr/"_L1 +
+                QString::number(m_currentUevr);
     case Paths::CurrentUEVRInjector:
         return QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/uevr/"_L1 +
                 QString::number(m_currentUevr) + "/UEVRInjector.exe"_L1;
@@ -176,15 +177,10 @@ void UEVR::updateAvailableReleases()
     const auto impl = [this, semaphore](QUrl url, const QString cachePath) {
         QNetworkRequest req{url};
         req.setRawHeader("X-GitHub-Api-Version"_ba, "2022-11-28"_ba);
-        auto reply = manager.get(QNetworkRequest{url});
-        connect(reply, &QNetworkReply::finished, this, [this, reply, cachePath, semaphore] {
-            if (reply->error() != QNetworkReply::NoError)
-            {
-                qDebug() << "Error while fetching releases:" << reply->errorString();
-                return;
-            }
 
-            const auto data = reply->readAll();
+        DownloadManager::instance()->download(
+                    req,
+                    [this, cachePath, semaphore](const QByteArray &data) {
             QFile cache{cachePath};
             if (cache.open(QFile::WriteOnly))
             {
@@ -198,6 +194,10 @@ void UEVR::updateAvailableReleases()
                 parseReleaseInfoJson();
                 delete semaphore;
             }
+        },
+        [](const QNetworkReply::NetworkError error, const QString &errorMessage) {
+            qDebug() << "Error while fetching releases:" << errorMessage;
+            return;
         });
     };
 
@@ -253,7 +253,6 @@ void UEVR::parseReleaseInfoJson()
     });
 
     endResetModel();
-
 }
 
 void UEVR::downloadRelease(const UEVRRelease &release)
@@ -279,52 +278,45 @@ void UEVR::downloadRelease(const UEVRRelease &release)
 
     const QString zipPath = tempDir->path() + "/uevr_" + QString::number(release.id) + ".zip";
 
-    static QNetworkAccessManager manager;
-    manager.setAutoDeleteReplies(true);
+    DownloadManager::instance()->download(
+                QNetworkRequest{url},
+                [this, zipPath, id = release.id](const QByteArray &data) {
+        QFile file(zipPath);
+        if (file.open(QIODevice::WriteOnly))
+        {
+            file.write(data);
+            file.close();
 
-    auto reply = manager.get(QNetworkRequest{url});
-    QObject::connect(reply, &QNetworkReply::finished, this, [this, reply, tempDir, zipPath, id = release.id] {
-        if (reply->error() != QNetworkReply::NoError)
-        {
-            qDebug() << "Download error:" << reply->errorString();
-        }
-        else
-        {
-            QFile file(zipPath);
-            if (file.open(QIODevice::WriteOnly))
+            QString targetDir = path(Paths::UEVRBasePath) + '/' + QString::number(id);
+            if (!QFileInfo::exists(targetDir))
+                QDir().mkpath(targetDir);
+
+            QProcess process;
+            process.setWorkingDirectory(targetDir);
+            QStringList args;
+            args << "-o" << zipPath;
+            process.execute("unzip", args);
+            process.start("unzip", args);
+            process.waitForFinished();
+
+            if (process.exitCode() != 0)
             {
-                file.write(reply->readAll());
-                file.close();
-
-                QString targetDir = path(Paths::UEVRBasePath) + '/' + QString::number(id);
-                if (!QFileInfo::exists(targetDir))
-                    QDir().mkpath(targetDir);
-
-                QProcess process;
-                process.setWorkingDirectory(targetDir);
-                QStringList args;
-                args << "-o" << zipPath;
-                process.execute("unzip", args);
-                process.start("unzip", args);
-                process.waitForFinished();
-
-                if (process.exitCode() != 0)
-                {
-                    qDebug() << "Unzip UEVR failed:" << process.errorString();
-                    qDebug() << process.readAllStandardError();
-                }
-                else
-                {
-                    // TODO: mark the existing release object as installed
-
-                    // This triggers the UI to update. Hacky but worky :)
-                    emit currentUevrChanged(m_currentUevr);
-                }
+                qDebug() << "Unzip UEVR failed:" << process.errorString();
+                qDebug() << process.readAllStandardError();
             }
             else
-                qDebug() << "Failed to save UEVR";
-        }
+            {
+                // TODO: mark the existing release object as installed
 
-        delete tempDir;
-    });
+                // This triggers the UI to update. Hacky but worky :)
+                emit currentUevrChanged(m_currentUevr);
+            }
+        }
+        else
+            qDebug() << "Failed to save UEVR";
+    },
+    [](const QNetworkReply::NetworkError error, const QString &errorMessage) {
+        qDebug() << "Download UEVR failed:" << errorMessage;
+    },
+    [tempDir] { delete tempDir; });
 }
