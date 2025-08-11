@@ -29,6 +29,20 @@ ApplicationWindow {
 
             ComboBox {
                 model: UEVR
+                textRole: "name"
+                onCurrentValueChanged: UEVR.currentUevr = currentValue.id
+            }
+
+            ToolButton {
+                icon.name: "download"
+                enabled: !UEVR.isInstalled(UEVR.currentUevr)
+                onClicked: UEVR.downloadUEVR(UEVR.currentUevr)
+            }
+
+            CheckBox {
+                text: "Show nightlies"
+                Component.onCompleted: checked = UEVR.showNightlies
+                onCheckedChanged: UEVR.showNightlies = checked
             }
         }
     }
@@ -66,7 +80,7 @@ ApplicationWindow {
     Component {
         id: gameDetails
 
-        GameDetails { anchors.fill: parent }
+        GameDetails {}
     }
 
     DotnetDownloadDialog {
