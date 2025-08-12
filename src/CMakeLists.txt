@@ -25,6 +25,11 @@ qt_add_qml_module(kaon
         UEVR.h
         VDF.cpp
         VDF.h
+    RESOURCES
+        icons/fallback/theme/draw-arrow-back.svg
+        icons/fallback/theme/folder.svg
+        icons/fallback/theme/media-playback-start.svg
+        icons/fallback/theme/settings-configure.svg
 )
 
 target_link_libraries(kaon
