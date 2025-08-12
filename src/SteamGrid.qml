@@ -7,14 +7,15 @@ pragma ComponentBehavior: Bound
 
 import dev.lorendb.kaon
 
-Frame {
+RowLayout {
     id: gridRoot
 
     signal gameClicked(int steamId)
+    spacing: 10
 
-    RowLayout {
-        anchors.fill: parent
-        spacing: 10
+    Frame {
+        Layout.fillWidth: true
+        Layout.fillHeight: true
 
         GridView {
             id: grid
@@ -22,9 +23,7 @@ Frame {
             readonly property int cardWidth: 120
             readonly property int cardHeight: 180
 
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-
+            anchors.fill: parent
             model: SteamFilter
             cellWidth: {
                 let usableWidth = width - (leftMargin + rightMargin + sb.width)
@@ -114,21 +113,21 @@ Frame {
                 }
             }
         }
+    }
 
-        ColumnLayout {
-            spacing: 10
+    ColumnLayout {
+        spacing: 10
 
-            CheckBox {
-                text: "Show all"
-                hoverEnabled: true
-                ToolTip.text: "Shows normally hidden entries like Proton"
-                ToolTip.visible: hovered
-                ToolTip.delay: 1000
-                Component.onCompleted: checked = SteamFilter.showAll
-                onCheckedChanged: SteamFilter.showAll = checked
-            }
-
-            Item { Layout.fillHeight: true }
+        CheckBox {
+            text: "Show all"
+            hoverEnabled: true
+            ToolTip.text: "Shows normally hidden entries like Proton"
+            ToolTip.visible: hovered
+            ToolTip.delay: 1000
+            Component.onCompleted: checked = SteamFilter.showAll
+            onCheckedChanged: SteamFilter.showAll = checked
         }
+
+        Item { Layout.fillHeight: true }
     }
 }
