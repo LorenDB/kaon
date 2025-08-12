@@ -34,7 +34,7 @@ Pane {
 
         Button {
             text: "Install .NET desktop runtime"
-            enabled: !Dotnet.isDotnetInstalled(steamId) && !Dotnet.dotnetDownloadInProgress
+            enabled: !Dotnet.isDotnetInstalled(gameDetailsRoot.steamId) && !Dotnet.dotnetDownloadInProgress
             onClicked: Dotnet.installDotnetDesktopRuntime(gameDetailsRoot.steamId)
         }
 
