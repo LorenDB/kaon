@@ -243,6 +243,20 @@ void UEVR::parseReleaseInfoJson()
     const auto parse = [this](const QJsonValue &release) -> UEVRRelease {
         UEVRRelease r;
         r.name = release["name"_L1].toString();
+
+        // Shorten the git hash in nightly release names for display purposes
+        static const QRegularExpression rx(R"(^UEVR Nightly \d+ \([0-9a-f]{40}\)$)"_L1,
+                                           QRegularExpression::CaseInsensitiveOption);
+
+        if (rx.match(r.name).hasMatch())
+        {
+            // We want to end up with a 7-character git hash. Therefore, after finding the " (", we increment 2 to get to the
+            // git hash and then 7 more to get to the end of the short hash.
+            int parenStart = r.name.lastIndexOf(" ("_L1) + 9;
+            if (parenStart != -1)
+                r.name = r.name.left(parenStart) + ')';
+        }
+
         r.id = release["id"_L1].toInt();
         r.timestamp = QDateTime::fromString(release["published_at"_L1].toString(), Qt::ISODate);
         r.installed = QFileInfo::exists(path(Paths::UEVRBasePath) + '/' + QString::number(r.id) + "/UEVRInjector.exe"_L1);
