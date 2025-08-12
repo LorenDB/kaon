@@ -10,6 +10,8 @@ find_package(Qt6 REQUIRED COMPONENTS Core)
 
 qt_standard_project_setup(REQUIRES 6.8)
 
-add_subdirectory(3rdparty/ValveFileVDF)
+include(FetchContent)
+FetchContent_Declare(ValveFileVDF URL https://github.com/TinyTinni/ValveFileVDF/archive/refs/tags/v1.1.1.tar.gz)
+FetchContent_MakeAvailable(ValveFileVDF)
 
 add_subdirectory(src)
