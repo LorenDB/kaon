@@ -98,6 +98,8 @@ ApplicationWindow {
 
     DotnetDownloadDialog {
         id: dotnetDownloadDialog
+
+        anchors.centerIn: parent
     }
 
     Dialog {
