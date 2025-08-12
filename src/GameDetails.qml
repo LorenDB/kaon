@@ -10,6 +10,7 @@ Pane {
     required property int steamId
     required property string heroImage
     required property string logoImage
+    required property string installDir
 
     Image {
         id: hero
@@ -41,6 +42,12 @@ Pane {
         Button {
             text: "Launch UEVR injector"
             onClicked: UEVR.launchUEVR(gameDetailsRoot.steamId)
+        }
+
+        Button {
+            icon.name: "folder"
+            text: "Open game install folder"
+            onClicked: Qt.openUrlExternally("file://" + gameDetailsRoot.installDir)
         }
 
         Item { Layout.fillHeight: true }

@@ -10,7 +10,7 @@ import dev.lorendb.kaon
 Frame {
     id: gridRoot
 
-    signal gameClicked(int steamId, string heroImage, string logoImage)
+    signal gameClicked(int steamId, string heroImage, string logoImage, string installDir)
 
     RowLayout {
         anchors.fill: parent
@@ -46,6 +46,7 @@ Frame {
                 required property string cardImage
                 required property string heroImage
                 required property string logoImage
+                required property string installDir
 
                 width: grid.cellWidth
                 height: grid.cardHeight
@@ -109,7 +110,7 @@ Frame {
                     anchors.fill: card
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: gridRoot.gameClicked(card.steamId, card.heroImage, card.logoImage)
+                    onClicked: gridRoot.gameClicked(card.steamId, card.heroImage, card.logoImage, card.installDir)
                 }
             }
         }

@@ -79,7 +79,7 @@ void Steam::scanSteam()
             auto app = tyti::vdf::read(acfFile);
 
             g.name = QString::fromStdString(app.attribs["name"]);
-            g.installDir = QString::fromStdString(app.attribs["installdir"]);
+            g.installDir = basepath + "/common/"_L1 + QString::fromStdString(app.attribs["installdir"]);
             if (app.attribs.contains("LastPlayed"))
                 g.lastPlayed = QDateTime::fromSecsSinceEpoch(std::stoi(app.attribs["LastPlayed"]));
 
