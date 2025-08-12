@@ -30,15 +30,16 @@ ApplicationWindow {
             ComboBox {
                 id: uevrCombo
 
-                model: UEVR
+                model: UEVRFilter
                 textRole: "name"
-                onCurrentValueChanged: UEVR.currentUevr = currentValue.id
-                Component.onCompleted: currentIndex = UEVR.indexFromId(UEVR.currentUevr);
+                onCurrentValueChanged: UEVR.currentUevr = currentValue
+                valueRole: "id"
+                Component.onCompleted: currentIndex = Math.max(0, UEVRFilter.indexFromId(UEVR.currentUevr))
 
                 Connections {
                     function onCurrentUevrChanged(i)
                     {
-                        uevrCombo.currentIndex = UEVR.indexFromId(UEVR.currentUevr);
+                        uevrCombo.currentIndex = Math.max(0, UEVRFilter.indexFromId(UEVR.currentUevr))
                     }
 
                     target: UEVR
@@ -53,8 +54,8 @@ ApplicationWindow {
 
             CheckBox {
                 text: "Show nightlies"
-                Component.onCompleted: checked = UEVR.showNightlies
-                onCheckedChanged: UEVR.showNightlies = checked
+                Component.onCompleted: checked = UEVRFilter.showNightlies
+                onCheckedChanged: UEVRFilter.showNightlies = checked
             }
         }
     }

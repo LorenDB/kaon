@@ -15,28 +15,31 @@ using namespace Qt::Literals;
 
 UEVR *UEVR::s_instance = nullptr;
 
+UEVRRelease::UEVRRelease(QObject *parent)
+    : QObject{parent}
+{}
+
+const QList<UEVRRelease::Asset> &UEVRRelease::assets() const
+{
+    return m_assets;
+}
+
+void UEVRRelease::setInstalled(bool state)
+{
+    m_installed = state;
+    emit installedChanged(state);
+}
+
 UEVR::UEVR(QObject *parent)
     : QAbstractListModel{parent}
 {
-    if (s_instance != nullptr)
-        throw std::runtime_error{"Attempted to double initialize UEVR"};
-    else
-        s_instance = this;
-
     QSettings settings;
     settings.beginGroup("uevr"_L1);
-
     m_currentUevr = settings.value("currentUevr"_L1, {}).toInt();
-    m_showNightlies = settings.value("showNightlies"_L1, false).toBool();
-
-    connect(this, &UEVR::showNightliesChanged, this, [this] {
-        beginResetModel();
-        endResetModel();
-    });
 
     // Execute downloads on the first event tick to give time for the download
     // manager to initialize
-    QTimer::singleShot(0, [this] {
+    QTimer::singleShot(0, this, [this] {
         parseReleaseInfoJson();
         updateAvailableReleases();
     });
@@ -47,32 +50,41 @@ UEVR::~UEVR()
     QSettings settings;
     settings.beginGroup("uevr"_L1);
     settings.setValue("currentUevr"_L1, m_currentUevr);
-    settings.setValue("showNightlies"_L1, m_showNightlies);
+}
+
+UEVR *UEVR::instance()
+{
+    if (!s_instance)
+        s_instance = new UEVR;
+    return s_instance;
+}
+
+UEVR *UEVR::create(QQmlEngine *, QJSEngine *)
+{
+    return instance();
 }
 
 int UEVR::rowCount(const QModelIndex &parent) const
 {
-    const auto &source = m_showNightlies ? m_mergedReleases : m_releases;
-    return source.count();
+    return m_releases.count();
 }
 
 QVariant UEVR::data(const QModelIndex &index, int role) const
 {
-    const auto &source = m_showNightlies ? m_mergedReleases : m_releases;
-    if (!index.isValid() || index.row() < 0 || index.row() >= source.size())
+    if (!index.isValid() || index.row() < 0 || index.row() >= m_releases.size())
         return {};
-    const auto &item = source.at(index.row());
+    const auto &item = m_releases.at(index.row());
     switch (role)
     {
     case Roles::Id:
-        return item.id;
+        return item->id();
     case Qt::DisplayRole:
     case Roles::Name:
-        return item.name;
+        return item->name();
     case Roles::Timestamp:
-        return item.timestamp;
+        return item->timestamp();
     case Roles::Installed:
-        return item.installed;
+        return item->installed();
     }
 
     return {};
@@ -84,6 +96,14 @@ QHash<int, QByteArray> UEVR::roleNames() const
         {Roles::Name, "name"_ba},
         {Roles::Timestamp, "timestamp"_ba},
         {Roles::Installed, "installed"_ba}};
+}
+
+UEVRRelease *UEVR::releaseFromId(const int id) const
+{
+    for (const auto release : m_releases)
+        if (release->id() == id)
+            return release;
+    return nullptr;
 }
 
 const QString UEVR::uevrPath() const
@@ -98,16 +118,15 @@ int UEVR::currentUevr() const
 
 void UEVR::setCurrentUevr(const int id)
 {
-    auto allVersions = m_releases + m_nightlies;
     auto newVersion =
-            std::find_if(allVersions.constBegin(), allVersions.constEnd(), [id](const auto &r) { return r.id == id; });
-    if (newVersion == allVersions.constEnd())
+            std::find_if(m_releases.constBegin(), m_releases.constEnd(), [id](const auto &r) { return r->id() == id; });
+    if (newVersion == m_releases.constEnd())
     {
         qDebug() << "Attempted to activate nonexistent UEVR";
         return;
     }
 
-    if (!newVersion->installed)
+    if (!(*newVersion)->installed())
     {
         // TODO: ask if the user wants to install this
     }
@@ -140,25 +159,14 @@ bool UEVR::isInstalled(const int id)
 
 void UEVR::downloadUEVR(const int id)
 {
-    for (const auto &release : m_mergedReleases)
+    for (const auto &release : m_releases)
     {
-        if (release.id == id && !release.installed)
+        if (release->id() == id && !release->installed())
         {
-            downloadRelease(release);
+            downloadRelease(*release);
             return;
         }
     }
-}
-
-int UEVR::indexFromId(const int id) const
-{
-    const auto &list = m_showNightlies ? m_mergedReleases : m_releases;
-    for (int i = 0; i < list.count(); ++i)
-    {
-        if (list[i].id == id)
-            return i;
-    }
-    return -1;
 }
 
 QString UEVR::path(const Paths path) const
@@ -237,36 +245,38 @@ void UEVR::parseReleaseInfoJson()
     const auto releases = QJsonDocument::fromJson(cachedReleases.readAll());
     const auto nightlies = QJsonDocument::fromJson(cachedNightlies.readAll());
 
+    for (const auto release : m_releases)
+        release->deleteLater();
     m_releases.clear();
-    m_nightlies.clear();
 
-    const auto parse = [this](const QJsonValue &release) -> UEVRRelease {
-        UEVRRelease r;
-        r.name = release["name"_L1].toString();
+    const auto parse = [this](const QJsonValue &release) -> UEVRRelease * {
+        auto r = new UEVRRelease;
+        r->m_name = release["name"_L1].toString();
 
         // Shorten the git hash in nightly release names for display purposes
         static const QRegularExpression rx(R"(^UEVR Nightly \d+ \([0-9a-f]{40}\)$)"_L1,
                                            QRegularExpression::CaseInsensitiveOption);
 
-        if (rx.match(r.name).hasMatch())
+        if (rx.match(r->name()).hasMatch())
         {
             // We want to end up with a 7-character git hash. Therefore, after finding the " (", we increment 2 to get to the
             // git hash and then 7 more to get to the end of the short hash.
-            int parenStart = r.name.lastIndexOf(" ("_L1) + 9;
+            int parenStart = r->name().lastIndexOf(" ("_L1) + 9;
             if (parenStart != -1)
-                r.name = r.name.left(parenStart) + ')';
+                r->m_name = r->name().left(parenStart) + ')';
         }
 
-        r.id = release["id"_L1].toInt();
-        r.timestamp = QDateTime::fromString(release["published_at"_L1].toString(), Qt::ISODate);
-        r.installed = QFileInfo::exists(path(Paths::UEVRBasePath) + '/' + QString::number(r.id) + "/UEVRInjector.exe"_L1);
+        r->m_id = release["id"_L1].toInt();
+        r->m_timestamp = QDateTime::fromString(release["published_at"_L1].toString(), Qt::ISODate);
+        r->m_installed =
+                QFileInfo::exists(path(Paths::UEVRBasePath) + '/' + QString::number(r->id()) + "/UEVRInjector.exe"_L1);
         for (const auto &asset : release["assets"_L1].toArray())
         {
             UEVRRelease::Asset a;
             a.id = asset["id"_L1].toInt();
             a.name = asset["name"_L1].toString();
             a.url = asset["browser_download_url"_L1].toString();
-            r.assets.push_back(a);
+            r->m_assets.push_back(a);
         }
         return r;
     };
@@ -274,14 +284,14 @@ void UEVR::parseReleaseInfoJson()
     for (const auto &release : releases.array())
         m_releases.push_back(parse(release));
     for (const auto &nightly : nightlies.array())
-        m_nightlies.push_back(parse(nightly));
+    {
+        auto n = parse(nightly);
+        n->m_nightly = true;
+        m_releases.push_back(n);
+    }
 
-    m_mergedReleases.clear();
-    m_mergedReleases.append(m_releases);
-    m_mergedReleases.append(m_nightlies);
-    std::sort(m_mergedReleases.begin(), m_mergedReleases.end(), [](const auto &a, const auto &b) {
-        return a.timestamp < b.timestamp;
-    });
+    std::sort(
+                m_releases.begin(), m_releases.end(), [](const auto &a, const auto &b) { return a->timestamp() > b->timestamp(); });
 
     endResetModel();
     emit currentUevrChanged(m_currentUevr);
@@ -290,7 +300,7 @@ void UEVR::parseReleaseInfoJson()
 void UEVR::downloadRelease(const UEVRRelease &release)
 {
     QUrl url;
-    for (const auto &asset : release.assets)
+    for (const auto &asset : release.assets())
     {
         if (asset.name.toLower() == "uevr.zip"_L1)
         {
@@ -308,12 +318,12 @@ void UEVR::downloadRelease(const UEVRRelease &release)
         return;
     }
 
-    const QString zipPath = tempDir->path() + "/uevr_" + QString::number(release.id) + ".zip";
+    const QString zipPath = tempDir->path() + "/uevr_" + QString::number(release.id()) + ".zip";
 
     DownloadManager::instance()->download(
                 QNetworkRequest{url},
-                release.name,
-                [this, zipPath, id = release.id](const QByteArray &data) {
+                release.name(),
+                [this, zipPath, id = release.id()](const QByteArray &data) {
         QFile file(zipPath);
         if (file.open(QIODevice::WriteOnly))
         {
@@ -352,4 +362,82 @@ void UEVR::downloadRelease(const UEVRRelease &release)
         qDebug() << "Download UEVR failed:" << errorMessage;
     },
     [tempDir] { delete tempDir; });
+}
+
+UEVRFilter::UEVRFilter(QObject *parent)
+{
+    setSourceModel(UEVR::instance());
+    connect(this, &UEVRFilter::showNightliesChanged, this, &UEVRFilter::invalidateRowsFilter);
+
+    setSortRole(UEVR::Roles::Timestamp);
+    setDynamicSortFilter(true);
+    sort(0);
+
+    QSettings settings;
+    settings.beginGroup("uevr"_L1);
+    m_showNightlies = settings.value("showNightlies"_L1, false).toBool();
+}
+
+int UEVRFilter::indexFromId(int id) const
+{
+    for (int i = 0; i < sourceModel()->rowCount(); ++i)
+    {
+        auto sourceIndex = sourceModel()->index(i, 0);
+        if (sourceModel()->data(sourceIndex, UEVR::Roles::Id).toInt() == id)
+        {
+            QModelIndex proxyIndex = mapFromSource(sourceIndex);
+            if (proxyIndex.isValid())
+                return proxyIndex.row();
+        }
+    }
+
+    return -1;
+}
+
+void UEVRFilter::setShowNightlies(bool state)
+{
+    m_showNightlies = state;
+    emit showNightliesChanged(state);
+
+    QSettings settings;
+    settings.beginGroup("uevr"_L1);
+    settings.setValue("showNightlies"_L1, m_showNightlies);
+}
+
+bool UEVRFilter::filterAcceptsRow(int row, const QModelIndex &parent) const
+{
+    if (!m_showNightlies)
+    {
+        const auto release = UEVR::instance()->releaseFromId(
+                    sourceModel()->data(sourceModel()->index(row, 0, parent), UEVR::Roles::Id).toInt());
+        if (!release || release->nightly())
+            return false;
+    }
+    return QSortFilterProxyModel::filterAcceptsRow(row, parent);
+}
+
+bool UEVRFilter::lessThan(const QModelIndex &left, const QModelIndex &right) const
+{
+    return left.data(UEVR::Roles::Timestamp).toDateTime() > right.data(UEVR::Roles::Timestamp).toDateTime();
+}
+
+int findProxyRow(QSortFilterProxyModel *proxy, const QVariant &searchData, int column = 0)
+{
+    QAbstractItemModel *sourceModel = proxy->sourceModel();
+
+    int sourceRowCount = sourceModel->rowCount();
+    for (int row = 0; row < sourceRowCount; ++row)
+    {
+        QModelIndex sourceIndex = sourceModel->index(row, column);
+        if (sourceModel->data(sourceIndex) == searchData)
+        {
+            QModelIndex proxyIndex = proxy->mapFromSource(sourceIndex);
+            if (proxyIndex.isValid())
+                return proxyIndex.row();
+            else
+                return -1; // Filtered out
+        }
+    }
+
+    return -1; // Not found in source
 }
