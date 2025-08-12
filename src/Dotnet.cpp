@@ -90,6 +90,13 @@ void Dotnet::downloadDotnetDesktopRuntime(int steamId)
     });
 }
 
+bool Dotnet::isDotnetInstalled(int steamId)
+{
+    const auto basepath = QDir::homePath() + "/.local/share/Steam/steamapps/compatdata/"_L1 + QString::number(steamId) +
+            "/pfx/drive_c/Program Files/dotnet"_L1;
+    return QFileInfo::exists(basepath + "/dotnet.exe"_L1) && QFileInfo::exists(basepath + "/host/fxr/6.0.36");
+}
+
 void Dotnet::installDotnetDesktopRuntime(int steamId)
 {
     if (!hasDotnetCached())

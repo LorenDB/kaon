@@ -22,6 +22,8 @@ public slots:
     void installDotnetDesktopRuntime(int steamId);
     void downloadDotnetDesktopRuntime(int steamId = 0);
 
+    bool isDotnetInstalled(int steamId);
+
 signals:
     void hasDotnetCachedChanged(const bool);
     void dotnetDownloadInProgressChanged(const bool);
