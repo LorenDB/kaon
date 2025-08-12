@@ -65,9 +65,9 @@ Pane {
         }
 
         Button {
-            text: Dotnet.isDotnetInstalled(gameDetailsRoot.game.id) ? "Repair or uninstall .NET" : "Install .NET desktop runtime"
+            text: gameDetailsRoot.game.dotnetInstalled ? "Repair or uninstall .NET" : "Install .NET desktop runtime"
             enabled: {
-                if (!Dotnet.isDotnetInstalled(gameDetailsRoot.game.id))
+                if (!gameDetailsRoot.game.dotnetInstalled)
                     return !Dotnet.dotnetDownloadInProgress;
                 else
                     return true;
@@ -77,7 +77,7 @@ Pane {
 
         Button {
             text: "Launch UEVR injector"
-            enabled: Dotnet.isDotnetInstalled(gameDetailsRoot.game.id)
+            enabled: gameDetailsRoot.game.dotnetInstalled
             onClicked: UEVR.launchUEVR(gameDetailsRoot.game.id)
         }
 
