@@ -3,6 +3,7 @@
 #include <QDir>
 #include <QDirIterator>
 
+#include "Dotnet.h"
 #include "vdf_parser.hpp"
 
 using namespace Qt::Literals;
@@ -41,19 +42,19 @@ QVariant Steam::data(const QModelIndex &index, int role) const
     {
     case Qt::DisplayRole:
     case Roles::Name:
-        return item.name;
+        return item->name();
     case Roles::SteamID:
-        return item.id;
+        return item->id();
     case Roles::InstallDir:
-        return item.installDir;
+        return item->installDir();
     case Roles::CardImage:
-        return item.cardImage;
+        return item->cardImage();
     case Roles::HeroImage:
-        return item.heroImage;
+        return item->heroImage();
     case Roles::LogoImage:
-        return item.logoImage;
+        return item->logoImage();
     case Roles::LastPlayed:
-        return item.lastPlayed;
+        return item->lastPlayed();
     }
 
     return {};
@@ -70,9 +71,12 @@ QHash<int, QByteArray> Steam::roleNames() const
         {Roles::LastPlayed, "lastPlayed"_ba}};
 }
 
-const Steam::Game &Steam::gameAtIndex(int index) const
+Game *Steam::gameFromId(int steamId) const
 {
-    return m_games.at(index);
+    for (const auto game : m_games)
+        if (game->id() == steamId)
+            return game;
+    return nullptr;
 }
 
 void Steam::scanSteam()
@@ -91,35 +95,35 @@ void Steam::scanSteam()
     {
         for (const auto &[appId, _] : folder->childs["apps"]->attribs)
         {
-            Game g;
-            g.id = std::stoi(appId);
+            auto g = new Game{this};
+            g->m_id = std::stoi(appId);
 
             std::ifstream acfFile{basepath.toStdString() + "/appmanifest_" + appId + ".acf"};
             auto app = tyti::vdf::read(acfFile);
 
-            g.name = QString::fromStdString(app.attribs["name"]);
-            g.installDir = basepath + "/common/"_L1 + QString::fromStdString(app.attribs["installdir"]);
+            g->m_name = QString::fromStdString(app.attribs["name"]);
+            g->m_installDir = basepath + "/common/"_L1 + QString::fromStdString(app.attribs["installdir"]);
             if (app.attribs.contains("LastPlayed"))
-                g.lastPlayed = QDateTime::fromSecsSinceEpoch(std::stoi(app.attribs["LastPlayed"]));
+                g->m_lastPlayed = QDateTime::fromSecsSinceEpoch(std::stoi(app.attribs["LastPlayed"]));
 
-            const auto imageDir = QDir::homePath() + "/.local/share/Steam/appcache/librarycache/"_L1 + QString::number(g.id);
+            const auto imageDir = QDir::homePath() + "/.local/share/Steam/appcache/librarycache/"_L1 + QString::number(g->id());
             QDirIterator images{imageDir, QDirIterator::Subdirectories};
             while (images.hasNext())
             {
                 images.next();
-                if (images.fileName() == "library_600x900.jpg"_L1 && g.cardImage.isEmpty())
-                    g.cardImage = "file://"_L1 + images.filePath();
-                if (images.fileName() == "library_hero.jpg"_L1 && g.heroImage.isEmpty())
-                    g.heroImage = "file://"_L1 + images.filePath();
-                if (images.fileName() == "logo.png"_L1 && g.logoImage.isEmpty())
-                    g.logoImage = "file://"_L1 + images.filePath();
+                if (images.fileName() == "library_600x900.jpg"_L1 && g->cardImage().isEmpty())
+                    g->m_cardImage = "file://"_L1 + images.filePath();
+                if (images.fileName() == "library_hero.jpg"_L1 && g->heroImage().isEmpty())
+                    g->m_heroImage = "file://"_L1 + images.filePath();
+                if (images.fileName() == "logo.png"_L1 && g->logoImage().isEmpty())
+                    g->m_logoImage = "file://"_L1 + images.filePath();
             }
 
             m_games.push_back(g);
         }
     }
 
-    std::sort(m_games.begin(), m_games.end(), [](const auto &a, const auto &b) { return a.lastPlayed > b.lastPlayed; });
+    std::sort(m_games.begin(), m_games.end(), [](const auto &a, const auto &b) { return a->lastPlayed() > b->lastPlayed(); });
     endResetModel();
 }
 
@@ -139,11 +143,19 @@ bool SteamFilter::filterAcceptsRow(int row, const QModelIndex &parent) const
 {
     if (!m_showAll)
     {
-        const auto g = Steam::instance()->gameAtIndex(row);
+        const auto g = Steam::instance()->gameFromId(
+                    sourceModel()->data(sourceModel()->index(row, 0, parent), Steam::Roles::SteamID).toInt());
+        if (!g)
+            return false;
 
         // filter out Proton and Steam Linux runtime installations
-        if (QFile::exists(g.installDir + "/proton"_L1) || QFile::exists(g.installDir + "/toolmanifest.vdf"_L1))
+        if (QFile::exists(g->installDir() + "/proton"_L1) || QFile::exists(g->installDir() + "/toolmanifest.vdf"_L1))
             return false;
     }
     return QSortFilterProxyModel::filterAcceptsRow(row, parent);
+}
+
+bool Game::dotnetInstalled() const
+{
+    return Dotnet::instance()->isDotnetInstalled(m_id);
 }

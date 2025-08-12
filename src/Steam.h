@@ -4,6 +4,49 @@
 #include <QQmlEngine>
 #include <QSortFilterProxyModel>
 
+class Game : public QObject
+{
+    Q_OBJECT
+    QML_ELEMENT
+
+    Q_PROPERTY(int id READ id CONSTANT)
+    Q_PROPERTY(QString name READ name CONSTANT)
+    Q_PROPERTY(QString installDir READ installDir CONSTANT)
+    Q_PROPERTY(QString cardImage READ cardImage CONSTANT)
+    Q_PROPERTY(QString heroImage READ heroImage CONSTANT)
+    Q_PROPERTY(QString logoImage READ logoImage CONSTANT)
+    Q_PROPERTY(QDateTime lastPlayed READ lastPlayed CONSTANT)
+
+    Q_PROPERTY(bool dotnetInstalled READ dotnetInstalled NOTIFY dotnetInstalledChanged FINAL)
+
+public:
+    explicit Game(QObject *parent = nullptr) : QObject{parent} {}
+
+    int id() const { return m_id; }
+    QString name() const { return m_name; }
+    QString installDir() const { return m_installDir; }
+    QString cardImage() const { return m_cardImage; }
+    QString heroImage() const { return m_heroImage; }
+    QString logoImage() const { return m_logoImage; }
+    QDateTime lastPlayed() const { return m_lastPlayed; }
+
+    bool dotnetInstalled() const;
+
+signals:
+    void dotnetInstalledChanged();
+
+private:
+    int m_id = 0;
+    QString m_name;
+    QString m_installDir;
+    QString m_cardImage;
+    QString m_heroImage;
+    QString m_logoImage;
+    QDateTime m_lastPlayed;
+
+    friend class Steam;
+};
+
 class Steam : public QAbstractListModel
 {
     Q_OBJECT
@@ -29,18 +72,8 @@ public:
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
     QHash<int, QByteArray> roleNames() const override;
 
-    struct Game
-    {
-        int id = 0;
-        QString name;
-        QString installDir;
-        QString cardImage;
-        QString heroImage;
-        QString logoImage;
-        QDateTime lastPlayed;
-    };
-
-    const Game &gameAtIndex(int index) const;
+public slots:
+    Game *gameFromId(int steamId) const;
 
 signals:
 
@@ -50,7 +83,7 @@ private:
 
     void scanSteam();
 
-    QList<Game> m_games;
+    QList<Game *> m_games;
 };
 
 class SteamFilter : public QSortFilterProxyModel

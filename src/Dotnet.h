@@ -14,6 +14,7 @@ class Dotnet : public QObject
 
 public:
     explicit Dotnet(QObject *parent = nullptr);
+    static Dotnet *instance();
 
     bool hasDotnetCached() const;
     bool dotnetDownloadInProgress() const;

@@ -83,13 +83,8 @@ ApplicationWindow {
 
         SteamGrid {
             anchors.fill: parent
-            onGameClicked: (steamId, heroImage, logoImage, installDir) => {
-                theStack.push(gameDetails, {
-                                  steamId: steamId,
-                                  heroImage: heroImage,
-                                  logoImage: logoImage,
-                                  installDir: installDir
-                              })
+            onGameClicked: (steamId) => {
+                theStack.push(gameDetails, { game: Steam.gameFromId(steamId) })
             }
         }
     }

@@ -7,10 +7,7 @@ import dev.lorendb.kaon
 Pane {
     id: gameDetailsRoot
 
-    required property int steamId
-    required property string heroImage
-    required property string logoImage
-    required property string installDir
+    required property Game game
 
     ColumnLayout {
         anchors.fill: parent
@@ -22,7 +19,7 @@ Pane {
 
             Layout.fillWidth: true
             Layout.preferredHeight: width / 1920 * 620
-            source: gameDetailsRoot.heroImage
+            source: gameDetailsRoot.game.heroImage
             fillMode: Image.PreserveAspectCrop
 
             // TODO: this needs work to display properly as it would in Steam
@@ -44,7 +41,7 @@ Pane {
                     ToolTip.text: "Open game install folder"
                     ToolTip.delay: 1000
                     ToolTip.visible: hovered
-                    onClicked: Qt.openUrlExternally("file://" + gameDetailsRoot.installDir)
+                    onClicked: Qt.openUrlExternally("file://" + gameDetailsRoot.game.installDir)
                 }
 
                 Button {
@@ -53,7 +50,7 @@ Pane {
                     ToolTip.text: "Change Steam game settings"
                     ToolTip.delay: 1000
                     ToolTip.visible: hovered
-                    onClicked: Qt.openUrlExternally("steam://gameproperties/" + gameDetailsRoot.steamId)
+                    onClicked: Qt.openUrlExternally("steam://gameproperties/" + gameDetailsRoot.game.id)
                 }
 
                 Button {
@@ -62,26 +59,26 @@ Pane {
                     ToolTip.text: "Launch game in Steam"
                     ToolTip.delay: 1000
                     ToolTip.visible: hovered
-                    onClicked: Qt.openUrlExternally("steam://launch/" + gameDetailsRoot.steamId)
+                    onClicked: Qt.openUrlExternally("steam://launch/" + gameDetailsRoot.game.id)
                 }
             }
         }
 
         Button {
-            text: Dotnet.isDotnetInstalled(gameDetailsRoot.steamId) ? "Repair or uninstall .NET" : "Install .NET desktop runtime"
+            text: Dotnet.isDotnetInstalled(gameDetailsRoot.game.id) ? "Repair or uninstall .NET" : "Install .NET desktop runtime"
             enabled: {
-                if (!Dotnet.isDotnetInstalled(gameDetailsRoot.steamId))
+                if (!Dotnet.isDotnetInstalled(gameDetailsRoot.game.id))
                     return !Dotnet.dotnetDownloadInProgress;
                 else
                     return true;
             }
-            onClicked: Dotnet.installDotnetDesktopRuntime(gameDetailsRoot.steamId)
+            onClicked: Dotnet.installDotnetDesktopRuntime(gameDetailsRoot.game.id)
         }
 
         Button {
             text: "Launch UEVR injector"
-            enabled: Dotnet.isDotnetInstalled(gameDetailsRoot.steamId)
-            onClicked: UEVR.launchUEVR(gameDetailsRoot.steamId)
+            enabled: Dotnet.isDotnetInstalled(gameDetailsRoot.game.id)
+            onClicked: UEVR.launchUEVR(gameDetailsRoot.game.id)
         }
 
         Item { Layout.fillHeight: true }

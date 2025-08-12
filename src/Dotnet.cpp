@@ -6,6 +6,7 @@
 #include <QStandardPaths>
 
 #include "DownloadManager.h"
+#include "Steam.h"
 
 using namespace Qt::Literals;
 
@@ -18,6 +19,11 @@ Dotnet::Dotnet(QObject *parent)
         throw std::runtime_error{"Attempted to double initialize .NET"};
     else
         s_instance = this;
+}
+
+Dotnet *Dotnet::instance()
+{
+    return s_instance;
 }
 
 bool Dotnet::hasDotnetCached() const
@@ -114,5 +120,9 @@ void Dotnet::installDotnetDesktopRuntime(int steamId)
     installer->start(
                 QDir::homePath() + "/.local/share/Steam/steamapps/common/Proton - Experimental/files/bin/wine"_L1,
                 {QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + "/windowsdesktop-runtime-6.0.36-win-x64.exe"_L1});
-    connect(installer, &QProcess::finished, installer, &QObject::deleteLater);
+    connect(installer, &QProcess::finished, this, [installer, steamId] {
+        installer->deleteLater();
+        if (auto game = Steam::instance()->gameFromId(steamId); game)
+            emit game->dotnetInstalledChanged();
+    });
 }
