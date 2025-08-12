@@ -2,6 +2,7 @@
 
 #include <QAbstractListModel>
 #include <QQmlEngine>
+#include <QSortFilterProxyModel>
 
 class Steam : public QAbstractListModel
 {
@@ -10,7 +11,8 @@ class Steam : public QAbstractListModel
     QML_SINGLETON
 
 public:
-    explicit Steam(QObject *parent = nullptr);
+    static Steam *instance();
+    static Steam *create(QQmlEngine *qml, QJSEngine *js);
 
     enum Roles
     {
@@ -38,10 +40,40 @@ public:
         QDateTime lastPlayed;
     };
 
+    const Game &gameAtIndex(int index) const;
+
 signals:
 
 private:
+    explicit Steam(QObject *parent = nullptr);
+    static Steam *s_instance;
+
     void scanSteam();
 
     QList<Game> m_games;
+};
+
+class SteamFilter : public QSortFilterProxyModel
+{
+    Q_OBJECT
+    QML_ELEMENT
+    QML_SINGLETON
+
+    Q_PROPERTY(bool showAll READ showAll WRITE setShowAll NOTIFY showAllChanged FINAL)
+
+public:
+    explicit SteamFilter(QObject *parent = nullptr);
+
+    bool showAll() const { return m_showAll; }
+
+    void setShowAll(bool state);
+
+signals:
+    void showAllChanged(bool state);
+
+protected:
+    bool filterAcceptsRow(int row, const QModelIndex &parent) const override;
+
+private:
+    bool m_showAll{false};
 };

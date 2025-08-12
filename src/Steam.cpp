@@ -7,10 +7,24 @@
 
 using namespace Qt::Literals;
 
+Steam *Steam::s_instance = nullptr;
+
 Steam::Steam(QObject *parent)
     : QAbstractListModel{parent}
 {
     scanSteam();
+}
+
+Steam *Steam::instance()
+{
+    if (s_instance == nullptr)
+        s_instance = new Steam;
+    return s_instance;
+}
+
+Steam *Steam::create(QQmlEngine *qml, QJSEngine *js)
+{
+    return instance();
 }
 
 int Steam::rowCount(const QModelIndex &parent) const
@@ -54,6 +68,11 @@ QHash<int, QByteArray> Steam::roleNames() const
         {Roles::HeroImage, "heroImage"_ba},
         {Roles::LogoImage, "logoImage"_ba},
         {Roles::LastPlayed, "lastPlayed"_ba}};
+}
+
+const Steam::Game &Steam::gameAtIndex(int index) const
+{
+    return m_games.at(index);
 }
 
 void Steam::scanSteam()
@@ -102,4 +121,29 @@ void Steam::scanSteam()
 
     std::sort(m_games.begin(), m_games.end(), [](const auto &a, const auto &b) { return a.lastPlayed > b.lastPlayed; });
     endResetModel();
+}
+
+SteamFilter::SteamFilter(QObject *parent)
+{
+    setSourceModel(Steam::instance());
+    connect(this, &SteamFilter::showAllChanged, this, &SteamFilter::invalidateRowsFilter);
+}
+
+void SteamFilter::setShowAll(bool state)
+{
+    m_showAll = state;
+    emit showAllChanged(state);
+}
+
+bool SteamFilter::filterAcceptsRow(int row, const QModelIndex &parent) const
+{
+    if (!m_showAll)
+    {
+        const auto g = Steam::instance()->gameAtIndex(row);
+
+        // filter out Proton and Steam Linux runtime installations
+        if (QFile::exists(g.installDir + "/proton"_L1) || QFile::exists(g.installDir + "/toolmanifest.vdf"_L1))
+            return false;
+    }
+    return QSortFilterProxyModel::filterAcceptsRow(row, parent);
 }

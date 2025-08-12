@@ -25,7 +25,7 @@ Frame {
             Layout.fillWidth: true
             Layout.fillHeight: true
 
-            model: Steam
+            model: SteamFilter
             cellWidth: {
                 let usableWidth = width - (leftMargin + rightMargin + sb.width)
                 return usableWidth / Math.floor(usableWidth / (cardWidth * 1.1))
@@ -124,6 +124,8 @@ Frame {
                 ToolTip.text: "Shows normally hidden entries like Proton"
                 ToolTip.visible: hovered
                 ToolTip.delay: 1000
+                Component.onCompleted: checked = SteamFilter.showAll
+                onCheckedChanged: SteamFilter.showAll = checked
             }
 
             Item { Layout.fillHeight: true }
