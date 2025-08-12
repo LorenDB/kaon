@@ -34,6 +34,10 @@ QVariant Steam::data(const QModelIndex &index, int role) const
         return item.installDir;
     case Roles::CardImage:
         return item.cardImage;
+    case Roles::HeroImage:
+        return item.heroImage;
+    case Roles::LogoImage:
+        return item.logoImage;
     case Roles::LastPlayed:
         return item.lastPlayed;
     }
@@ -47,6 +51,8 @@ QHash<int, QByteArray> Steam::roleNames() const
         {Roles::SteamID, "steamId"_ba},
         {Roles::InstallDir, "installDir"_ba},
         {Roles::CardImage, "cardImage"_ba},
+        {Roles::HeroImage, "heroImage"_ba},
+        {Roles::LogoImage, "logoImage"_ba},
         {Roles::LastPlayed, "lastPlayed"_ba}};
 }
 
@@ -82,11 +88,12 @@ void Steam::scanSteam()
             while (images.hasNext())
             {
                 images.next();
-                if (images.fileName() == "library_600x900.jpg"_L1)
-                {
+                if (images.fileName() == "library_600x900.jpg"_L1 && g.cardImage.isEmpty())
                     g.cardImage = "file://"_L1 + images.filePath();
-                    break;
-                }
+                if (images.fileName() == "library_hero.jpg"_L1 && g.heroImage.isEmpty())
+                    g.heroImage = "file://"_L1 + images.filePath();
+                if (images.fileName() == "logo.png"_L1 && g.logoImage.isEmpty())
+                    g.logoImage = "file://"_L1 + images.filePath();
             }
 
             m_games.push_back(g);

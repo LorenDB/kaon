@@ -18,6 +18,8 @@ public:
         SteamID,
         InstallDir,
         CardImage,
+        HeroImage,
+        LogoImage,
         LastPlayed,
     };
 
@@ -31,6 +33,8 @@ public:
         QString name;
         QString installDir;
         QString cardImage;
+        QString heroImage;
+        QString logoImage;
         QDateTime lastPlayed;
     };
 

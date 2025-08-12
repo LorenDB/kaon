@@ -71,8 +71,8 @@ ApplicationWindow {
 
         SteamGrid {
             anchors.fill: parent
-            onGameClicked: (steamId) => {
-                theStack.push(gameDetails, { steamId: steamId })
+            onGameClicked: (steamId, heroImage, logoImage) => {
+                theStack.push(gameDetails, { steamId: steamId, heroImage: heroImage, logoImage: logoImage })
             }
         }
     }

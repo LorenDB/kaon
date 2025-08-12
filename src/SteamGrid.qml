@@ -10,7 +10,7 @@ import dev.lorendb.kaon
 Frame {
     id: gridRoot
 
-    signal gameClicked(int steamId)
+    signal gameClicked(int steamId, string heroImage, string logoImage)
 
     RowLayout {
         anchors.fill: parent
@@ -41,9 +41,11 @@ Frame {
             delegate: Item {
                 id: card
 
-                required property string cardImage
                 required property string name
                 required property int steamId
+                required property string cardImage
+                required property string heroImage
+                required property string logoImage
 
                 width: grid.cellWidth
                 height: grid.cardHeight
@@ -107,7 +109,7 @@ Frame {
                     anchors.fill: card
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: gridRoot.gameClicked(card.steamId)
+                    onClicked: gridRoot.gameClicked(card.steamId, card.heroImage, card.logoImage)
                 }
             }
         }
