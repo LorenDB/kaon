@@ -1,0 +1,52 @@
+name: Build AppImage
+
+on:
+  push:
+
+jobs:
+  linux:
+    name: AppImage
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+
+    steps:
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.9.*'
+          cache: true
+
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Build
+        run: |
+          mkdir appdir
+          mkdir build
+          cmake -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_INSTALL_PREFIX=/usr .
+          cmake --build build --config RelWithDebInfo -j $(nproc)
+
+      - name: Install LinuxDeploy
+        uses: miurahr/install-linuxdeploy-action@v1.8.0
+        with:
+          plugins: qt appimage
+          dir: ${{ github.workspace }}
+
+      - name: Install packages
+        run: |
+          sudo DEBIAN_FRONTEND=noninteractive apt-add-repository universe
+          sudo DEBIAN_FRONTEND=noninteractive apt install libfuse2t64 breeze-icon-theme -y
+
+      - name: Build release package
+        run: |
+          mkdir -p appdir/usr/share/icons
+          cp -r /usr/share/icons/breeze appdir/usr/share/icons
+          QML_SOURCES_PATHS=src linuxdeploy-x86_64.AppImage --plugin qt --output appimage --desktop-file dev.lorendb.kaon.desktop --icon-file kaon.svg --executable build/src/kaon --appdir appdir
+
+      - name: Upload release package
+        uses: actions/upload-artifact@v4
+        with:
+          name: AppImage
+          path: Kaon-x86_64.AppImage
+          retention-days: 7
