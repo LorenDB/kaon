@@ -87,6 +87,12 @@ void Steam::scanSteam()
     // TODO: use more intelligent Steam location detection algorithm
     // maybe check Rai Pal or Protontricks for inspiration
     const auto basepath = QDir::homePath() + "/.local/share/Steam/steamapps"_L1;
+    if (!QFileInfo::exists(basepath))
+    {
+        qDebug() << "Cannot find local Steam data!";
+        endResetModel();
+        return;
+    }
 
     std::ifstream vdfFile{basepath.toStdString() + "/libraryfolders.vdf"};
     auto libraryFolders = tyti::vdf::read(vdfFile);
