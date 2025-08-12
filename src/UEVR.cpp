@@ -150,6 +150,17 @@ void UEVR::downloadUEVR(const int id)
     }
 }
 
+int UEVR::indexFromId(const int id) const
+{
+    const auto &list = m_showNightlies ? m_mergedReleases : m_releases;
+    for (int i = 0; i < list.count(); ++i)
+    {
+        if (list[i].id == id)
+            return i;
+    }
+    return -1;
+}
+
 QString UEVR::path(const Paths path) const
 {
     switch (path)
@@ -259,6 +270,7 @@ void UEVR::parseReleaseInfoJson()
     });
 
     endResetModel();
+    emit currentUevrChanged(m_currentUevr);
 }
 
 void UEVR::downloadRelease(const UEVRRelease &release)

@@ -33,6 +33,8 @@ public slots:
     bool isInstalled(const int id);
     void downloadUEVR(const int id);
 
+    int indexFromId(const int id) const;
+
 signals:
     void uevrPathChanged(const QString &);
     void currentUevrChanged(const int);

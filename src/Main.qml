@@ -28,9 +28,21 @@ ApplicationWindow {
             Label { text: "UEVR version:" }
 
             ComboBox {
+                id: uevrCombo
+
                 model: UEVR
                 textRole: "name"
                 onCurrentValueChanged: UEVR.currentUevr = currentValue.id
+                Component.onCompleted: currentIndex = UEVR.indexFromId(UEVR.currentUevr);
+
+                Connections {
+                    function onCurrentUevrChanged(i)
+                    {
+                        uevrCombo.currentIndex = UEVR.indexFromId(UEVR.currentUevr);
+                    }
+
+                    target: UEVR
+                }
             }
 
             ToolButton {
