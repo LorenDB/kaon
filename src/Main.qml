@@ -14,6 +14,9 @@ ApplicationWindow {
     minimumWidth: 640
     minimumHeight: 480
 
+    SystemPalette { id: palette }
+    SystemPalette { id: disabledPalette; colorGroup: SystemPalette.Disabled }
+
     header: Pane {
         RowLayout {
             anchors.fill: parent
@@ -21,6 +24,8 @@ ApplicationWindow {
 
             ToolButton {
                 icon.name: "draw-arrow-back"
+                icon.source: Qt.resolvedUrl("icons/draw-arrow-back.svg")
+                icon.color: palette.buttonText
                 visible: theStack.depth > 0
                 onClicked: theStack.popCurrentItem()
             }
@@ -67,6 +72,8 @@ ApplicationWindow {
 
             ToolButton {
                 icon.name: "download"
+                icon.source: Qt.resolvedUrl("icons/download.svg")
+                icon.color: enabled ? palette.buttonText : disabledPalette.buttonText
                 enabled: UEVR.currentUevr && !UEVR.currentUevr.installed
                 onClicked: UEVR.downloadUEVR(UEVR.currentUevr)
             }

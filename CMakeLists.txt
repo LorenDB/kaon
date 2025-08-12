@@ -14,3 +14,6 @@ FetchContent_Declare(ValveFileVDF URL https://github.com/TinyTinni/ValveFileVDF/
 FetchContent_MakeAvailable(ValveFileVDF)
 
 add_subdirectory(src)
+
+install(FILES "dev.lorendb.kaon.desktop" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/applications" COMPONENT kaon)
+install(FILES "kaon.svg" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/scalable/apps" COMPONENT kaon)
