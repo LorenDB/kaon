@@ -121,6 +121,8 @@ Frame {
                 text: "Show all"
                 hoverEnabled: true
                 ToolTip.text: "Shows normally hidden entries like Proton"
+                ToolTip.visible: hovered
+                ToolTip.delay: 1000
             }
 
             Item { Layout.fillHeight: true }
