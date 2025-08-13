@@ -17,6 +17,9 @@ class Game : public QObject
     Q_PROPERTY(QString heroImage READ heroImage CONSTANT)
     Q_PROPERTY(QString logoImage READ logoImage CONSTANT)
     Q_PROPERTY(QDateTime lastPlayed READ lastPlayed CONSTANT)
+    Q_PROPERTY(bool protonExists READ protonExists NOTIFY protonExistsChanged FINAL)
+    Q_PROPERTY(QString protonPrefix READ protonPrefix CONSTANT)
+    Q_PROPERTY(QString selectedProtonInstall READ selectedProtonInstall NOTIFY selectedProtonInstallChanged FINAL)
 
     Q_PROPERTY(bool dotnetInstalled READ dotnetInstalled NOTIFY dotnetInstalledChanged FINAL)
 
@@ -30,10 +33,18 @@ public:
     QString heroImage() const { return m_heroImage; }
     QString logoImage() const { return m_logoImage; }
     QDateTime lastPlayed() const { return m_lastPlayed; }
+    bool protonExists() const { return m_protonExists; }
+    QString protonPrefix() const { return m_protonPrefix; }
+    QString selectedProtonInstall() const { return m_selectedProtonInstall; }
+
+    QString protonBinary() const;
 
     bool dotnetInstalled() const;
 
 signals:
+    void protonExistsChanged(bool state);
+    void selectedProtonInstallChanged(QString path);
+
     void dotnetInstalledChanged();
 
 private:
@@ -44,6 +55,12 @@ private:
     QString m_heroImage;
     QString m_logoImage;
     QDateTime m_lastPlayed;
+    bool m_protonExists{false};
+    QString m_protonPrefix;
+    QString m_selectedProtonInstall;
+
+    // Older Proton installs use a `dist` folder; newer installs use a `files` folder. We need to differentiate them.
+    QString m_filesOrDist;
 
     friend class Steam;
 };

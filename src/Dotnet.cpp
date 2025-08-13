@@ -98,8 +98,8 @@ void Dotnet::downloadDotnetDesktopRuntime(int steamId)
 
 bool Dotnet::isDotnetInstalled(int steamId)
 {
-    const auto basepath = QDir::homePath() + "/.local/share/Steam/steamapps/compatdata/"_L1 + QString::number(steamId) +
-            "/pfx/drive_c/Program Files/dotnet"_L1;
+    auto game = Steam::instance()->gameFromId(steamId);
+    const auto basepath = game->protonPrefix() + "/drive_c/Program Files/dotnet"_L1;
     return QFileInfo::exists(basepath + "/dotnet.exe"_L1) && QFileInfo::exists(basepath + "/host/fxr/6.0.36");
 }
 
@@ -111,14 +111,15 @@ void Dotnet::installDotnetDesktopRuntime(int steamId)
         return;
     }
 
+    auto game = Steam::instance()->gameFromId(steamId);
+
     auto installer = new QProcess;
     QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
-    env.insert("WINEPREFIX"_L1,
-               QDir::homePath() + "/.local/share/Steam/steamapps/compatdata/" + QString::number(steamId) + "/pfx"_L1);
+    env.insert("WINEPREFIX"_L1, game->protonPrefix());
     env.insert("WINEFSYNC"_L1, "1"_L1);
     installer->setProcessEnvironment(env);
     installer->start(
-                QDir::homePath() + "/.local/share/Steam/steamapps/common/Proton - Experimental/files/bin/wine"_L1,
+                game->protonBinary(),
                 {QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + "/windowsdesktop-runtime-6.0.36-win-x64.exe"_L1});
     connect(installer, &QProcess::finished, this, [installer, steamId] {
         installer->deleteLater();
