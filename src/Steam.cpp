@@ -61,6 +61,20 @@ Game::Game(int steamId, QObject *parent)
             }
         }
     }
+
+    const QStringList signsOfUnreal = {
+        m_installDir + "/Engine/Binaries/Win64"_L1,
+        m_installDir + "/Engine/Binaries/Win32"_L1,
+        m_installDir + "/Engine/Binaries/ThirdParty"_L1,
+    };
+    for (const auto &sign : signsOfUnreal)
+    {
+        if (QFileInfo fi{sign}; fi.exists() && fi.isDir())
+        {
+            m_engine = Engine::Unreal;
+            break;
+        }
+    }
 }
 
 QString Game::protonBinary() const
@@ -77,7 +91,7 @@ bool Game::dotnetInstalled() const
 Steam::Steam(QObject *parent)
     : QAbstractListModel{parent}
 {
-    const QStringList steamPaths = {
+    static const QStringList steamPaths = {
         QDir::homePath() + "/.local/share/Steam"_L1,
         QDir::homePath() + "/.steam/steam"_L1,
     };
@@ -200,7 +214,8 @@ void Steam::scanSteam()
 SteamFilter::SteamFilter(QObject *parent)
 {
     setSourceModel(Steam::instance());
-    connect(this, &SteamFilter::showAllChanged, this, &SteamFilter::invalidateRowsFilter);
+    connect(this, &SteamFilter::showAllChanged, this, &SteamFilter::invalidateFilter);
+    connect(this, &SteamFilter::unrealOnlyChanged, this, &SteamFilter::invalidateFilter);
 }
 
 void SteamFilter::setShowAll(bool state)
@@ -209,18 +224,28 @@ void SteamFilter::setShowAll(bool state)
     emit showAllChanged(state);
 }
 
+void SteamFilter::setUnrealOnly(bool state)
+{
+    m_unrealOnly = state;
+    emit emit unrealOnlyChanged(state);
+}
+
 bool SteamFilter::filterAcceptsRow(int row, const QModelIndex &parent) const
 {
+    const auto g = Steam::instance()->gameFromId(
+                sourceModel()->data(sourceModel()->index(row, 0, parent), Steam::Roles::SteamID).toInt());
+    if (!g)
+        return false;
+
     if (!m_showAll)
     {
-        const auto g = Steam::instance()->gameFromId(
-                    sourceModel()->data(sourceModel()->index(row, 0, parent), Steam::Roles::SteamID).toInt());
-        if (!g)
-            return false;
-
         // filter out Proton and Steam Linux runtime installations
         if (QFile::exists(g->installDir() + "/proton"_L1) || QFile::exists(g->installDir() + "/toolmanifest.vdf"_L1))
             return false;
     }
+
+    if (m_unrealOnly && g->engine() != Game::Engine::Unreal)
+        return false;
+
     return QSortFilterProxyModel::filterAcceptsRow(row, parent);
 }

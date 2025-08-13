@@ -128,6 +128,16 @@ RowLayout {
             onCheckedChanged: SteamFilter.showAll = checked
         }
 
+        CheckBox {
+            text: "Unreal only"
+            hoverEnabled: true
+            ToolTip.text: "Only shows games using Unreal Engine"
+            ToolTip.visible: hovered
+            ToolTip.delay: 1000
+            Component.onCompleted: checked = SteamFilter.unrealOnly
+            onCheckedChanged: SteamFilter.unrealOnly = checked
+        }
+
         Item { Layout.fillHeight: true }
     }
 }
