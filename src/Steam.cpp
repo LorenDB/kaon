@@ -112,7 +112,8 @@ void Steam::scanSteam()
             if (app.attribs.contains("LastPlayed"))
                 g->m_lastPlayed = QDateTime::fromSecsSinceEpoch(std::stoi(app.attribs["LastPlayed"]));
 
-            const auto imageDir = QDir::homePath() + "/.local/share/Steam/appcache/librarycache/"_L1 + QString::number(g->id());
+            const auto imageDir =
+                    QDir::homePath() + "/.local/share/Steam/appcache/librarycache/"_L1 + QString::number(g->id());
             QDirIterator images{imageDir, QDirIterator::Subdirectories};
             while (images.hasNext())
             {
@@ -123,6 +124,34 @@ void Steam::scanSteam()
                     g->m_heroImage = "file://"_L1 + images.filePath();
                 if (images.fileName() == "logo.png"_L1 && g->logoImage().isEmpty())
                     g->m_logoImage = "file://"_L1 + images.filePath();
+            }
+
+            QString compatdata = basepath + "/compatdata/"_L1 + QString::number(g->id());
+            if (QFileInfo fi{compatdata}; fi.exists() && fi.isDir())
+            {
+                g->m_protonExists = true;
+
+                if (QFileInfo pfx{compatdata + "/pfx"_L1}; pfx.exists() && pfx.isDir())
+                    g->m_protonPrefix = pfx.absoluteFilePath();
+
+                QFile file{compatdata + "/config_info"_L1};
+                if (file.open(QIODevice::ReadOnly | QIODevice::Text))
+                {
+                    QTextStream compatInfo(&file);
+                    // discard first line
+                    compatInfo.readLine();
+                    QString proton = compatInfo.readLine();
+                    static const QRegularExpression re("/(files|dist)/share/fonts/$");
+                    if (proton.contains(re))
+                    {
+                        g->m_selectedProtonInstall = proton.remove(re);
+
+                        if (QFileInfo files{g->selectedProtonInstall() + "/files"_L1}; files.exists() && files.isDir())
+                            g->m_filesOrDist = "files"_L1;
+                        else
+                            g->m_filesOrDist = "dist"_L1;
+                    }
+                }
             }
 
             m_games.push_back(g);
@@ -159,6 +188,11 @@ bool SteamFilter::filterAcceptsRow(int row, const QModelIndex &parent) const
             return false;
     }
     return QSortFilterProxyModel::filterAcceptsRow(row, parent);
+}
+
+QString Game::protonBinary() const
+{
+    return m_selectedProtonInstall + '/' + m_filesOrDist + "/bin/wine"_L1;
 }
 
 bool Game::dotnetInstalled() const

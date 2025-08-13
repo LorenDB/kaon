@@ -10,6 +10,7 @@
 #include <QTimer>
 
 #include "DownloadManager.h"
+#include "Steam.h"
 
 using namespace Qt::Literals;
 
@@ -141,14 +142,14 @@ void UEVR::setCurrentUevr(const int id)
 
 void UEVR::launchUEVR(const int steamId)
 {
+    auto game = Steam::instance()->gameFromId(steamId);
+
     auto injector = new QProcess;
     QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
-    env.insert("WINEPREFIX"_L1,
-               QDir::homePath() + "/.local/share/Steam/steamapps/compatdata/" + QString::number(steamId) + "/pfx"_L1);
+    env.insert("WINEPREFIX"_L1, game->protonPrefix());
     env.insert("WINEFSYNC"_L1, "1"_L1);
     injector->setProcessEnvironment(env);
-    injector->start(QDir::homePath() + "/.local/share/Steam/steamapps/common/Proton - Experimental/files/bin/wine"_L1,
-                    {path(Paths::CurrentUEVRInjector)});
+    injector->start(game->protonBinary(), {path(Paths::CurrentUEVRInjector)});
     connect(injector, &QProcess::finished, injector, &QObject::deleteLater);
 }
 
