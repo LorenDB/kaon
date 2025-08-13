@@ -1,6 +1,14 @@
 # Kaon
 
-Kaon is a utility to help you use UEVR on Linux.
+Kaon is a utility to help you use UEVR on Linux. It is in a pre-alpha state right now
+and under heavy development, so expect things to break.
+
+Currently, Kaon does not support Steam installed via Flatpak or Snap.
+
+## Features
+
+- Install any UEVR release, including nightly builds
+- Auto install the .NET runtime in Proton to make UEVR work
 
 ## Building and running
 
