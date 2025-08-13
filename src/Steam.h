@@ -4,6 +4,8 @@
 #include <QQmlEngine>
 #include <QSortFilterProxyModel>
 
+#include "vdf.h"
+
 class Game : public QObject
 {
     Q_OBJECT
@@ -34,6 +36,17 @@ public:
         Gamemaker,
         Unknown,
     };
+
+    struct VACInfo
+    {
+        bool hasVac{false};
+        int vacMacModuleCache{0};
+        int vacModuleCache{0};
+        QString vacModuleFilename;
+    };
+
+    QMap<int, AppRecord::LaunchConfig> launch_configs;
+    QMap<int, AppRecord::LaunchConfig> launch_configs_custom;
 
     int id() const { return m_id; }
     QString name() const { return m_name; }
@@ -69,8 +82,12 @@ private:
     QString m_selectedProtonInstall;
     Engine m_engine = Engine::Unknown;
 
+    VACInfo m_vacInfo;
+
     // Older Proton installs use a `dist` folder; newer installs use a `files` folder. We need to differentiate them.
     QString m_filesOrDist;
+
+    friend class ValveDataFile;
 };
 
 class Steam : public QAbstractListModel
@@ -113,6 +130,8 @@ private:
 
     QString m_steamPath;
     QList<Game *> m_games;
+
+    ValveDataFile *m_appinfo;
 };
 
 class SteamFilter : public QSortFilterProxyModel

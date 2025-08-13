@@ -19,6 +19,8 @@ qt_add_qml_module(kaon
         Steam.h
         UEVR.cpp
         UEVR.h
+        vdf.cpp
+        vdf.h
 )
 
 target_link_libraries(kaon

@@ -75,6 +75,9 @@ Game::Game(int steamId, QObject *parent)
             break;
         }
     }
+
+    // if (QFileInfo fi{m_installDir + "/"_L1}; fi.exists() && fi.isDir())
+        // m_engine = Engine::Unity;
 }
 
 QString Game::protonBinary() const
@@ -95,6 +98,7 @@ Steam::Steam(QObject *parent)
         QDir::homePath() + "/.local/share/Steam"_L1,
         QDir::homePath() + "/.steam/steam"_L1,
     };
+
     for (const auto &path : steamPaths)
     {
         if (QFileInfo fi{path}; fi.exists() && fi.isDir())
@@ -103,8 +107,11 @@ Steam::Steam(QObject *parent)
             break;
         }
     }
+
     if (m_steamPath.isEmpty())
         qDebug() << "Steam not found";
+
+    m_appinfo = new ValveDataFile{m_steamPath + "/appcache/appinfo.vdf"_L1};
 
     // We need to finish creating this object before scanning Steam. Otherwise the Game constructor will call
     // Steam::instance(), but since we haven't finished creating this object, s_instance hasn't been set, which leads to a
@@ -199,6 +206,9 @@ void Steam::scanSteam()
                     m_games.push_back(new Game{std::stoi(appId), this});
 
             std::sort(m_games.begin(), m_games.end(), [](const auto &a, const auto &b) { return a->lastPlayed() > b->lastPlayed(); });
+
+            for (auto game : m_games)
+                m_appinfo->getAppInfo(game);
         }
         catch (const std::length_error &e)
         {
