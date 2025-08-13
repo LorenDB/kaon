@@ -88,6 +88,8 @@ public:
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
     QHash<int, QByteArray> roleNames() const override;
 
+    QString steamPath() const { return m_steamPath; }
+
 public slots:
     Game *gameFromId(int steamId) const;
 
@@ -99,6 +101,7 @@ private:
 
     void scanSteam();
 
+    QString m_steamPath;
     QList<Game *> m_games;
 };
 
