@@ -26,6 +26,15 @@ class Game : public QObject
 public:
     explicit Game(int steamId, QObject *parent = nullptr);
 
+    enum class Engine
+    {
+        Unreal,
+        Unity,
+        Godot,
+        Gamemaker,
+        Unknown,
+    };
+
     int id() const { return m_id; }
     QString name() const { return m_name; }
     QString installDir() const { return m_installDir; }
@@ -36,9 +45,9 @@ public:
     bool protonExists() const { return m_protonExists; }
     QString protonPrefix() const { return m_protonPrefix; }
     QString selectedProtonInstall() const { return m_selectedProtonInstall; }
+    Engine engine() const { return m_engine; }
 
     QString protonBinary() const;
-
     bool dotnetInstalled() const;
 
 signals:
@@ -58,6 +67,7 @@ private:
     bool m_protonExists{false};
     QString m_protonPrefix;
     QString m_selectedProtonInstall;
+    Engine m_engine = Engine::Unknown;
 
     // Older Proton installs use a `dist` folder; newer installs use a `files` folder. We need to differentiate them.
     QString m_filesOrDist;
@@ -112,20 +122,25 @@ class SteamFilter : public QSortFilterProxyModel
     QML_SINGLETON
 
     Q_PROPERTY(bool showAll READ showAll WRITE setShowAll NOTIFY showAllChanged FINAL)
+    Q_PROPERTY(bool unrealOnly READ unrealOnly WRITE setUnrealOnly NOTIFY unrealOnlyChanged FINAL)
 
 public:
     explicit SteamFilter(QObject *parent = nullptr);
 
     bool showAll() const { return m_showAll; }
+    bool unrealOnly() const { return m_unrealOnly; }
 
     void setShowAll(bool state);
+    void setUnrealOnly(bool state);
 
 signals:
     void showAllChanged(bool state);
+    void unrealOnlyChanged(bool state);
 
 protected:
     bool filterAcceptsRow(int row, const QModelIndex &parent) const override;
 
 private:
     bool m_showAll{false};
+    bool m_unrealOnly{true};
 };
