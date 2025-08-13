@@ -13,6 +13,8 @@ RowLayout {
     signal gameClicked(int steamId)
     spacing: 10
 
+    SystemPalette { id: palette }
+
     Frame {
         Layout.fillWidth: true
         Layout.fillHeight: true
@@ -100,6 +102,24 @@ RowLayout {
                         anchors.margins: 5
                         wrapMode: Label.WordWrap
                         text: card.name
+                    }
+                }
+
+                Rectangle {
+                    // some images clip outside the border with anchors.fill: parent, so we need to add a margin here
+                    anchors.centerIn: cardImage
+                    width: cardImage.width + 2
+                    height: cardImage.height + 2
+                    color: "#00000000"
+                    border.width: ma.containsMouse ? 3 : 0
+                    border.color: palette.highlight
+                    radius: textFallback.radius
+
+                    Behavior on border.width {
+                        NumberAnimation {
+                            duration: 200
+                            easing.type: Easing.InOutQuad
+                        }
                     }
                 }
 
