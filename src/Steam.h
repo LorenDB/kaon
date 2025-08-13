@@ -24,7 +24,7 @@ class Game : public QObject
     Q_PROPERTY(bool dotnetInstalled READ dotnetInstalled NOTIFY dotnetInstalledChanged FINAL)
 
 public:
-    explicit Game(QObject *parent = nullptr) : QObject{parent} {}
+    explicit Game(int steamId, QObject *parent = nullptr);
 
     int id() const { return m_id; }
     QString name() const { return m_name; }
@@ -61,8 +61,6 @@ private:
 
     // Older Proton installs use a `dist` folder; newer installs use a `files` folder. We need to differentiate them.
     QString m_filesOrDist;
-
-    friend class Steam;
 };
 
 class Steam : public QAbstractListModel

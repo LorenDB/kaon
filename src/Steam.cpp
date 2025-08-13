@@ -10,6 +10,72 @@ using namespace Qt::Literals;
 
 Steam *Steam::s_instance = nullptr;
 
+Game::Game(int steamId, QObject *parent)
+    : QObject{parent},
+      m_id{steamId}
+{
+    const auto basepath = QDir::homePath() + "/.local/share/Steam/steamapps"_L1;
+
+    std::ifstream acfFile{basepath.toStdString() + "/appmanifest_" + std::to_string(m_id) + ".acf"};
+    auto app = tyti::vdf::read(acfFile);
+
+    m_name = QString::fromStdString(app.attribs["name"]);
+    m_installDir = basepath + "/common/"_L1 + QString::fromStdString(app.attribs["installdir"]);
+    if (app.attribs.contains("LastPlayed"))
+        m_lastPlayed = QDateTime::fromSecsSinceEpoch(std::stoi(app.attribs["LastPlayed"]));
+
+    const auto imageDir =
+            QDir::homePath() + "/.local/share/Steam/appcache/librarycache/"_L1 + QString::number(m_id);
+    QDirIterator images{imageDir, QDirIterator::Subdirectories};
+    while (images.hasNext())
+    {
+        images.next();
+        if (images.fileName() == "library_600x900.jpg"_L1 && m_cardImage.isEmpty())
+            m_cardImage = "file://"_L1 + images.filePath();
+        if (images.fileName() == "library_hero.jpg"_L1 && m_heroImage.isEmpty())
+            m_heroImage = "file://"_L1 + images.filePath();
+        if (images.fileName() == "logo.png"_L1 && m_logoImage.isEmpty())
+            m_logoImage = "file://"_L1 + images.filePath();
+    }
+
+    QString compatdata = basepath + "/compatdata/"_L1 + QString::number(m_id);
+    if (QFileInfo fi{compatdata}; fi.exists() && fi.isDir())
+    {
+        m_protonExists = true;
+
+        if (QFileInfo pfx{compatdata + "/pfx"_L1}; pfx.exists() && pfx.isDir())
+            m_protonPrefix = pfx.absoluteFilePath();
+
+        QFile file{compatdata + "/config_info"_L1};
+        if (file.open(QIODevice::ReadOnly | QIODevice::Text))
+        {
+            QTextStream compatInfo(&file);
+            compatInfo.readLine(); // first line is useless for now
+            QString proton = compatInfo.readLine();
+            static const QRegularExpression re("/(files|dist)/share/fonts/$");
+            if (proton.contains(re))
+            {
+                m_selectedProtonInstall = proton.remove(re);
+                if (QFileInfo files{m_selectedProtonInstall + "/files"_L1}; files.exists() && files.isDir())
+                    m_filesOrDist = "files"_L1;
+                else
+                    m_filesOrDist = "dist"_L1;
+            }
+        }
+    }
+}
+
+QString Game::protonBinary() const
+{
+    return m_selectedProtonInstall + '/' + m_filesOrDist + "/bin/wine"_L1;
+}
+
+bool Game::dotnetInstalled() const
+{
+    return Dotnet::instance()->isDotnetInstalled(m_id);
+}
+
+
 Steam::Steam(QObject *parent)
     : QAbstractListModel{parent}
 {
@@ -98,65 +164,8 @@ void Steam::scanSteam()
     auto libraryFolders = tyti::vdf::read(vdfFile);
 
     for (const auto &[_, folder] : libraryFolders.childs)
-    {
         for (const auto &[appId, _] : folder->childs["apps"]->attribs)
-        {
-            auto g = new Game{this};
-            g->m_id = std::stoi(appId);
-
-            std::ifstream acfFile{basepath.toStdString() + "/appmanifest_" + appId + ".acf"};
-            auto app = tyti::vdf::read(acfFile);
-
-            g->m_name = QString::fromStdString(app.attribs["name"]);
-            g->m_installDir = basepath + "/common/"_L1 + QString::fromStdString(app.attribs["installdir"]);
-            if (app.attribs.contains("LastPlayed"))
-                g->m_lastPlayed = QDateTime::fromSecsSinceEpoch(std::stoi(app.attribs["LastPlayed"]));
-
-            const auto imageDir =
-                    QDir::homePath() + "/.local/share/Steam/appcache/librarycache/"_L1 + QString::number(g->id());
-            QDirIterator images{imageDir, QDirIterator::Subdirectories};
-            while (images.hasNext())
-            {
-                images.next();
-                if (images.fileName() == "library_600x900.jpg"_L1 && g->cardImage().isEmpty())
-                    g->m_cardImage = "file://"_L1 + images.filePath();
-                if (images.fileName() == "library_hero.jpg"_L1 && g->heroImage().isEmpty())
-                    g->m_heroImage = "file://"_L1 + images.filePath();
-                if (images.fileName() == "logo.png"_L1 && g->logoImage().isEmpty())
-                    g->m_logoImage = "file://"_L1 + images.filePath();
-            }
-
-            QString compatdata = basepath + "/compatdata/"_L1 + QString::number(g->id());
-            if (QFileInfo fi{compatdata}; fi.exists() && fi.isDir())
-            {
-                g->m_protonExists = true;
-
-                if (QFileInfo pfx{compatdata + "/pfx"_L1}; pfx.exists() && pfx.isDir())
-                    g->m_protonPrefix = pfx.absoluteFilePath();
-
-                QFile file{compatdata + "/config_info"_L1};
-                if (file.open(QIODevice::ReadOnly | QIODevice::Text))
-                {
-                    QTextStream compatInfo(&file);
-                    // discard first line
-                    compatInfo.readLine();
-                    QString proton = compatInfo.readLine();
-                    static const QRegularExpression re("/(files|dist)/share/fonts/$");
-                    if (proton.contains(re))
-                    {
-                        g->m_selectedProtonInstall = proton.remove(re);
-
-                        if (QFileInfo files{g->selectedProtonInstall() + "/files"_L1}; files.exists() && files.isDir())
-                            g->m_filesOrDist = "files"_L1;
-                        else
-                            g->m_filesOrDist = "dist"_L1;
-                    }
-                }
-            }
-
-            m_games.push_back(g);
-        }
-    }
+            m_games.push_back(new Game{std::stoi(appId), this});
 
     std::sort(m_games.begin(), m_games.end(), [](const auto &a, const auto &b) { return a->lastPlayed() > b->lastPlayed(); });
     endResetModel();
@@ -188,14 +197,4 @@ bool SteamFilter::filterAcceptsRow(int row, const QModelIndex &parent) const
             return false;
     }
     return QSortFilterProxyModel::filterAcceptsRow(row, parent);
-}
-
-QString Game::protonBinary() const
-{
-    return m_selectedProtonInstall + '/' + m_filesOrDist + "/bin/wine"_L1;
-}
-
-bool Game::dotnetInstalled() const
-{
-    return Dotnet::instance()->isDotnetInstalled(m_id);
 }
