@@ -148,6 +148,9 @@ Game *Steam::gameFromId(int steamId) const
 void Steam::scanSteam()
 {
     beginResetModel();
+
+    for (const auto game : m_games)
+        game->deleteLater();
     m_games.clear();
 
     // TODO: use more intelligent Steam location detection algorithm
