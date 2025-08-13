@@ -16,9 +16,37 @@ using namespace Qt::Literals;
 
 UEVR *UEVR::s_instance = nullptr;
 
-UEVRRelease::UEVRRelease(QObject *parent)
+UEVRRelease::UEVRRelease(const QJsonValue &json, bool nightly, QObject *parent)
     : QObject{parent}
-{}
+{
+    m_name = json["name"_L1].toString();
+
+    // Shorten the git hash in nightly release names for display purposes
+    static const QRegularExpression rx(R"(^UEVR Nightly \d+ \([0-9a-f]{40}\)$)"_L1,
+                                       QRegularExpression::CaseInsensitiveOption);
+
+    if (rx.match(m_name).hasMatch())
+    {
+        // We want to end up with a 7-character git hash. Therefore, after finding the " (", we increment 2 to get to the
+        // git hash and then 7 more to get to the end of the short hash.
+        int parenStart = m_name.lastIndexOf(" ("_L1) + 9;
+        if (parenStart != -1)
+            m_name = m_name.left(parenStart) + ')';
+    }
+
+    m_id = json["id"_L1].toInt();
+    m_timestamp = QDateTime::fromString(json["published_at"_L1].toString(), Qt::ISODate);
+    m_installed = QFileInfo::exists(UEVR::instance()->path(UEVR::Paths::UEVRBasePath) + '/' + QString::number(m_id) +
+                                    "/UEVRInjector.exe"_L1);
+    for (const auto &asset : json["assets"_L1].toArray())
+    {
+        UEVRRelease::Asset a;
+        a.id = asset["id"_L1].toInt();
+        a.name = asset["name"_L1].toString();
+        a.url = asset["browser_download_url"_L1].toString();
+        m_assets.push_back(a);
+    }
+}
 
 const QList<UEVRRelease::Asset> &UEVRRelease::assets() const
 {
@@ -250,49 +278,12 @@ void UEVR::parseReleaseInfoJson()
         release->deleteLater();
     m_releases.clear();
 
-    const auto parse = [this](const QJsonValue &release) -> UEVRRelease * {
-        auto r = new UEVRRelease;
-        r->m_name = release["name"_L1].toString();
-
-        // Shorten the git hash in nightly release names for display purposes
-        static const QRegularExpression rx(R"(^UEVR Nightly \d+ \([0-9a-f]{40}\)$)"_L1,
-                                           QRegularExpression::CaseInsensitiveOption);
-
-        if (rx.match(r->name()).hasMatch())
-        {
-            // We want to end up with a 7-character git hash. Therefore, after finding the " (", we increment 2 to get to the
-            // git hash and then 7 more to get to the end of the short hash.
-            int parenStart = r->name().lastIndexOf(" ("_L1) + 9;
-            if (parenStart != -1)
-                r->m_name = r->name().left(parenStart) + ')';
-        }
-
-        r->m_id = release["id"_L1].toInt();
-        r->m_timestamp = QDateTime::fromString(release["published_at"_L1].toString(), Qt::ISODate);
-        r->m_installed =
-                QFileInfo::exists(path(Paths::UEVRBasePath) + '/' + QString::number(r->id()) + "/UEVRInjector.exe"_L1);
-        for (const auto &asset : release["assets"_L1].toArray())
-        {
-            UEVRRelease::Asset a;
-            a.id = asset["id"_L1].toInt();
-            a.name = asset["name"_L1].toString();
-            a.url = asset["browser_download_url"_L1].toString();
-            r->m_assets.push_back(a);
-        }
-        return r;
-    };
-
     for (const auto &release : releases.array())
-        m_releases.push_back(parse(release));
+        m_releases.push_back(new UEVRRelease{release, false, this});
     for (const auto &nightly : nightlies.array())
-    {
-        auto n = parse(nightly);
-        n->m_nightly = true;
-        m_releases.push_back(n);
-    }
+        m_releases.push_back(new UEVRRelease{nightly, true, this});
 
-    std::sort(
-                m_releases.begin(), m_releases.end(), [](const auto &a, const auto &b) { return a->timestamp() > b->timestamp(); });
+    std::sort(m_releases.begin(), m_releases.end(), [](const auto &a, const auto &b) { return a->timestamp() > b->timestamp(); });
 
     endResetModel();
     emit currentUevrChanged(m_currentUevr);
