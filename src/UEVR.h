@@ -18,7 +18,7 @@ class UEVRRelease : public QObject
     Q_PROPERTY(bool installed READ installed NOTIFY installedChanged)
 
 public:
-    explicit UEVRRelease(QObject *parent = nullptr);
+    explicit UEVRRelease(const QJsonValue &json, bool nightly, QObject *parent = nullptr);
 
     struct Asset
     {
@@ -46,8 +46,6 @@ private:
     bool m_nightly = false;
     bool m_installed = false;
     QList<Asset> m_assets;
-
-    friend class UEVR;
 };
 
 class UEVR : public QAbstractListModel
@@ -83,6 +81,16 @@ public:
         Installed,
     };
 
+    enum class Paths
+    {
+        CurrentUEVR,
+        CurrentUEVRInjector,
+        UEVRBasePath,
+        CachedReleasesJSON,
+        CachedNightliesJSON,
+    };
+    QString path(const Paths path) const;
+
 public slots:
     void launchUEVR(const int steamId);
     bool isInstalled(const int id);
@@ -95,16 +103,6 @@ signals:
 private:
     explicit UEVR(QObject *parent = nullptr);
     static UEVR *s_instance;
-
-    enum class Paths
-    {
-        CurrentUEVR,
-        CurrentUEVRInjector,
-        UEVRBasePath,
-        CachedReleasesJSON,
-        CachedNightliesJSON,
-    };
-    QString path(const Paths path) const;
 
     void updateAvailableReleases();
     void parseReleaseInfoJson();
