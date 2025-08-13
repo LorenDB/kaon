@@ -2,6 +2,7 @@
 
 #include <QDir>
 #include <QDirIterator>
+#include <QTimer>
 
 #include "Dotnet.h"
 #include "vdf_parser.hpp"
@@ -14,18 +15,15 @@ Game::Game(int steamId, QObject *parent)
     : QObject{parent},
       m_id{steamId}
 {
-    const auto basepath = QDir::homePath() + "/.local/share/Steam/steamapps"_L1;
-
-    std::ifstream acfFile{basepath.toStdString() + "/appmanifest_" + std::to_string(m_id) + ".acf"};
+    std::ifstream acfFile{Steam::instance()->steamPath().toStdString() + "/steamapps/appmanifest_" + std::to_string(m_id) + ".acf"};
     auto app = tyti::vdf::read(acfFile);
 
     m_name = QString::fromStdString(app.attribs["name"]);
-    m_installDir = basepath + "/common/"_L1 + QString::fromStdString(app.attribs["installdir"]);
+    m_installDir = Steam::instance()->steamPath() + "/steamapps/common/"_L1 + QString::fromStdString(app.attribs["installdir"]);
     if (app.attribs.contains("LastPlayed"))
         m_lastPlayed = QDateTime::fromSecsSinceEpoch(std::stoi(app.attribs["LastPlayed"]));
 
-    const auto imageDir =
-            QDir::homePath() + "/.local/share/Steam/appcache/librarycache/"_L1 + QString::number(m_id);
+    const auto imageDir = Steam::instance()->steamPath() + "/appcache/librarycache/"_L1 + QString::number(m_id);
     QDirIterator images{imageDir, QDirIterator::Subdirectories};
     while (images.hasNext())
     {
@@ -38,7 +36,7 @@ Game::Game(int steamId, QObject *parent)
             m_logoImage = "file://"_L1 + images.filePath();
     }
 
-    QString compatdata = basepath + "/compatdata/"_L1 + QString::number(m_id);
+    QString compatdata = Steam::instance()->steamPath() + "/steamapps/compatdata/"_L1 + QString::number(m_id);
     if (QFileInfo fi{compatdata}; fi.exists() && fi.isDir())
     {
         m_protonExists = true;
@@ -79,7 +77,25 @@ bool Game::dotnetInstalled() const
 Steam::Steam(QObject *parent)
     : QAbstractListModel{parent}
 {
-    scanSteam();
+    const QStringList steamPaths = {
+        QDir::homePath() + "/.local/share/Steam"_L1,
+        QDir::homePath() + "/.steam/steam"_L1,
+    };
+    for (const auto &path : steamPaths)
+    {
+        if (QFileInfo fi{path}; fi.exists() && fi.isDir())
+        {
+            m_steamPath = path;
+            break;
+        }
+    }
+    if (m_steamPath.isEmpty())
+        qDebug() << "Steam not found";
+
+    // We need to finish creating this object before scanning Steam. Otherwise the Game constructor will call
+    // Steam::instance(), but since we haven't finished creating this object, s_instance hasn't been set, which leads to a
+    // brief loop of Steam objects being created.
+    QTimer::singleShot(0, this, &Steam::scanSteam);
 }
 
 Steam *Steam::instance()
@@ -147,30 +163,37 @@ Game *Steam::gameFromId(int steamId) const
 
 void Steam::scanSteam()
 {
+    if (m_steamPath.isEmpty())
+        return;
+
     beginResetModel();
 
     for (const auto game : m_games)
         game->deleteLater();
     m_games.clear();
 
-    // TODO: use more intelligent Steam location detection algorithm
-    // maybe check Rai Pal or Protontricks for inspiration
-    const auto basepath = QDir::homePath() + "/.local/share/Steam/steamapps"_L1;
-    if (!QFileInfo::exists(basepath))
+    if (const QFileInfo fi{m_steamPath + "/steamapps/libraryfolders.vdf"_L1}; fi.exists() && fi.isFile())
     {
-        qDebug() << "Cannot find local Steam data!";
-        endResetModel();
-        return;
+        std::ifstream vdfFile{fi.absoluteFilePath().toStdString()};
+
+        try
+        {
+            auto libraryFolders = tyti::vdf::read(vdfFile);
+
+            for (const auto &[_, folder] : libraryFolders.childs)
+                for (const auto &[appId, _] : folder->childs["apps"]->attribs)
+                    m_games.push_back(new Game{std::stoi(appId), this});
+
+            std::sort(m_games.begin(), m_games.end(), [](const auto &a, const auto &b) { return a->lastPlayed() > b->lastPlayed(); });
+        }
+        catch (const std::length_error &e)
+        {
+            qDebug() << "Failure while parsing libraryfolders.vdf:" << e.what();
+        }
     }
+    else
+        qDebug() << "Could not open libraryfolders.vdf at" << fi.absoluteFilePath();
 
-    std::ifstream vdfFile{basepath.toStdString() + "/libraryfolders.vdf"};
-    auto libraryFolders = tyti::vdf::read(vdfFile);
-
-    for (const auto &[_, folder] : libraryFolders.childs)
-        for (const auto &[appId, _] : folder->childs["apps"]->attribs)
-            m_games.push_back(new Game{std::stoi(appId), this});
-
-    std::sort(m_games.begin(), m_games.end(), [](const auto &a, const auto &b) { return a->lastPlayed() > b->lastPlayed(); });
     endResetModel();
 }
 
