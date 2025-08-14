@@ -32,6 +32,7 @@ public:
         Unity,
         Godot,
         Gamemaker,
+        Source,
         Unknown,
     };
 
