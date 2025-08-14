@@ -37,6 +37,7 @@ Pane {
 
                 Button {
                     icon.name: "folder"
+                    icon.source: Qt.resolvedUrl("icons/folder.svg")
                     hoverEnabled: true
                     ToolTip.text: "Open game install folder"
                     ToolTip.delay: 1000
@@ -46,6 +47,7 @@ Pane {
 
                 Button {
                     icon.name: "settings-configure"
+                    icon.source: Qt.resolvedUrl("icons/settings-configure.svg")
                     hoverEnabled: true
                     ToolTip.text: "Change Steam game settings"
                     ToolTip.delay: 1000
@@ -55,6 +57,7 @@ Pane {
 
                 Button {
                     icon.name: "media-playback-start"
+                    icon.source: Qt.resolvedUrl("icons/media-playback-start.svg")
                     hoverEnabled: true
                     ToolTip.text: "Launch game in Steam"
                     ToolTip.delay: 1000

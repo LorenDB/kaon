@@ -19,6 +19,7 @@ ApplicationWindow {
 
             ToolButton {
                 icon.name: "draw-arrow-back"
+                icon.source: Qt.resolvedUrl("icons/draw-arrow-back.svg")
                 visible: theStack.depth > 0
                 onClicked: theStack.popCurrentItem()
             }
@@ -48,6 +49,7 @@ ApplicationWindow {
 
             ToolButton {
                 icon.name: "download"
+                icon.source: Qt.resolvedUrl("icons/download.svg")
                 enabled: !UEVR.isInstalled(UEVR.currentUevr)
                 onClicked: UEVR.downloadUEVR(UEVR.currentUevr)
             }
