@@ -15,15 +15,17 @@ Game::Game(int steamId, QObject *parent)
     : QObject{parent},
       m_id{steamId}
 {
-    std::ifstream acfFile{Steam::instance()->steamPath().toStdString() + "/steamapps/appmanifest_" + std::to_string(m_id) + ".acf"};
+    std::ifstream acfFile{Steam::instance()->steamRoot().toStdString() + "/steamapps/appmanifest_" + std::to_string(m_id) +
+                ".acf"};
     auto app = tyti::vdf::read(acfFile);
 
     m_name = QString::fromStdString(app.attribs["name"]);
-    m_installDir = Steam::instance()->steamPath() + "/steamapps/common/"_L1 + QString::fromStdString(app.attribs["installdir"]);
+    m_installDir =
+            Steam::instance()->steamRoot() + "/steamapps/common/"_L1 + QString::fromStdString(app.attribs["installdir"]);
     if (app.attribs.contains("LastPlayed"))
         m_lastPlayed = QDateTime::fromSecsSinceEpoch(std::stoi(app.attribs["LastPlayed"]));
 
-    const auto imageDir = Steam::instance()->steamPath() + "/appcache/librarycache/"_L1 + QString::number(m_id);
+    const auto imageDir = Steam::instance()->steamRoot() + "/appcache/librarycache/"_L1 + QString::number(m_id);
     QDirIterator images{imageDir, QDirIterator::Subdirectories};
     while (images.hasNext())
     {
@@ -36,7 +38,7 @@ Game::Game(int steamId, QObject *parent)
             m_logoImage = "file://"_L1 + images.filePath();
     }
 
-    QString compatdata = Steam::instance()->steamPath() + "/steamapps/compatdata/"_L1 + QString::number(m_id);
+    QString compatdata = Steam::instance()->steamRoot() + "/steamapps/compatdata/"_L1 + QString::number(m_id);
     if (QFileInfo fi{compatdata}; fi.exists() && fi.isDir())
     {
         m_protonExists = true;
@@ -87,7 +89,6 @@ bool Game::dotnetInstalled() const
     return Dotnet::instance()->isDotnetInstalled(m_id);
 }
 
-
 Steam::Steam(QObject *parent)
     : QAbstractListModel{parent}
 {
@@ -95,15 +96,17 @@ Steam::Steam(QObject *parent)
         QDir::homePath() + "/.local/share/Steam"_L1,
         QDir::homePath() + "/.steam/steam"_L1,
     };
+
     for (const auto &path : steamPaths)
     {
         if (QFileInfo fi{path}; fi.exists() && fi.isDir())
         {
-            m_steamPath = path;
+            m_steamRoot = path;
             break;
         }
     }
-    if (m_steamPath.isEmpty())
+
+    if (m_steamRoot.isEmpty())
         qDebug() << "Steam not found";
 
     // We need to finish creating this object before scanning Steam. Otherwise the Game constructor will call
@@ -177,16 +180,16 @@ Game *Steam::gameFromId(int steamId) const
 
 void Steam::scanSteam()
 {
-    if (m_steamPath.isEmpty())
+    if (m_steamRoot.isEmpty())
         return;
 
     beginResetModel();
 
-    for (const auto game : m_games)
+    for (const auto game : std::as_const(m_games))
         game->deleteLater();
     m_games.clear();
 
-    if (const QFileInfo fi{m_steamPath + "/steamapps/libraryfolders.vdf"_L1}; fi.exists() && fi.isFile())
+    if (const QFileInfo fi{m_steamRoot + "/steamapps/libraryfolders.vdf"_L1}; fi.exists() && fi.isFile())
     {
         std::ifstream vdfFile{fi.absoluteFilePath().toStdString()};
 
@@ -198,7 +201,9 @@ void Steam::scanSteam()
                 for (const auto &[appId, _] : folder->childs["apps"]->attribs)
                     m_games.push_back(new Game{std::stoi(appId), this});
 
-            std::sort(m_games.begin(), m_games.end(), [](const auto &a, const auto &b) { return a->lastPlayed() > b->lastPlayed(); });
+            std::sort(m_games.begin(), m_games.end(), [](const auto &a, const auto &b) {
+                return a->lastPlayed() > b->lastPlayed();
+            });
         }
         catch (const std::length_error &e)
         {
