@@ -65,6 +65,9 @@ Game::Game(int steamId, QObject *parent)
         }
     }
 
+    if (QFile::exists(m_installDir + "/proton"_L1) || QFile::exists(m_installDir + "/toolmanifest.vdf"_L1))
+        m_engine = Engine::Runtime;
+
     const QStringList signsOfUnreal = {
         m_installDir + "/Engine/Binaries/Win64"_L1,
         m_installDir + "/Engine/Binaries/Win32"_L1,
@@ -273,21 +276,26 @@ void Steam::scanSteam()
 
 SteamFilter::SteamFilter(QObject *parent)
 {
+    m_engineFilter.setFlag(Game::Engine::Unreal);
+    m_engineFilter.setFlag(Game::Engine::Unity);
+    m_engineFilter.setFlag(Game::Engine::Godot);
+    m_engineFilter.setFlag(Game::Engine::Source);
+    m_engineFilter.setFlag(Game::Engine::Unknown);
+
     setSourceModel(Steam::instance());
-    connect(this, &SteamFilter::showAllChanged, this, &SteamFilter::invalidateFilter);
-    connect(this, &SteamFilter::unrealOnlyChanged, this, &SteamFilter::invalidateFilter);
+    connect(this, &SteamFilter::showToolsChanged, this, &SteamFilter::invalidateFilter);
+    connect(this, &SteamFilter::engineFilterChanged, this, &SteamFilter::invalidateFilter);
 }
 
-void SteamFilter::setShowAll(bool state)
+bool SteamFilter::isEngineFilterSet(Game::Engine engine)
 {
-    m_showAll = state;
-    emit showAllChanged(state);
+    return m_engineFilter.testFlag(engine);
 }
 
-void SteamFilter::setUnrealOnly(bool state)
+void SteamFilter::setEngineFilter(Game::Engine engine, bool state)
 {
-    m_unrealOnly = state;
-    emit emit unrealOnlyChanged(state);
+    m_engineFilter.setFlag(engine, state);
+    emit engineFilterChanged();
 }
 
 bool SteamFilter::filterAcceptsRow(int row, const QModelIndex &parent) const
@@ -297,14 +305,7 @@ bool SteamFilter::filterAcceptsRow(int row, const QModelIndex &parent) const
     if (!g)
         return false;
 
-    if (!m_showAll)
-    {
-        // filter out Proton and Steam Linux runtime installations
-        if (QFile::exists(g->installDir() + "/proton"_L1) || QFile::exists(g->installDir() + "/toolmanifest.vdf"_L1))
-            return false;
-    }
-
-    if (m_unrealOnly && g->engine() != Game::Engine::Unreal)
+    if (!m_engineFilter.testFlag(g->engine()))
         return false;
 
     return QSortFilterProxyModel::filterAcceptsRow(row, parent);

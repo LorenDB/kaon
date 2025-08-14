@@ -138,24 +138,91 @@ RowLayout {
     ColumnLayout {
         spacing: 10
 
-        CheckBox {
-            text: "Show all"
-            hoverEnabled: true
-            ToolTip.text: "Shows normally hidden entries like Proton"
-            ToolTip.visible: hovered
-            ToolTip.delay: 1000
-            Component.onCompleted: checked = SteamFilter.showAll
-            onCheckedChanged: SteamFilter.showAll = checked
+        Label {
+            text: "Filter by game engine"
+            font.bold: true
+        }
+
+        Label {
+            text: "(may not be fully accurate)"
+            font.italic: true
+        }
+
+        RowLayout {
+            spacing: 10
+
+            Button {
+                text: "All"
+                onClicked: {
+                    unrealCb.checked = true
+                    unityCb.checked = true
+                    // godotCb.checked = true
+                    sourceCb.checked = true
+                    unknownCb.checked = true
+                    toolsCb.checked = true
+                }
+            }
+
+            Button {
+                text: "None"
+                onClicked: {
+                    unrealCb.checked = false
+                    unityCb.checked = false
+                    // godotCb.checked = false
+                    sourceCb.checked = false
+                    unknownCb.checked = false
+                    toolsCb.checked = false
+                }
+            }
         }
 
         CheckBox {
-            text: "Unreal only"
-            hoverEnabled: true
-            ToolTip.text: "Only shows games using Unreal Engine"
-            ToolTip.visible: hovered
-            ToolTip.delay: 1000
-            Component.onCompleted: checked = SteamFilter.unrealOnly
-            onCheckedChanged: SteamFilter.unrealOnly = checked
+            id: unrealCb
+
+            text: "Unreal Engine"
+            Component.onCompleted: checked = SteamFilter.isEngineFilterSet(Game.Unreal)
+            onCheckedChanged: SteamFilter.setEngineFilter(Game.Unreal, checked)
+        }
+
+        CheckBox {
+            id: unityCb
+
+            text: "Unity"
+            Component.onCompleted: checked = SteamFilter.isEngineFilterSet(Game.Unity)
+            onCheckedChanged: SteamFilter.setEngineFilter(Game.Unity, checked)
+        }
+
+        // TODO: detection support hasn't been added yet
+        // CheckBox {
+        //     id: godotCb
+
+        //     text: "Godot"
+        //     Component.onCompleted: checked = SteamFilter.isEngineFilterSet(Game.Godot)
+        //     onCheckedChanged: SteamFilter.setEngineFilter(Game.Godot, checked)
+        // }
+
+        CheckBox {
+            id: sourceCb
+
+            text: "Source"
+            Component.onCompleted: checked = SteamFilter.isEngineFilterSet(Game.Source)
+            onCheckedChanged: SteamFilter.setEngineFilter(Game.Source, checked)
+        }
+
+        CheckBox {
+            id: unknownCb
+
+            text: "Other/Unknown"
+            Component.onCompleted: checked = SteamFilter.isEngineFilterSet(Game.Unknown)
+            onCheckedChanged: SteamFilter.setEngineFilter(Game.Unknown, checked)
+        }
+
+        CheckBox {
+            id: toolsCb
+
+            text: "Proton and runtimes"
+            Component.onCompleted: checked = SteamFilter.isEngineFilterSet(Game.Runtime)
+            onCheckedChanged: SteamFilter.setEngineFilter(Game.Runtime, checked)
         }
 
         Item { Layout.fillHeight: true }

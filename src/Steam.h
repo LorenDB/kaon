@@ -26,15 +26,18 @@ class Game : public QObject
 public:
     explicit Game(int steamId, QObject *parent = nullptr);
 
-    enum class Engine
+    enum Engine
     {
-        Unreal,
-        Unity,
-        Godot,
-        Gamemaker,
-        Source,
-        Unknown,
+        Unknown = 1,
+        Runtime = 1 << 1, // Also encapsulates Proton
+
+        Unreal = 1 << 2,
+        Unity = 1 << 3,
+        Godot = 1 << 4,
+        Source = 1 << 5,
     };
+    Q_ENUM(Engine)
+    Q_DECLARE_FLAGS(Engines, Engine)
 
     int id() const { return m_id; }
     QString name() const { return m_name; }
@@ -122,26 +125,27 @@ class SteamFilter : public QSortFilterProxyModel
     QML_ELEMENT
     QML_SINGLETON
 
-    Q_PROPERTY(bool showAll READ showAll WRITE setShowAll NOTIFY showAllChanged FINAL)
-    Q_PROPERTY(bool unrealOnly READ unrealOnly WRITE setUnrealOnly NOTIFY unrealOnlyChanged FINAL)
+    Q_PROPERTY(Game::Engines engineFilter READ engineFilter NOTIFY engineFilterChanged FINAL)
 
 public:
     explicit SteamFilter(QObject *parent = nullptr);
 
-    bool showAll() const { return m_showAll; }
-    bool unrealOnly() const { return m_unrealOnly; }
+    Game::Engines engineFilter() const { return m_engineFilter; }
 
-    void setShowAll(bool state);
-    void setUnrealOnly(bool state);
+    void setshowTools(bool state);
+
+    Q_INVOKABLE bool isEngineFilterSet(Game::Engine engine);
+    Q_INVOKABLE void setEngineFilter(Game::Engine engine, bool state);
 
 signals:
-    void showAllChanged(bool state);
-    void unrealOnlyChanged(bool state);
+    void showToolsChanged(bool state);
+    void engineFilterChanged();
 
 protected:
     bool filterAcceptsRow(int row, const QModelIndex &parent) const override;
 
 private:
-    bool m_showAll{false};
-    bool m_unrealOnly{true};
+    Game::Engines m_engineFilter;
 };
+
+Q_DECLARE_OPERATORS_FOR_FLAGS(Game::Engines)
