@@ -5,6 +5,7 @@
 #include <QTimer>
 
 #include "Dotnet.h"
+#include "VDF.h"
 #include "vdf_parser.hpp"
 
 using namespace Qt::Literals;
@@ -74,6 +75,60 @@ Game::Game(int steamId, QObject *parent)
         if (QFileInfo fi{sign}; fi.exists() && fi.isDir())
         {
             m_engine = Engine::Unreal;
+            break;
+        }
+    }
+
+    auto *info = AppInfoVDF::instance()->game(m_id);
+    AppInfoVDF::AppInfo::Section section;
+    AppInfoVDF::AppInfo::SectionDesc app_desc{};
+
+    app_desc.blob = info->getRootSection(&app_desc.size);
+    section.parse(app_desc);
+
+    constexpr auto parseInt = [](const auto type, const auto &value) -> int64_t {
+        switch (type)
+        {
+        case AppInfoVDF::AppInfo::Section::Int32:
+            return *static_cast<int32_t *>(value);
+        case AppInfoVDF::AppInfo::Section::Int64:
+            return *static_cast<int64_t *>(value);
+        default:
+            return 0;
+        }
+    };
+
+    QStringList exes;
+    for (auto &section : section.finished_sections)
+    {
+        if (section.name.startsWith("appinfo.config.launch."_L1))
+        {
+            for (const auto &[key, value] : std::as_const(section.keys))
+            {
+                if (key == "executable"_L1)
+                {
+                    assert(value.first == AppInfoVDF::AppInfo::Section::String);
+                    exes.push_back(m_installDir + '/' + static_cast<const char *>(value.second));
+                }
+            }
+        }
+        else if (section.name == "appinfo.extended")
+        {
+            for (const auto &[key, value] : std::as_const(section.keys))
+            {
+                // TODO: this does not detect all Source games (e.g. mods don't detect)
+                if (key == "sourcegame"_L1 && parseInt(value.first, value.second) == 1)
+                    m_engine = Engine::Source;
+            }
+        }
+    }
+
+    for (const auto &e : exes)
+    {
+        QFileInfo exe{e};
+        if (QFileInfo dataDir{exe.absolutePath() + '/' + exe.baseName() + "_Data"_L1}; dataDir.exists() && dataDir.isDir())
+        {
+            m_engine = Engine::Unity;
             break;
         }
     }
