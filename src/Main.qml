@@ -51,10 +51,11 @@ ApplicationWindow {
                     function onShowNightliesChanged(state)
                     {
                         uevrCombo.currentIndex = Math.max(0, UEVRFilter.indexFromId(UEVR.currentUevr))
-                        if (uevrCombo.currentValue != UEVR.currentUevr)
+                        if (uevrCombo.currentValue !== UEVR.currentUevr)
                         {
                             uevrCombo.currentIndex = 0;
-                            UEVR.currentUevr = uevrCombo.currentValue;
+                            if (uevrCombo.currentValue !== undefined)
+                                UEVR.currentUevr = uevrCombo.currentValue;
                         }
                     }
 
