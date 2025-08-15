@@ -151,26 +151,29 @@ class SteamFilter : public QSortFilterProxyModel
     QML_SINGLETON
 
     Q_PROPERTY(Game::Engines engineFilter READ engineFilter NOTIFY engineFilterChanged FINAL)
+    Q_PROPERTY(QString search READ search WRITE setSearch NOTIFY searchChanged FINAL)
 
 public:
     explicit SteamFilter(QObject *parent = nullptr);
 
     Game::Engines engineFilter() const { return m_engineFilter; }
+    QString search() const { return m_search; }
 
-    void setshowTools(bool state);
+    void setSearch(const QString &search);
 
     Q_INVOKABLE bool isEngineFilterSet(Game::Engine engine);
     Q_INVOKABLE void setEngineFilter(Game::Engine engine, bool state);
 
 signals:
-    void showToolsChanged(bool state);
     void engineFilterChanged();
+    void searchChanged();
 
 protected:
     bool filterAcceptsRow(int row, const QModelIndex &parent) const override;
 
 private:
     Game::Engines m_engineFilter;
+    QString m_search;
 };
 
 Q_DECLARE_OPERATORS_FOR_FLAGS(Game::Engines)

@@ -326,8 +326,14 @@ SteamFilter::SteamFilter(QObject *parent)
     m_engineFilter.setFlag(Game::Engine::Unknown);
 
     setSourceModel(Steam::instance());
-    connect(this, &SteamFilter::showToolsChanged, this, &SteamFilter::invalidateFilter);
     connect(this, &SteamFilter::engineFilterChanged, this, &SteamFilter::invalidateFilter);
+    connect(this, &SteamFilter::searchChanged, this, &SteamFilter::invalidateFilter);
+}
+
+void SteamFilter::setSearch(const QString &search)
+{
+    m_search = search;
+    emit searchChanged();
 }
 
 bool SteamFilter::isEngineFilterSet(Game::Engine engine)
@@ -349,6 +355,9 @@ bool SteamFilter::filterAcceptsRow(int row, const QModelIndex &parent) const
         return false;
 
     if (!m_engineFilter.testFlag(g->engine()))
+        return false;
+
+    if (!m_search.isEmpty() && !g->name().contains(m_search, Qt::CaseInsensitive))
         return false;
 
     return QSortFilterProxyModel::filterAcceptsRow(row, parent);
