@@ -96,6 +96,22 @@ Game::Game(int steamId, QObject *parent)
             return *static_cast<int32_t *>(value);
         case AppInfoVDF::AppInfo::Section::Int64:
             return *static_cast<int64_t *>(value);
+        case AppInfoVDF::AppInfo::Section::String:
+            return std::stoi(static_cast<char *>(value));
+        default:
+            return 0;
+        }
+    };
+
+    constexpr auto parseDouble = [](const auto type, const auto &value) -> int64_t {
+        switch (type)
+        {
+        case AppInfoVDF::AppInfo::Section::Int32:
+            return *static_cast<int32_t *>(value);
+        case AppInfoVDF::AppInfo::Section::Int64:
+            return *static_cast<int64_t *>(value);
+        case AppInfoVDF::AppInfo::Section::String:
+            return std::stod(static_cast<char *>(value));
         default:
             return 0;
         }
@@ -115,13 +131,40 @@ Game::Game(int steamId, QObject *parent)
                 }
             }
         }
-        else if (section.name == "appinfo.extended")
+        else if (section.name == "appinfo.extended"_L1)
         {
             for (const auto &[key, value] : std::as_const(section.keys))
             {
                 // TODO: this does not detect all Source games (e.g. mods don't detect)
                 if (key == "sourcegame"_L1 && parseInt(value.first, value.second) == 1)
                     m_engine = Engine::Source;
+            }
+        }
+        else if (section.name == "appinfo.common.library_assets.logo_position"_L1)
+        {
+            for (const auto &[key, value] : std::as_const(section.keys))
+            {
+                if (key == "width_pct"_L1)
+                    m_logoWidth = parseDouble(value.first, value.second);
+                else if (key == "height_pct"_L1)
+                    m_logoHeight = parseDouble(value.first, value.second);
+                else if (key == "pinned_position"_L1)
+                {
+                    QString posStr = static_cast<char *>(value.second);
+                    if (posStr.startsWith("Center"_L1))
+                        m_logoVPosition = LogoPosition::Center;
+                    else if (posStr.startsWith("Top"_L1))
+                        m_logoVPosition = LogoPosition::Top;
+                    else if (posStr.startsWith("Bottom"_L1))
+                        m_logoVPosition = LogoPosition::Bottom;
+
+                    if (posStr.endsWith("Center"_L1))
+                        m_logoHPosition = LogoPosition::Center;
+                    else if (posStr.endsWith("Left"_L1))
+                        m_logoHPosition = LogoPosition::Left;
+                    else if (posStr.endsWith("Right"_L1))
+                        m_logoHPosition = LogoPosition::Right;
+                }
             }
         }
     }

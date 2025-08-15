@@ -13,13 +13,18 @@ class Game : public QObject
     Q_PROPERTY(int id READ id CONSTANT)
     Q_PROPERTY(QString name READ name CONSTANT)
     Q_PROPERTY(QString installDir READ installDir CONSTANT)
-    Q_PROPERTY(QString cardImage READ cardImage CONSTANT)
-    Q_PROPERTY(QString heroImage READ heroImage CONSTANT)
-    Q_PROPERTY(QString logoImage READ logoImage CONSTANT)
     Q_PROPERTY(QDateTime lastPlayed READ lastPlayed CONSTANT)
     Q_PROPERTY(bool protonExists READ protonExists NOTIFY protonExistsChanged FINAL)
     Q_PROPERTY(QString protonPrefix READ protonPrefix CONSTANT)
     Q_PROPERTY(QString selectedProtonInstall READ selectedProtonInstall NOTIFY selectedProtonInstallChanged FINAL)
+
+    Q_PROPERTY(QString cardImage READ cardImage CONSTANT)
+    Q_PROPERTY(QString heroImage READ heroImage CONSTANT)
+    Q_PROPERTY(QString logoImage READ logoImage CONSTANT)
+    Q_PROPERTY(double logoWidth READ logoWidth CONSTANT)
+    Q_PROPERTY(double logoHeight READ logoHeight CONSTANT)
+    Q_PROPERTY(LogoPosition logoHPosition READ logoHPosition CONSTANT)
+    Q_PROPERTY(LogoPosition logoVPosition READ logoVPosition CONSTANT)
 
     Q_PROPERTY(bool dotnetInstalled READ dotnetInstalled NOTIFY dotnetInstalledChanged FINAL)
 
@@ -42,14 +47,29 @@ public:
     int id() const { return m_id; }
     QString name() const { return m_name; }
     QString installDir() const { return m_installDir; }
-    QString cardImage() const { return m_cardImage; }
-    QString heroImage() const { return m_heroImage; }
-    QString logoImage() const { return m_logoImage; }
     QDateTime lastPlayed() const { return m_lastPlayed; }
     bool protonExists() const { return m_protonExists; }
     QString protonPrefix() const { return m_protonPrefix; }
     QString selectedProtonInstall() const { return m_selectedProtonInstall; }
     Engine engine() const { return m_engine; }
+
+    enum LogoPosition
+    {
+        Center,
+        Top,
+        Bottom,
+        Left,
+        Right,
+    };
+    Q_ENUM(LogoPosition)
+
+    QString cardImage() const { return m_cardImage; }
+    QString heroImage() const { return m_heroImage; }
+    QString logoImage() const { return m_logoImage; }
+    double logoWidth() const { return m_logoWidth; }
+    double logoHeight() const { return m_logoHeight; }
+    LogoPosition logoHPosition() const { return m_logoHPosition; }
+    LogoPosition logoVPosition() const { return m_logoVPosition; }
 
     QString protonBinary() const;
     bool dotnetInstalled() const;
@@ -64,14 +84,19 @@ private:
     int m_id = 0;
     QString m_name;
     QString m_installDir;
-    QString m_cardImage;
-    QString m_heroImage;
-    QString m_logoImage;
     QDateTime m_lastPlayed;
     bool m_protonExists{false};
     QString m_protonPrefix;
     QString m_selectedProtonInstall;
     Engine m_engine = Engine::Unknown;
+
+    QString m_cardImage;
+    QString m_heroImage;
+    QString m_logoImage;
+    double m_logoWidth{0};
+    double m_logoHeight{0};
+    LogoPosition m_logoHPosition;
+    LogoPosition m_logoVPosition;
 
     // Older Proton installs use a `dist` folder; newer installs use a `files` folder. We need to differentiate them.
     QString m_filesOrDist;

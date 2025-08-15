@@ -22,12 +22,44 @@ Pane {
             source: gameDetailsRoot.game.heroImage
             fillMode: Image.PreserveAspectCrop
 
-            // TODO: this needs work to display properly as it would in Steam
-            // Image {
-            //     anchors.fill: parent
-            //     source: gameDetailsRoot.logoImage
-            //     fillMode: Image.PreserveAspectFit
-            // }
+            // This is not perfect, but it gives a decent result. It's kinda pointless to spend
+            // too much time getting pixel perfect, so I'm leaving it as is.
+            Image {
+                anchors.margins: 10
+                source: gameDetailsRoot.game.logoImage
+                fillMode: Image.PreserveAspectFit
+                horizontalAlignment: Image.Left
+                width: 640 * (gameDetailsRoot.game.logoWidth / 100)
+                height: hero.height * (gameDetailsRoot.game.logoHeight / 100)
+
+                Component.onCompleted: {
+                    switch (gameDetailsRoot.game.logoVPosition)
+                    {
+                    case Game.Center:
+                        anchors.verticalCenter = hero.verticalCenter;
+                        break;
+                    case Game.Top:
+                        anchors.top = hero.top;
+                        break;
+                    case Game.Bottom:
+                        anchors.bottom = hero.bottom;
+                        break;
+                    }
+
+                    switch (gameDetailsRoot.game.logoHPosition)
+                    {
+                    case Game.Center:
+                        anchors.horizontalCenter = hero.horizontalCenter;
+                        break;
+                    case Game.Left:
+                        anchors.left = hero.left;
+                        break;
+                    case Game.Right:
+                        anchors.right = hero.right;
+                        break;
+                    }
+                }
+            }
 
             RowLayout {
                 anchors.top: hero.top
