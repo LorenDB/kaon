@@ -55,7 +55,7 @@ class UEVR : public QAbstractListModel
     QML_SINGLETON
 
     Q_PROPERTY(QString uevrPath READ uevrPath NOTIFY uevrPathChanged FINAL)
-    Q_PROPERTY(int currentUevr READ currentUevr WRITE setCurrentUevr NOTIFY currentUevrChanged FINAL)
+    Q_PROPERTY(UEVRRelease *currentUevr READ currentUevr NOTIFY currentUevrChanged FINAL)
 
 public:
     ~UEVR();
@@ -69,9 +69,7 @@ public:
     UEVRRelease *releaseFromId(const int id) const;
 
     const QString uevrPath() const;
-    int currentUevr() const;
-
-    void setCurrentUevr(const int id);
+    UEVRRelease *currentUevr() const;
 
     enum Roles
     {
@@ -93,12 +91,13 @@ public:
 
 public slots:
     void launchUEVR(const int steamId);
-    bool isInstalled(const int id);
-    void downloadUEVR(const int id);
+    void downloadUEVR(UEVRRelease *uevr);
+
+    void setCurrentUevr(const int id);
 
 signals:
     void uevrPathChanged(const QString &);
-    void currentUevrChanged(const int);
+    void currentUevrChanged(UEVRRelease *);
 
 private:
     explicit UEVR(QObject *parent = nullptr);
@@ -106,10 +105,9 @@ private:
 
     void updateAvailableReleases();
     void parseReleaseInfoJson();
-    void downloadRelease(const UEVRRelease &release);
 
     QList<UEVRRelease *> m_releases;
-    int m_currentUevr = 0;
+    UEVRRelease *m_currentUevr{nullptr};
 };
 
 class UEVRFilter : public QSortFilterProxyModel
@@ -124,7 +122,7 @@ public:
     explicit UEVRFilter(QObject *parent = nullptr);
 
     bool showNightlies() const { return m_showNightlies; }
-    Q_INVOKABLE int indexFromId(int id) const;
+    Q_INVOKABLE int indexFromRelease(UEVRRelease *release) const;
 
     void setShowNightlies(bool state);
 

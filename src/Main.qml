@@ -32,14 +32,14 @@ ApplicationWindow {
 
                 model: UEVRFilter
                 textRole: "name"
-                onActivated: UEVR.currentUevr = currentValue
+                onActivated: UEVR.setCurrentUevr(currentValue)
                 valueRole: "id"
-                Component.onCompleted: currentIndex = Math.max(0, UEVRFilter.indexFromId(UEVR.currentUevr))
+                Component.onCompleted: currentIndex = Math.max(0, UEVRFilter.indexFromRelease(UEVR.currentUevr))
 
                 Connections {
                     function onCurrentUevrChanged(i)
                     {
-                        uevrCombo.currentIndex = Math.max(0, UEVRFilter.indexFromId(UEVR.currentUevr))
+                        uevrCombo.currentIndex = Math.max(0, UEVRFilter.indexFromRelease(UEVR.currentUevr))
                     }
 
                     target: UEVR
@@ -50,12 +50,12 @@ ApplicationWindow {
                     // In some cases, the current UEVR will no longer be available, so we need to change the current UEVR.
                     function onShowNightliesChanged(state)
                     {
-                        uevrCombo.currentIndex = Math.max(0, UEVRFilter.indexFromId(UEVR.currentUevr))
-                        if (uevrCombo.currentValue !== UEVR.currentUevr)
+                        uevrCombo.currentIndex = Math.max(0, UEVRFilter.indexFromRelease(UEVR.currentUevr))
+                        if (uevrCombo.currentValue !== UEVR.currentUevr.id)
                         {
                             uevrCombo.currentIndex = 0;
                             if (uevrCombo.currentValue !== undefined)
-                                UEVR.currentUevr = uevrCombo.currentValue;
+                                UEVR.setCurrentUevr(uevrCombo.currentValue);
                         }
                     }
 
@@ -65,7 +65,7 @@ ApplicationWindow {
 
             ToolButton {
                 icon.name: "download"
-                enabled: !UEVR.isInstalled(UEVR.currentUevr)
+                enabled: UEVR.currentUevr && !UEVR.currentUevr.installed
                 onClicked: UEVR.downloadUEVR(UEVR.currentUevr)
             }
 
