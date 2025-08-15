@@ -4,7 +4,7 @@
 #include <QDirIterator>
 #include <QTimer>
 
-#include "vdf_parser.hpp"
+#include <kvpp/KV1.h>
 
 using namespace Qt::Literals;
 
@@ -112,15 +112,14 @@ void Steam::scanSteam()
 
     if (const QFileInfo fi{m_steamRoot + "/steamapps/libraryfolders.vdf"_L1}; fi.exists() && fi.isFile())
     {
-        std::ifstream vdfFile{fi.absoluteFilePath().toStdString()};
-
+        QFile file{fi.absoluteFilePath()};
+        file.open(QIODevice::ReadOnly);
         try
         {
-            auto libraryFolders = tyti::vdf::read(vdfFile);
-
-            for (const auto &[_, folder] : libraryFolders.childs)
-                for (const auto &[appId, _] : folder->childs["apps"]->attribs)
-                    m_games.push_back(new Game{std::stoi(appId), this});
+            kvpp::KV1 libraryFolders{file.readAll().toStdString()};
+            for (const auto &folder : libraryFolders["libraryfolders"])
+                for (const auto &app : folder["apps"])
+                    m_games.push_back(new Game{std::stoi(std::string{app.getKey()}), this});
 
             std::sort(m_games.begin(), m_games.end(), [](const auto &a, const auto &b) {
                 return a->lastPlayed() > b->lastPlayed();

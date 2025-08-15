@@ -23,8 +23,6 @@ qt_add_qml_module(kaon
         Steam.h
         UEVR.cpp
         UEVR.h
-        VDF.cpp
-        VDF.h
 )
 
 target_link_libraries(kaon
@@ -32,7 +30,7 @@ target_link_libraries(kaon
         Qt6::Core
         Qt6::Quick
         Qt6::Widgets
-        ValveFileVDF
+        sourcepp::kvpp
 )
 
 include(GNUInstallDirs)
