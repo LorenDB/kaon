@@ -3,7 +3,9 @@
 #include <QFileInfo>
 #include <QDirIterator>
 
+#include <sourcepp/FS.h>
 #include <kvpp/KV1.h>
+#include <kvpp/KV1Binary.h>
 
 #include "Dotnet.h"
 #include "Steam.h"
@@ -20,8 +22,8 @@ Game::Game(int steamId, QObject *parent)
     const auto &appState = app["AppState"];
 
     m_name = QString::fromStdString(appState["name"].getValue().data());
-    m_installDir =
-            Steam::instance()->steamRoot() + "/steamapps/common/"_L1 + QString::fromStdString(app["installdir"].getValue().data());
+    m_installDir = Steam::instance()->steamRoot() + "/steamapps/common/"_L1 +
+            QString::fromStdString(app["installdir"].getValue().data());
     if (app.hasChild("LastPlayed"))
         m_lastPlayed = QDateTime::fromSecsSinceEpoch(std::stoi(app["LastPlayed"].getValue().data()));
 
@@ -80,6 +82,19 @@ Game::Game(int steamId, QObject *parent)
             break;
         }
     }
+
+    kvpp::KV1Binary appInfo{sourcepp::fs::readFileBuffer(Steam::instance()->steamRoot().toStdString() + "/appcache/"
+                                                                                                        "appinfo.vdf")};
+
+    const auto &extendedInfo = appInfo["appinfo.extended"];
+    if (extendedInfo.hasChild("sourcegame") && std::get<int32_t>(extendedInfo["sourcegame"].getValue()) == 1)
+        m_engine = Engine::Source;
+
+    m_name = QString::fromStdString(appState["name"].getValue().data());
+    m_installDir = Steam::instance()->steamRoot() + "/steamapps/common/"_L1 +
+            QString::fromStdString(app["installdir"].getValue().data());
+    if (app.hasChild("LastPlayed"))
+        m_lastPlayed = QDateTime::fromSecsSinceEpoch(std::stoi(app["LastPlayed"].getValue().data()));
 
     QStringList exes;
     // for (auto &section : section.finished_sections)
