@@ -66,12 +66,14 @@ UEVR::UEVR(QObject *parent)
     // Execute downloads on the first event tick to give time for the download
     // manager to initialize
     QTimer::singleShot(0, this, [this] {
-        parseReleaseInfoJson();
-        updateAvailableReleases();
-
         QSettings settings;
         settings.beginGroup("uevr"_L1);
-        m_currentUevr = releaseFromId(settings.value("currentUevr"_L1, {}).toInt());
+        int id = settings.value("currentUevr"_L1, 0).toInt();
+
+        parseReleaseInfoJson();
+        updateAvailableReleases();
+        if (id != 0)
+            setCurrentUevr(id);
     });
 }
 
@@ -154,11 +156,6 @@ void UEVR::setCurrentUevr(const int id)
     {
         qDebug() << "Attempted to activate nonexistent UEVR";
         return;
-    }
-
-    if (!(*newVersion)->installed())
-    {
-        // TODO: ask if the user wants to install this
     }
 
     m_currentUevr = releaseFromId(id);
@@ -320,7 +317,9 @@ void UEVR::parseReleaseInfoJson()
     const auto releases = QJsonDocument::fromJson(cachedReleases.readAll());
     const auto nightlies = QJsonDocument::fromJson(cachedNightlies.readAll());
 
-    for (const auto release : m_releases)
+    const int currentId = m_currentUevr ? m_currentUevr->id() : 0;
+
+    for (const auto release : std::as_const(m_releases))
         release->deleteLater();
     m_releases.clear();
 
@@ -329,11 +328,9 @@ void UEVR::parseReleaseInfoJson()
     for (const auto &nightly : nightlies.array())
         m_releases.push_back(new UEVRRelease{nightly, true, this});
 
-    std::sort(
-                m_releases.begin(), m_releases.end(), [](const auto &a, const auto &b) { return a->timestamp() > b->timestamp(); });
-
     endResetModel();
-    emit currentUevrChanged(m_currentUevr);
+
+    setCurrentUevr(currentId == 0 ? m_releases.first()->id() : currentId);
 }
 
 UEVRFilter::UEVRFilter(QObject *parent)

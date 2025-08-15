@@ -107,10 +107,26 @@ Pane {
             onClicked: Dotnet.installDotnetDesktopRuntime(gameDetailsRoot.game.id)
         }
 
-        Button {
-            text: "Launch UEVR injector"
-            enabled: gameDetailsRoot.game.dotnetInstalled
-            onClicked: UEVR.launchUEVR(gameDetailsRoot.game.id)
+        RowLayout {
+            spacing: 10
+
+            Button {
+                text: "Launch UEVR injector"
+                enabled: UEVR.currentUevr.installed && gameDetailsRoot.game.dotnetInstalled
+                onClicked: UEVR.launchUEVR(gameDetailsRoot.game.id)
+            }
+
+            Label {
+                text: {
+                    if (!gameDetailsRoot.game.dotnetInstalled)
+                        return ".NET is not installed!";
+                    else if (UEVR.currentUevr)
+                        return UEVR.currentUevr.name + " is not installed!";
+                    else
+                        return "";
+                }
+                visible: !gameDetailsRoot.game.dotnetInstalled || (UEVR.currentUevr !== undefined && !UEVR.currentUevr.installed)
+            }
         }
 
         Item { Layout.fillHeight: true }
