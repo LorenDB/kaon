@@ -17,7 +17,8 @@ using namespace Qt::Literals;
 UEVR *UEVR::s_instance = nullptr;
 
 UEVRRelease::UEVRRelease(const QJsonValue &json, bool nightly, QObject *parent)
-    : QObject{parent}
+    : QObject{parent},
+      m_nightly{nightly}
 {
     m_name = json["name"_L1].toString();
 
@@ -359,7 +360,6 @@ void UEVR::downloadRelease(const UEVRRelease &release)
 UEVRFilter::UEVRFilter(QObject *parent)
 {
     setSourceModel(UEVR::instance());
-    connect(this, &UEVRFilter::showNightliesChanged, this, &UEVRFilter::invalidateRowsFilter);
 
     setSortRole(UEVR::Roles::Timestamp);
     setDynamicSortFilter(true);
@@ -389,6 +389,8 @@ int UEVRFilter::indexFromId(int id) const
 void UEVRFilter::setShowNightlies(bool state)
 {
     m_showNightlies = state;
+    invalidateRowsFilter();
+
     emit showNightliesChanged(state);
 
     QSettings settings;
@@ -411,25 +413,4 @@ bool UEVRFilter::filterAcceptsRow(int row, const QModelIndex &parent) const
 bool UEVRFilter::lessThan(const QModelIndex &left, const QModelIndex &right) const
 {
     return left.data(UEVR::Roles::Timestamp).toDateTime() > right.data(UEVR::Roles::Timestamp).toDateTime();
-}
-
-int findProxyRow(QSortFilterProxyModel *proxy, const QVariant &searchData, int column = 0)
-{
-    QAbstractItemModel *sourceModel = proxy->sourceModel();
-
-    int sourceRowCount = sourceModel->rowCount();
-    for (int row = 0; row < sourceRowCount; ++row)
-    {
-        QModelIndex sourceIndex = sourceModel->index(row, column);
-        if (sourceModel->data(sourceIndex) == searchData)
-        {
-            QModelIndex proxyIndex = proxy->mapFromSource(sourceIndex);
-            if (proxyIndex.isValid())
-                return proxyIndex.row();
-            else
-                return -1; // Filtered out
-        }
-    }
-
-    return -1; // Not found in source
 }

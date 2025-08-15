@@ -32,7 +32,7 @@ ApplicationWindow {
 
                 model: UEVRFilter
                 textRole: "name"
-                onCurrentValueChanged: UEVR.currentUevr = currentValue
+                onActivated: UEVR.currentUevr = currentValue
                 valueRole: "id"
                 Component.onCompleted: currentIndex = Math.max(0, UEVRFilter.indexFromId(UEVR.currentUevr))
 
@@ -43,6 +43,22 @@ ApplicationWindow {
                     }
 
                     target: UEVR
+                }
+
+                Connections {
+                    // If the nightlies filter changes, we need to adjust the index to the new position of the current UEVR.
+                    // In some cases, the current UEVR will no longer be available, so we need to change the current UEVR.
+                    function onShowNightliesChanged(state)
+                    {
+                        uevrCombo.currentIndex = Math.max(0, UEVRFilter.indexFromId(UEVR.currentUevr))
+                        if (uevrCombo.currentValue != UEVR.currentUevr)
+                        {
+                            uevrCombo.currentIndex = 0;
+                            UEVR.currentUevr = uevrCombo.currentValue;
+                        }
+                    }
+
+                    target: UEVRFilter
                 }
             }
 
