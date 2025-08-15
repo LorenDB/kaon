@@ -1,3 +1,5 @@
+set(CMAKE_AUTOMOC ON)
+
 qt_add_executable(kaon
     main.cpp
 )
