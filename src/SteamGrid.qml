@@ -45,13 +45,13 @@ RowLayout {
                 required property string name
                 required property int steamId
                 required property string cardImage
-                required property string heroImage
-                required property string logoImage
-                required property string installDir
 
                 width: grid.cellWidth
                 height: grid.cardHeight
                 scale: ma.containsMouse ? 1.07 : 1.0
+                ToolTip.text: name
+                ToolTip.delay: 1000
+                ToolTip.visible: ma.containsMouse
 
                 Behavior on scale {
                     NumberAnimation {
