@@ -16,6 +16,7 @@ class Game : public QObject
     Q_PROPERTY(bool protonExists READ protonExists NOTIFY protonExistsChanged FINAL)
     Q_PROPERTY(QString protonPrefix READ protonPrefix CONSTANT)
     Q_PROPERTY(QString selectedProtonInstall READ selectedProtonInstall NOTIFY selectedProtonInstallChanged FINAL)
+    Q_PROPERTY(AppType type READ type CONSTANT)
 
     Q_PROPERTY(QString cardImage READ cardImage CONSTANT)
     Q_PROPERTY(QString heroImage READ heroImage CONSTANT)
@@ -33,15 +34,24 @@ public:
     enum Engine
     {
         Unknown = 1,
-        Runtime = 1 << 1, // Also encapsulates Proton
-
-        Unreal = 1 << 2,
-        Unity = 1 << 3,
-        Godot = 1 << 4,
-        Source = 1 << 5,
+        Unreal = 1 << 1,
+        Unity = 1 << 2,
+        Godot = 1 << 3,
+        Source = 1 << 4,
     };
     Q_ENUM(Engine)
     Q_DECLARE_FLAGS(Engines, Engine)
+
+    enum class AppType
+    {
+        Game = 1,
+        App = 1 << 1,
+        Tool = 1 << 2,
+        Demo = 1 << 3,
+        Music = 1 << 4,
+    };
+    Q_ENUM(AppType)
+    Q_DECLARE_FLAGS(AppTypes, AppType)
 
     int id() const { return m_id; }
     QString name() const { return m_name; }
@@ -51,6 +61,7 @@ public:
     QString protonPrefix() const { return m_protonPrefix; }
     QString selectedProtonInstall() const { return m_selectedProtonInstall; }
     Engine engine() const { return m_engine; }
+    AppType type() const { return m_type; }
 
     enum LogoPosition
     {
@@ -88,6 +99,7 @@ private:
     QString m_protonPrefix;
     QString m_selectedProtonInstall;
     Engine m_engine = Engine::Unknown;
+    AppType m_type = AppType::Game;
 
     QString m_cardImage;
     QString m_heroImage;
@@ -100,3 +112,6 @@ private:
     // Older Proton installs use a `dist` folder; newer installs use a `files` folder. We need to differentiate them.
     QString m_filesOrDist;
 };
+
+Q_DECLARE_OPERATORS_FOR_FLAGS(Game::Engines)
+Q_DECLARE_OPERATORS_FOR_FLAGS(Game::AppTypes)

@@ -144,6 +144,30 @@ RowLayout {
                         cursorShape: Qt.PointingHandCursor
                         onClicked: gridRoot.gameClicked(card.steamId)
                     }
+
+                    ColumnLayout {
+                        anchors.fill: cardImage
+                        anchors.margins: 5
+                        spacing: 3
+
+                        Rectangle {
+                            color: "#5d9e00"
+                            Layout.preferredWidth: demoLabel.implicitWidth + 4
+                            Layout.preferredHeight: demoLabel.implicitHeight + 4
+                            radius: 3
+                            visible: Steam.gameFromId(card.steamId).type == Game.Demo
+
+                            Label {
+                                id: demoLabel
+
+                                text: "Demo"
+                                font.bold: true
+                                anchors.centerIn: parent
+                            }
+                        }
+
+                        Item { Layout.fillHeight: true }
+                    }
                 }
             }
         }
@@ -173,7 +197,6 @@ RowLayout {
                     // godotCb.checked = true
                     sourceCb.checked = true
                     unknownCb.checked = true
-                    toolsCb.checked = true
                 }
             }
 
@@ -185,7 +208,6 @@ RowLayout {
                     // godotCb.checked = false
                     sourceCb.checked = false
                     unknownCb.checked = false
-                    toolsCb.checked = false
                 }
             }
         }
@@ -231,12 +253,77 @@ RowLayout {
             onCheckedChanged: SteamFilter.setEngineFilter(Game.Unknown, checked)
         }
 
-        CheckBox {
-            id: toolsCb
+        MenuSeparator {}
 
-            text: "Proton and runtimes"
-            Component.onCompleted: checked = SteamFilter.isEngineFilterSet(Game.Runtime)
-            onCheckedChanged: SteamFilter.setEngineFilter(Game.Runtime, checked)
+        Label {
+            text: "Filter by type"
+            font.bold: true
+        }
+
+        RowLayout {
+            spacing: 10
+
+            Button {
+                text: "All"
+                onClicked: {
+                    gameCb.checked = true
+                    demoCb.checked = true
+                    appCb.checked = true
+                    toolCb.checked = true
+                    musicCb.checked = true
+                }
+            }
+
+            Button {
+                text: "None"
+                onClicked: {
+                    gameCb.checked = false
+                    demoCb.checked = false
+                    appCb.checked = false
+                    toolCb.checked = false
+                    musicCb.checked = false
+                }
+            }
+        }
+
+        CheckBox {
+            id: gameCb
+
+            text: "Game"
+            Component.onCompleted: checked = SteamFilter.isTypeFilterSet(Game.Game)
+            onCheckedChanged: SteamFilter.setTypeFilter(Game.Game, checked)
+        }
+
+        CheckBox {
+            id: demoCb
+
+            text: "Demo"
+            Component.onCompleted: checked = SteamFilter.isTypeFilterSet(Game.Demo)
+            onCheckedChanged: SteamFilter.setTypeFilter(Game.Demo, checked)
+        }
+
+        CheckBox {
+            id: appCb
+
+            text: "Application"
+            Component.onCompleted: checked = SteamFilter.isTypeFilterSet(Game.App)
+            onCheckedChanged: SteamFilter.setTypeFilter(Game.App, checked)
+        }
+
+        CheckBox {
+            id: toolCb
+
+            text: "Tool"
+            Component.onCompleted: checked = SteamFilter.isTypeFilterSet(Game.Tool)
+            onCheckedChanged: SteamFilter.setTypeFilter(Game.Tool, checked)
+        }
+
+        CheckBox {
+            id: musicCb
+
+            text: "Music"
+            Component.onCompleted: checked = SteamFilter.isTypeFilterSet(Game.Music)
+            onCheckedChanged: SteamFilter.setTypeFilter(Game.Music, checked)
         }
 
         Item { Layout.fillHeight: true }

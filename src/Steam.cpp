@@ -145,8 +145,12 @@ SteamFilter::SteamFilter(QObject *parent)
     m_engineFilter.setFlag(Game::Engine::Source);
     m_engineFilter.setFlag(Game::Engine::Unknown);
 
+    m_typeFilter.setFlag(Game::AppType::Game);
+    m_typeFilter.setFlag(Game::AppType::Demo);
+
     setSourceModel(Steam::instance());
     connect(this, &SteamFilter::engineFilterChanged, this, &SteamFilter::invalidateFilter);
+    connect(this, &SteamFilter::typeFilterChanged, this, &SteamFilter::invalidateFilter);
     connect(this, &SteamFilter::searchChanged, this, &SteamFilter::invalidateFilter);
 }
 
@@ -167,16 +171,27 @@ void SteamFilter::setEngineFilter(Game::Engine engine, bool state)
     emit engineFilterChanged();
 }
 
+bool SteamFilter::isTypeFilterSet(Game::AppType type)
+{
+    return m_typeFilter.testFlag(type);
+}
+
+void SteamFilter::setTypeFilter(Game::AppType type, bool state)
+{
+    m_typeFilter.setFlag(type, state);
+    emit typeFilterChanged();
+}
+
 bool SteamFilter::filterAcceptsRow(int row, const QModelIndex &parent) const
 {
     const auto g = Steam::instance()->gameFromId(
                 sourceModel()->data(sourceModel()->index(row, 0, parent), Steam::Roles::SteamID).toInt());
     if (!g)
         return false;
-
     if (!m_engineFilter.testFlag(g->engine()))
         return false;
-
+    if (!m_typeFilter.testFlag(g->type()))
+        return false;
     if (!m_search.isEmpty() && !g->name().contains(m_search, Qt::CaseInsensitive))
         return false;
 

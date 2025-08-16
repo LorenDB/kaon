@@ -63,9 +63,6 @@ Game::Game(int steamId, QObject *parent)
         }
     }
 
-    if (QFile::exists(m_installDir + "/proton"_L1) || QFile::exists(m_installDir + "/toolmanifest.vdf"_L1))
-        m_engine = Engine::Runtime;
-
     const QStringList signsOfUnreal = {
         m_installDir + "/Engine/Binaries/Win64"_L1,
         m_installDir + "/Engine/Binaries/Win32"_L1,
@@ -182,6 +179,27 @@ Game::Game(int steamId, QObject *parent)
                         m_logoHPosition = LogoPosition::Left;
                     else if (posStr.endsWith("Right"_L1))
                         m_logoHPosition = LogoPosition::Right;
+                }
+            }
+        }
+        else if (section.name == "appinfo.common")
+        {
+            for (const auto &[key, value] : std::as_const(section.keys))
+            {
+                if (key == "type"_L1)
+                {
+                    QString type{static_cast<const char *>(value.second)};
+                    type = type.toLower();
+                    if (type == "game"_L1)
+                        m_type = AppType::Game;
+                    else if (type == "application"_L1)
+                        m_type = AppType::App;
+                    else if (type == "tool"_L1)
+                        m_type = AppType::Tool;
+                    else if (type == "demo"_L1)
+                        m_type = AppType::Demo;
+                    else if (type == "music"_L1)
+                        m_type = AppType::Music;
                 }
             }
         }

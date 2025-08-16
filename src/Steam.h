@@ -53,21 +53,26 @@ class SteamFilter : public QSortFilterProxyModel
     QML_SINGLETON
 
     Q_PROPERTY(Game::Engines engineFilter READ engineFilter NOTIFY engineFilterChanged FINAL)
+    Q_PROPERTY(Game::AppTypes typeFilter READ typeFilter NOTIFY typeFilterChanged FINAL)
     Q_PROPERTY(QString search READ search WRITE setSearch NOTIFY searchChanged FINAL)
 
 public:
     explicit SteamFilter(QObject *parent = nullptr);
 
     Game::Engines engineFilter() const { return m_engineFilter; }
+    Game::AppTypes typeFilter() const { return m_typeFilter; }
     QString search() const { return m_search; }
 
     void setSearch(const QString &search);
 
     Q_INVOKABLE bool isEngineFilterSet(Game::Engine engine);
     Q_INVOKABLE void setEngineFilter(Game::Engine engine, bool state);
+    Q_INVOKABLE bool isTypeFilterSet(Game::AppType type);
+    Q_INVOKABLE void setTypeFilter(Game::AppType type, bool state);
 
 signals:
     void engineFilterChanged();
+    void typeFilterChanged();
     void searchChanged();
 
 protected:
@@ -75,7 +80,6 @@ protected:
 
 private:
     Game::Engines m_engineFilter;
+    Game::AppTypes m_typeFilter;
     QString m_search;
 };
-
-Q_DECLARE_OPERATORS_FOR_FLAGS(Game::Engines)
