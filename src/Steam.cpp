@@ -140,10 +140,6 @@ void Steam::scanSteam()
 SteamFilter::SteamFilter(QObject *parent)
 {
     m_engineFilter.setFlag(Game::Engine::Unreal);
-    m_engineFilter.setFlag(Game::Engine::Unity);
-    m_engineFilter.setFlag(Game::Engine::Godot);
-    m_engineFilter.setFlag(Game::Engine::Source);
-    m_engineFilter.setFlag(Game::Engine::Unknown);
 
     m_typeFilter.setFlag(Game::AppType::Game);
     m_typeFilter.setFlag(Game::AppType::Demo);
