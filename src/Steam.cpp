@@ -16,6 +16,7 @@ Steam::Steam(QObject *parent)
     static const QStringList steamPaths = {
         QDir::homePath() + "/.local/share/Steam"_L1,
         QDir::homePath() + "/.steam/steam"_L1,
+        QDir::homePath() + "/.var/app/com.valvesoftware.Steam/data/Steam"_L1,
         QDir::homePath() + "/snap/steam/common/.local/share/Steam"_L1,
         QDir::homePath() + "/.snap/data/steam/common/.local/share/Steam"_L1,
     };
