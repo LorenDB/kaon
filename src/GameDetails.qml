@@ -63,6 +63,31 @@ Pane {
 
             RowLayout {
                 anchors.top: hero.top
+                anchors.left: hero.left
+                anchors.margins: 5
+                spacing: 3
+
+                Item { Layout.fillHeight: true }
+
+                Rectangle {
+                    color: "#5d9e00"
+                    Layout.preferredWidth: demoLabel.implicitWidth + 4
+                    Layout.preferredHeight: demoLabel.implicitHeight + 4
+                    radius: 3
+                    visible: gameDetailsRoot.game.type === Game.Demo
+
+                    Label {
+                        id: demoLabel
+
+                        text: "Demo"
+                        font.bold: true
+                        anchors.centerIn: parent
+                    }
+                }
+            }
+
+            RowLayout {
+                anchors.top: hero.top
                 anchors.right: hero.right
                 anchors.margins: 10
                 spacing: 10
