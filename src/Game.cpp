@@ -193,6 +193,9 @@ void Game::detectGameEngine()
 {
     // =======================================
     // Unreal detection
+    //
+    // Detection method sourced from Rai Pal
+    // https://github.com/Raicuparta/rai-pal/blob/51157fdae6b1d87760580d85082ccd5026bb0320/backend/core/src/game_engines/unreal.rs
     const QStringList signsOfUnreal = {
         m_installDir + "/Engine/Binaries/Win64"_L1,
         m_installDir + "/Engine/Binaries/Win32"_L1,
@@ -225,6 +228,9 @@ void Game::detectGameEngine()
 
     // =======================================
     // Unity detection
+    //
+    // Detection method sourced from Rai Pal
+    // https://github.com/Raicuparta/rai-pal/blob/51157fdae6b1d87760580d85082ccd5026bb0320/backend/core/src/game_engines/unity.rs
     for (const auto &e : m_executables)
     {
         QFileInfo exe{e};
