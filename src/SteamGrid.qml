@@ -101,7 +101,7 @@ RowLayout {
                     Rectangle {
                         id: textFallback
 
-                        visible: cardImage.status != Image.Ready
+                        visible: cardImage.status !== Image.Ready
                         width: grid.cardWidth
                         height: grid.cardHeight
                         radius: 5
@@ -155,7 +155,7 @@ RowLayout {
                             Layout.preferredWidth: demoLabel.implicitWidth + 4
                             Layout.preferredHeight: demoLabel.implicitHeight + 4
                             radius: 3
-                            visible: Steam.gameFromId(card.steamId).type == Game.Demo
+                            visible: Steam.gameFromId(card.steamId).type === Game.Demo
 
                             Label {
                                 id: demoLabel
