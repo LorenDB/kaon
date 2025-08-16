@@ -61,10 +61,27 @@ Pane {
                 }
             }
 
+            // fallback for no image
+            Rectangle {
+                id: textFallback
+
+                visible: hero.status !== Image.Ready
+                anchors.fill: hero
+                radius: 5
+                color: "#4f4f4f"
+
+                Label {
+                    anchors.centerIn: textFallback
+                    anchors.margins: 5
+                    wrapMode: Label.WordWrap
+                    text: gameDetailsRoot.game.name
+                }
+            }
+
             RowLayout {
                 anchors.top: hero.top
                 anchors.left: hero.left
-                anchors.margins: 5
+                anchors.margins: 10
                 spacing: 3
 
                 Item { Layout.fillHeight: true }
