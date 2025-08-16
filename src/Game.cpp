@@ -191,7 +191,8 @@ bool Game::dotnetInstalled() const
 
 void Game::detectGameEngine()
 {
-
+    // =======================================
+    // Unreal detection
     const QStringList signsOfUnreal = {
         m_installDir + "/Engine/Binaries/Win64"_L1,
         m_installDir + "/Engine/Binaries/Win32"_L1,
@@ -206,11 +207,13 @@ void Game::detectGameEngine()
         }
     }
 
-    // Regex sourced from SteamDB, licensed MIT
+    // =======================================
+    // Source detection
+    //
+    // Regex sourced from SteamDB
     // https://github.com/SteamDatabase/FileDetectionRuleSets/blob/ac27c7cfc0a63dc07cc9e65157841857d82f347b/rules.ini#L191
     static const QRegularExpression signsOfSource{R"((?:^|/)(?:vphysics|bsppack)\.(?:dylib|dll|so)$)"_L1};
-    QDirIterator gameDirIterator{m_installDir, QDirIterator::Subdirectories};
-    while (gameDirIterator.hasNext())
+    for (QDirIterator gameDirIterator{m_installDir, QDirIterator::Subdirectories}; gameDirIterator.hasNext();)
     {
         auto localName = gameDirIterator.next().remove(m_installDir);
         if (localName.contains(signsOfSource))
@@ -220,6 +223,8 @@ void Game::detectGameEngine()
         }
     }
 
+    // =======================================
+    // Unity detection
     for (const auto &e : m_executables)
     {
         QFileInfo exe{e};
@@ -228,5 +233,39 @@ void Game::detectGameEngine()
             m_engine = Engine::Unity;
             return;
         }
+    }
+
+    // =======================================
+    // Godot detection
+    //
+    // Dectection method sourced from SteamDB
+    // https://github.com/SteamDatabase/FileDetectionRuleSets/blob/ac27c7cfc0a63dc07cc9e65157841857d82f347b/tests/FileDetector.php#L316
+    for (const auto &e : m_executables)
+    {
+        QFileInfo exe{e};
+        QDirIterator pckFinder{exe.absolutePath()};
+        while (pckFinder.hasNext())
+        {
+            pckFinder.next();
+            if (pckFinder.fileName().toLower() == exe.baseName().toLower() + ".pck"_L1)
+            {
+                m_engine = Engine::Godot;
+                return;
+            }
+        }
+    }
+
+    // fall back to looking for a single data.pck file
+    QStringList pcks;
+    for (QDirIterator dirit{m_installDir, QDirIterator::Subdirectories}; dirit.hasNext();)
+    {
+        const auto file = dirit.next();
+        if (file.endsWith(".pck"_L1, Qt::CaseInsensitive))
+            pcks.push_back(file);
+    }
+    if (pcks.size() == 1 && pcks.first().endsWith("/data.pck"_L1, Qt::CaseInsensitive))
+    {
+        m_engine = Engine::Godot;
+        return;
     }
 }

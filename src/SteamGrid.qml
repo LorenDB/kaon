@@ -194,7 +194,7 @@ RowLayout {
                 onClicked: {
                     unrealCb.checked = true
                     unityCb.checked = true
-                    // godotCb.checked = true
+                    godotCb.checked = true
                     sourceCb.checked = true
                     unknownCb.checked = true
                 }
@@ -205,7 +205,7 @@ RowLayout {
                 onClicked: {
                     unrealCb.checked = false
                     unityCb.checked = false
-                    // godotCb.checked = false
+                    godotCb.checked = false
                     sourceCb.checked = false
                     unknownCb.checked = false
                 }
@@ -228,14 +228,13 @@ RowLayout {
             onCheckedChanged: SteamFilter.setEngineFilter(Game.Unity, checked)
         }
 
-        // TODO: detection support hasn't been added yet
-        // CheckBox {
-        //     id: godotCb
+        CheckBox {
+            id: godotCb
 
-        //     text: "Godot"
-        //     Component.onCompleted: checked = SteamFilter.isEngineFilterSet(Game.Godot)
-        //     onCheckedChanged: SteamFilter.setEngineFilter(Game.Godot, checked)
-        // }
+            text: "Godot"
+            Component.onCompleted: checked = SteamFilter.isEngineFilterSet(Game.Godot)
+            onCheckedChanged: SteamFilter.setEngineFilter(Game.Godot, checked)
+        }
 
         CheckBox {
             id: sourceCb
