@@ -10,7 +10,7 @@ ApplicationWindow {
     visible: true
     title: qsTr("Kaon")
     width: 900
-    height: 550
+    height: 600
     minimumWidth: 640
     minimumHeight: 480
 
