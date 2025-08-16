@@ -11,6 +11,8 @@ ApplicationWindow {
     title: qsTr("Kaon")
     width: 900
     height: 550
+    minimumWidth: 640
+    minimumHeight: 480
 
     header: Pane {
         RowLayout {
