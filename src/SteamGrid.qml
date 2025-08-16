@@ -150,6 +150,8 @@ RowLayout {
                         anchors.margins: 5
                         spacing: 3
 
+                        Item { Layout.fillHeight: true }
+
                         Rectangle {
                             color: "#5d9e00"
                             Layout.preferredWidth: demoLabel.implicitWidth + 4
@@ -165,8 +167,6 @@ RowLayout {
                                 anchors.centerIn: parent
                             }
                         }
-
-                        Item { Layout.fillHeight: true }
                     }
                 }
             }
