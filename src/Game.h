@@ -91,6 +91,8 @@ signals:
     void dotnetInstalledChanged();
 
 private:
+    void detectGameEngine();
+
     int m_id = 0;
     QString m_name;
     QString m_installDir;
@@ -108,6 +110,8 @@ private:
     double m_logoHeight{0};
     LogoPosition m_logoHPosition;
     LogoPosition m_logoVPosition;
+
+    QStringList m_executables;
 
     // Older Proton installs use a `dist` folder; newer installs use a `files` folder. We need to differentiate them.
     QString m_filesOrDist;

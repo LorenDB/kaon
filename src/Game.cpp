@@ -63,34 +63,6 @@ Game::Game(int steamId, QObject *parent)
         }
     }
 
-    const QStringList signsOfUnreal = {
-        m_installDir + "/Engine/Binaries/Win64"_L1,
-        m_installDir + "/Engine/Binaries/Win32"_L1,
-        m_installDir + "/Engine/Binaries/ThirdParty"_L1,
-    };
-    for (const auto &sign : signsOfUnreal)
-    {
-        if (QFileInfo fi{sign}; fi.exists() && fi.isDir())
-        {
-            m_engine = Engine::Unreal;
-            break;
-        }
-    }
-
-    // Regex sourced from SteamDB, licensed MIT
-    // https://github.com/SteamDatabase/FileDetectionRuleSets/blob/ac27c7cfc0a63dc07cc9e65157841857d82f347b/rules.ini#L191
-    static const QRegularExpression signsOfSource{R"((?:^|/)(?:vphysics|bsppack)\.(?:dylib|dll|so)$)"_L1};
-    QDirIterator gameDirIterator{m_installDir, QDirIterator::Subdirectories};
-    while (gameDirIterator.hasNext())
-    {
-        auto localName = gameDirIterator.next().remove(m_installDir);
-        if (localName.contains(signsOfSource))
-        {
-            m_engine = Engine::Source;
-            break;
-        }
-    }
-
     auto *info = AppInfoVDF::instance()->game(m_id);
     AppInfoVDF::AppInfo::Section section;
     AppInfoVDF::AppInfo::SectionDesc app_desc{};
@@ -126,7 +98,6 @@ Game::Game(int steamId, QObject *parent)
         }
     };
 
-    QStringList exes;
     for (auto &section : section.finished_sections)
     {
         if (section.name.startsWith("appinfo.config.launch."_L1))
@@ -136,7 +107,7 @@ Game::Game(int steamId, QObject *parent)
                 if (key == "executable"_L1)
                 {
                     assert(value.first == AppInfoVDF::AppInfo::Section::String);
-                    exes.push_back(m_installDir + '/' + static_cast<const char *>(value.second));
+                    m_executables.push_back(m_installDir + '/' + static_cast<const char *>(value.second));
                 }
             }
         }
@@ -205,15 +176,7 @@ Game::Game(int steamId, QObject *parent)
         }
     }
 
-    for (const auto &e : exes)
-    {
-        QFileInfo exe{e};
-        if (QFileInfo dataDir{exe.absolutePath() + '/' + exe.baseName() + "_Data"_L1}; dataDir.exists() && dataDir.isDir())
-        {
-            m_engine = Engine::Unity;
-            break;
-        }
-    }
+    detectGameEngine();
 }
 
 QString Game::protonBinary() const
@@ -224,4 +187,46 @@ QString Game::protonBinary() const
 bool Game::dotnetInstalled() const
 {
     return Dotnet::instance()->isDotnetInstalled(m_id);
+}
+
+void Game::detectGameEngine()
+{
+
+    const QStringList signsOfUnreal = {
+        m_installDir + "/Engine/Binaries/Win64"_L1,
+        m_installDir + "/Engine/Binaries/Win32"_L1,
+        m_installDir + "/Engine/Binaries/ThirdParty"_L1,
+    };
+    for (const auto &sign : signsOfUnreal)
+    {
+        if (QFileInfo fi{sign}; fi.exists() && fi.isDir())
+        {
+            m_engine = Engine::Unreal;
+            return;
+        }
+    }
+
+    // Regex sourced from SteamDB, licensed MIT
+    // https://github.com/SteamDatabase/FileDetectionRuleSets/blob/ac27c7cfc0a63dc07cc9e65157841857d82f347b/rules.ini#L191
+    static const QRegularExpression signsOfSource{R"((?:^|/)(?:vphysics|bsppack)\.(?:dylib|dll|so)$)"_L1};
+    QDirIterator gameDirIterator{m_installDir, QDirIterator::Subdirectories};
+    while (gameDirIterator.hasNext())
+    {
+        auto localName = gameDirIterator.next().remove(m_installDir);
+        if (localName.contains(signsOfSource))
+        {
+            m_engine = Engine::Source;
+            return;
+        }
+    }
+
+    for (const auto &e : m_executables)
+    {
+        QFileInfo exe{e};
+        if (QFileInfo dataDir{exe.absolutePath() + '/' + exe.baseName() + "_Data"_L1}; dataDir.exists() && dataDir.isDir())
+        {
+            m_engine = Engine::Unity;
+            return;
+        }
+    }
 }
