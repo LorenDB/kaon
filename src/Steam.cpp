@@ -113,9 +113,8 @@ void Steam::scanSteam()
         game->deleteLater();
     m_games.clear();
 
-    if (const QFileInfo fi{m_steamRoot + "/steamapps/libraryfolders.vdf"_L1}; fi.exists() && fi.isFile())
-    {
-        std::ifstream vdfFile{fi.absoluteFilePath().toStdString()};
+    const auto parseLibraryFolders = [this](const QString &vdfPath) {
+        std::ifstream vdfFile{vdfPath.toStdString()};
 
         try
         {
@@ -133,9 +132,14 @@ void Steam::scanSteam()
         {
             qDebug() << "Failure while parsing libraryfolders.vdf:" << e.what();
         }
-    }
+    };
+
+    if (const QFileInfo fi{m_steamRoot + "/steamapps/libraryfolders.vdf"_L1}; fi.exists() && fi.isFile())
+        parseLibraryFolders({fi.absoluteFilePath()});
+    else if (const QFileInfo fi{m_steamRoot + "/config/libraryfolders.vdf"_L1}; fi.exists() && fi.isFile())
+        parseLibraryFolders({fi.absoluteFilePath()});
     else
-        qDebug() << "Could not open libraryfolders.vdf at" << fi.absoluteFilePath();
+        qDebug() << "Could not find libraryfolders.vdf";
 
     endResetModel();
 }
