@@ -156,6 +156,7 @@ void UEVR::setCurrentUevr(const int id)
     if (newVersion == m_releases.constEnd())
     {
         qDebug() << "Attempted to activate nonexistent UEVR";
+        Aptabase::instance()->track("nonexistent-uevr-activation-bug");
         return;
     }
 

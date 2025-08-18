@@ -5,6 +5,7 @@
 #include <QSettings>
 #include <QTimer>
 
+#include "Aptabase.h"
 #include "vdf_parser.hpp"
 
 using namespace Qt::Literals;
@@ -150,6 +151,7 @@ void Steam::scanSteam()
         catch (const std::length_error &e)
         {
             qDebug() << "Failure while parsing libraryfolders.vdf:" << e.what();
+            Aptabase::instance()->track("failure-parsing-libraryfolders-bug");
         }
     };
 
