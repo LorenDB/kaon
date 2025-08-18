@@ -83,7 +83,7 @@ void Aptabase::track(const QString &event, const QJsonObject &properties) const
     systemProperties["isDebug"_L1] = false;
 #endif
     systemProperties["appVersion"_L1] = qApp->applicationVersion();
-    systemProperties["sdkVersion"_L1] = "aptabase-qt@0.0.1"_L1;
+    systemProperties["sdkVersion"_L1] = "aptabase-kaon@%1"_L1.arg(qApp->applicationVersion());
 
     body["systemProps"_L1] = systemProperties;
     body["props"_L1] = properties;
