@@ -3,7 +3,12 @@
 Kaon is a utility to help you use UEVR on Linux. It is in a pre-alpha state right now
 and under heavy development, so expect things to break.
 
-Currently, Kaon does not support Steam installed via Flatpak or Snap.
+Currently, Kaon does not support Steam installed via Flatpak.
+
+## Download
+
+Bleeding-edge builds are available via CI. To get them, click on the latest workflow run
+[here](https://github.com/LorenDB/kaon/actions) and download the AppImage artifact.
 
 ## Features
 
