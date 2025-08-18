@@ -31,8 +31,9 @@ qt_add_qml_module(kaon
         VDF.cpp
         VDF.h
     RESOURCES
-        icons/draw-arrow-back.svg
+        icons/delete.svg
         icons/download.svg
+        icons/draw-arrow-back.svg
         icons/folder.svg
         icons/kaon.svg
         icons/media-playback-start.svg

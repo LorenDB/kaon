@@ -74,8 +74,16 @@ ApplicationWindow {
                 icon.name: "download"
                 icon.source: Qt.resolvedUrl("icons/download.svg")
                 icon.color: enabled ? palette.buttonText : disabledPalette.buttonText
-                enabled: UEVR.currentUevr && !UEVR.currentUevr.installed
+                visible: UEVR.currentUevr && !UEVR.currentUevr.installed
                 onClicked: UEVR.downloadUEVR(UEVR.currentUevr)
+            }
+
+            ToolButton {
+                icon.name: "delete"
+                icon.source: Qt.resolvedUrl("icons/delete.svg")
+                icon.color: "#da4453"
+                visible: UEVR.currentUevr && UEVR.currentUevr.installed
+                onClicked: deleteUevrDialog.open()
             }
 
             CheckBox {
@@ -124,8 +132,8 @@ ApplicationWindow {
         SteamView {
             anchors.fill: parent
             onGameClicked: (steamId) => {
-                theStack.push(gameDetails, { game: Steam.gameFromId(steamId) })
-            }
+                               theStack.push(gameDetails, { game: Steam.gameFromId(steamId) })
+                           }
         }
     }
 
@@ -156,6 +164,21 @@ ApplicationWindow {
 
         Label {
             text: "Downloading the .NET runtime failed. Please check your network connection."
+            wrapMode: Text.WordWrap
+        }
+    }
+
+    Dialog {
+        id: deleteUevrDialog
+
+        title: "Confirm deletion"
+        modal: true
+        standardButtons: Dialog.Ok | Dialog.Cancel
+        onAccepted: UEVR.deleteUEVR(UEVR.currentUevr)
+
+        Label {
+            anchors.fill: parent
+            text: "Are you sure you want to delete " + (UEVR.currentUevr ? UEVR.currentUevr.name : "<null>") + "?"
             wrapMode: Text.WordWrap
         }
     }

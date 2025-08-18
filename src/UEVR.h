@@ -92,6 +92,7 @@ public:
 public slots:
     void launchUEVR(const int steamId);
     void downloadUEVR(UEVRRelease *uevr);
+    void deleteUEVR(UEVRRelease *uevr);
 
     void setCurrentUevr(const int id);
 

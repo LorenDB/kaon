@@ -246,6 +246,16 @@ void UEVR::downloadUEVR(UEVRRelease *release)
     [tempDir] { delete tempDir; });
 }
 
+void UEVR::deleteUEVR(UEVRRelease *uevr)
+{
+    if (!uevr->installed())
+        return;
+
+    QDir installDir{path(Paths::UEVRBasePath) + '/' + QString::number(uevr->id())};
+    if (installDir.removeRecursively())
+        uevr->setInstalled(false);
+}
+
 QString UEVR::path(const Paths path) const
 {
     switch (path)
