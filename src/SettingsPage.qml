@@ -5,6 +5,8 @@ import QtQuick.Layouts
 import dev.lorendb.kaon
 
 Pane {
+    objectName: "theOneAndOnlySettingsPage"
+
     FontInfo { id: fontInfo }
 
     ScrollView {

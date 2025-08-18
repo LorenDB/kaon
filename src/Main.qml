@@ -73,7 +73,7 @@ ApplicationWindow {
             ToolButton {
                 icon.name: "download"
                 icon.source: Qt.resolvedUrl("icons/download.svg")
-                icon.color: enabled ? palette.buttonText : disabledPalette.buttonText
+                icon.color: palette.buttonText
                 visible: UEVR.currentUevr && !UEVR.currentUevr.installed
                 onClicked: UEVR.downloadUEVR(UEVR.currentUevr)
             }
@@ -97,11 +97,13 @@ ApplicationWindow {
             ToolButton {
                 icon.name: "settings-configure"
                 icon.source: Qt.resolvedUrl("icons/folder.svg")
-                icon.color: palette.buttonText
+                icon.color: enabled ? palette.buttonText : disabledPalette.buttonText
+                enabled: theStack.currentItem ? theStack.currentItem.objectName !== "theOneAndOnlySettingsPage" : true
                 hoverEnabled: true
                 ToolTip.text: "Settings"
                 ToolTip.delay: 1000
                 ToolTip.visible: hovered
+
                 onClicked: theStack.push(settingsPage)
             }
         }
