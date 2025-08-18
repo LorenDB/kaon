@@ -9,6 +9,7 @@
 #include <QTemporaryDir>
 #include <QTimer>
 
+#include "Aptabase.h"
 #include "DownloadManager.h"
 #include "Steam.h"
 
@@ -168,6 +169,8 @@ void UEVR::setCurrentUevr(const int id)
 
 void UEVR::launchUEVR(const int steamId)
 {
+    Aptabase::instance()->track("launch-uevr"_L1, {{"version"_L1, m_currentUevr->name()}});
+
     auto game = Steam::instance()->gameFromId(steamId);
 
     auto injector = new QProcess;
@@ -181,6 +184,8 @@ void UEVR::launchUEVR(const int steamId)
 
 void UEVR::downloadUEVR(UEVRRelease *release)
 {
+    Aptabase::instance()->track("download-uevr"_L1, {{"version"_L1, release->name()}});
+
     QUrl url;
     for (const auto &asset : release->assets())
     {
