@@ -47,6 +47,7 @@ void DownloadManager::downloadNextInQueue()
         if (reply->error() != QNetworkReply::NoError)
         {
             qDebug() << "Download error:" << reply->errorString();
+            emit downloadFailed(download.prettyName);
             download.failureCallback(reply->error(), reply->errorString());
         }
         else

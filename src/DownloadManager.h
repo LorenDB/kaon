@@ -31,6 +31,7 @@ public:
 signals:
     void downloadingChanged();
     void currentDownloadNameChanged();
+    void downloadFailed(const QString &whatWasBeingDownloaded);
 
 private:
     static DownloadManager *s_instance;

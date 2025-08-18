@@ -158,12 +158,16 @@ ApplicationWindow {
     Dialog {
         id: downloadFailedDialog
 
+        property string whatWasBeingDownloaded: "<null>"
+
         title: "Download failed"
         modal: true
         standardButtons: Dialog.Ok
+        onAccepted: whatWasBeingDownloaded = "<null>"
 
         Label {
-            text: "Downloading the .NET runtime failed. Please check your network connection."
+            anchors.fill: parent
+            text: "Downloading " + downloadFailedDialog.whatWasBeingDownloaded + " failed. Please check your network connection."
             wrapMode: Text.WordWrap
         }
     }
@@ -196,4 +200,12 @@ ApplicationWindow {
         target: Dotnet
     }
 
+    Connections {
+        function onDownloadFailed(whatWasBeingDownloaded: string) {
+            downloadFailedDialog.whatWasBeingDownloaded = whatWasBeingDownloaded
+            downloadFailedDialog.open()
+        }
+
+        target: DownloadManager
+    }
 }
