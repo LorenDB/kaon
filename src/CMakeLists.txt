@@ -11,6 +11,7 @@ qt_add_qml_module(kaon
         DotnetDownloadDialog.qml
         GameDetails.qml
         Main.qml
+        SettingsPage.qml
         SteamView.qml
         SteamGridDelegate.qml
         SteamListDelegate.qml

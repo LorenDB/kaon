@@ -5,6 +5,9 @@ and under heavy development, so expect things to break.
 
 Currently, Kaon does not support Steam installed via Flatpak.
 
+Kaon collects basic anonymous usage information to help inform development; these analytics
+can be disabled in the settings page.
+
 ## Download
 
 Bleeding-edge builds are available via CI. To get them, click on the latest workflow run

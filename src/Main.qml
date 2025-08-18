@@ -83,6 +83,19 @@ ApplicationWindow {
                 Component.onCompleted: checked = UEVRFilter.showNightlies
                 onCheckedChanged: UEVRFilter.showNightlies = checked
             }
+
+            ToolSeparator {}
+
+            ToolButton {
+                icon.name: "settings-configure"
+                icon.source: Qt.resolvedUrl("icons/folder.svg")
+                icon.color: palette.buttonText
+                hoverEnabled: true
+                ToolTip.text: "Settings"
+                ToolTip.delay: 1000
+                ToolTip.visible: hovered
+                onClicked: theStack.push(settingsPage)
+            }
         }
     }
 
@@ -120,6 +133,12 @@ ApplicationWindow {
         id: gameDetails
 
         GameDetails {}
+    }
+
+    Component {
+        id: settingsPage
+
+        SettingsPage {}
     }
 
     DotnetDownloadDialog {
