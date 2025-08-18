@@ -1,5 +1,7 @@
 #include <QApplication>
+#include <QIcon>
 #include <QQmlApplicationEngine>
+#include <QQmlContext>
 
 using namespace Qt::Literals;
 
@@ -20,5 +22,6 @@ int main(int argc, char *argv[])
     Qt::QueuedConnection);
     engine.loadFromModule("dev.lorendb.kaon", "Main");
 
+    app.setWindowIcon(QIcon::fromTheme("kaon", QIcon{":/qt/qml/dev/lorendb/kaon/icons/kaon.svg"}));
     return app.exec();
 }

@@ -29,6 +29,7 @@ qt_add_qml_module(kaon
         icons/draw-arrow-back.svg
         icons/download.svg
         icons/folder.svg
+        icons/kaon.svg
         icons/media-playback-start.svg
         icons/settings-configure.svg
 )
