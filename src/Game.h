@@ -21,6 +21,7 @@ class Game : public QObject
     Q_PROPERTY(QString cardImage READ cardImage CONSTANT)
     Q_PROPERTY(QString heroImage READ heroImage CONSTANT)
     Q_PROPERTY(QString logoImage READ logoImage CONSTANT)
+    Q_PROPERTY(QString icon READ icon CONSTANT)
     Q_PROPERTY(double logoWidth READ logoWidth CONSTANT)
     Q_PROPERTY(double logoHeight READ logoHeight CONSTANT)
     Q_PROPERTY(LogoPosition logoHPosition READ logoHPosition CONSTANT)
@@ -76,6 +77,7 @@ public:
     QString cardImage() const { return m_cardImage; }
     QString heroImage() const { return m_heroImage; }
     QString logoImage() const { return m_logoImage; }
+    QString icon() const { return m_icon; }
     double logoWidth() const { return m_logoWidth; }
     double logoHeight() const { return m_logoHeight; }
     LogoPosition logoHPosition() const { return m_logoHPosition; }
@@ -106,6 +108,7 @@ private:
     QString m_cardImage;
     QString m_heroImage;
     QString m_logoImage;
+    QString m_icon;
     double m_logoWidth{0};
     double m_logoHeight{0};
     LogoPosition m_logoHPosition;

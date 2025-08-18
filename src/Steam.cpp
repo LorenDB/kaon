@@ -2,6 +2,7 @@
 
 #include <QDir>
 #include <QDirIterator>
+#include <QSettings>
 #include <QTimer>
 
 #include "vdf_parser.hpp"
@@ -13,6 +14,10 @@ Steam *Steam::s_instance = nullptr;
 Steam::Steam(QObject *parent)
     : QAbstractListModel{parent}
 {
+    QSettings settings;
+    settings.beginGroup("Steam"_L1);
+    m_viewType = settings.value("viewType"_L1, ViewType::Grid).value<ViewType>();
+
     static const QStringList steamPaths = {
         QDir::homePath() + "/.local/share/Steam"_L1,
         QDir::homePath() + "/.steam/steam"_L1,
@@ -77,6 +82,8 @@ QVariant Steam::data(const QModelIndex &index, int role) const
         return item->heroImage();
     case Roles::LogoImage:
         return item->logoImage();
+    case Roles::Icon:
+        return item->icon();
     case Roles::LastPlayed:
         return item->lastPlayed();
     }
@@ -92,6 +99,7 @@ QHash<int, QByteArray> Steam::roleNames() const
         {Roles::CardImage, "cardImage"_ba},
         {Roles::HeroImage, "heroImage"_ba},
         {Roles::LogoImage, "logoImage"_ba},
+        {Roles::Icon, "iconImage"_ba},
         {Roles::LastPlayed, "lastPlayed"_ba}};
 }
 
@@ -101,6 +109,16 @@ Game *Steam::gameFromId(int steamId) const
         if (game->id() == steamId)
             return game;
     return nullptr;
+}
+
+void Steam::setViewType(ViewType viewType)
+{
+    m_viewType = viewType;
+    emit viewTypeChanged(m_viewType);
+
+    QSettings settings;
+    settings.beginGroup("Steam"_L1);
+    settings.setValue("viewType"_L1, m_viewType);
 }
 
 void Steam::scanSteam()

@@ -11,7 +11,9 @@ qt_add_qml_module(kaon
         DotnetDownloadDialog.qml
         GameDetails.qml
         Main.qml
-        SteamGrid.qml
+        SteamView.qml
+        SteamGridDelegate.qml
+        SteamListDelegate.qml
     SOURCES
         Aptabase.cpp
         Aptabase.h

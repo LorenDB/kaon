@@ -108,7 +108,7 @@ ApplicationWindow {
         anchors.fill: root.contentItem
         anchors.margins: 10
 
-        SteamGrid {
+        SteamView {
             anchors.fill: parent
             onGameClicked: (steamId) => {
                 theStack.push(gameDetails, { game: Steam.gameFromId(steamId) })

@@ -21,8 +21,10 @@ RowLayout {
         Layout.fillWidth: true
         Layout.fillHeight: true
 
-        ColumnLayout {
+        GridLayout {
             anchors.fill: parent
+            rowSpacing: 10
+            columns: 3
 
             TextField {
                 Layout.fillWidth: true
@@ -30,150 +32,62 @@ RowLayout {
                 onTextChanged: SteamFilter.search = text
             }
 
-            GridView {
-                id: grid
+            Component.onCompleted: {
+                if (Steam.viewType === Steam.Grid)
+                    gridButton.checked = true;
+                else if (Steam.viewType === Steam.List)
+                    listButton.checked = true;
+            }
 
-                readonly property int cardWidth: 120
-                readonly property int cardHeight: 180
+            RadioButton {
+                id: gridButton
 
+                text: "Grid"
+                onCheckedChanged: Steam.viewType = Steam.Grid
+            }
+
+            RadioButton {
+                id: listButton
+
+                text: "List"
+                onCheckedChanged: Steam.viewType = Steam.List
+            }
+
+            Loader {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                model: SteamFilter
-                cellWidth: {
-                    let usableWidth = width - (leftMargin + rightMargin + sb.width)
-                    return usableWidth / Math.floor(usableWidth / (cardWidth * 1.1))
+                Layout.columnSpan: 3
+
+                Component {
+                    id: gridView
+
+                    SteamGridDelegate {
+                        onGameClicked: (steamId) => { gridRoot.gameClicked(steamId) }
+                    }
                 }
-                cellHeight: cardHeight * 1.1
-                bottomMargin: 15
-                topMargin: 15
-                leftMargin: 15
-                rightMargin: 15
-                clip: true
 
-                ScrollBar.vertical: ScrollBar { id: sb }
-                delegate: Item {
-                    id: card
+                Component {
+                    id: listView
 
-                    required property string name
-                    required property int steamId
-                    required property string cardImage
-
-                    width: grid.cellWidth
-                    height: grid.cardHeight
-                    scale: ma.containsMouse ? 1.07 : 1.0
-                    ToolTip.text: name
-                    ToolTip.delay: 1000
-                    ToolTip.visible: ma.containsMouse
-
-                    Behavior on scale {
-                        NumberAnimation {
-                            duration: 200
-                            easing.type: Easing.InOutQuad
-                        }
+                    SteamListDelegate {
+                        onGameClicked: (steamId) => { gridRoot.gameClicked(steamId) }
                     }
+                }
 
-                    Image {
-                        id: cardImage
-
-                        anchors.centerIn: card
-                        source: card.cardImage
-                        fillMode: Image.PreserveAspectCrop
-                        asynchronous: true
-                        width: grid.cardWidth
-                        height: grid.cardHeight
-                        visible: false
-                    }
-
-                    MultiEffect {
-                        source: cardImage
-                        anchors.fill: cardImage
-                        maskEnabled: true
-                        maskSource: textFallback
-
-                        // needed for smooth corners
-                        // https://forum.qt.io/post/815710
-                        maskThresholdMin: 0.5
-                        maskSpreadAtMin: 1.0
-                    }
-
-                    // fallback for no image
-                    Rectangle {
-                        id: textFallback
-
-                        visible: cardImage.status !== Image.Ready
-                        width: grid.cardWidth
-                        height: grid.cardHeight
-                        radius: 5
-                        color: "#4f4f4f"
-                        anchors.centerIn: card
-                        layer.enabled: true
-                        layer.smooth: true
-
-                        Label {
-                            anchors.fill: textFallback
-                            anchors.margins: 5
-                            wrapMode: Label.WordWrap
-                            text: card.name
-                        }
-                    }
-
-                    Rectangle {
-                        // some images clip outside the border with anchors.fill: parent, so we need to add a margin here
-                        anchors.centerIn: cardImage
-                        width: cardImage.width + 2
-                        height: cardImage.height + 2
-                        color: "#00000000"
-                        border.width: ma.containsMouse ? 3 : 0
-                        border.color: palette.highlight
-                        radius: textFallback.radius
-
-                        Behavior on border.width {
-                            NumberAnimation {
-                                duration: 200
-                                easing.type: Easing.InOutQuad
-                            }
-                        }
-                    }
-
-                    MouseArea {
-                        id: ma
-
-                        anchors.fill: card
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: gridRoot.gameClicked(card.steamId)
-                    }
-
-                    ColumnLayout {
-                        anchors.fill: cardImage
-                        anchors.margins: 5
-                        spacing: 3
-
-                        Item { Layout.fillHeight: true }
-
-                        Rectangle {
-                            color: "#5d9e00"
-                            Layout.preferredWidth: demoLabel.implicitWidth + 4
-                            Layout.preferredHeight: demoLabel.implicitHeight + 4
-                            radius: 3
-                            visible: Steam.gameFromId(card.steamId).type === Game.Demo
-
-                            Label {
-                                id: demoLabel
-
-                                text: "Demo"
-                                font.bold: true
-                                anchors.centerIn: parent
-                            }
-                        }
-                    }
+                sourceComponent: {
+                    if (gridButton.checked)
+                        return gridView;
+                    else if (listButton.checked)
+                        return listView;
+                    else
+                        return null;
                 }
             }
         }
     }
 
     ScrollView {
-        Layout.preferredWidth: filterColumn.implicitWidth + sb.width + 10
+        Layout.preferredWidth: filterColumn.implicitWidth + effectiveScrollBarWidth + 10
         Layout.fillHeight: true
         ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
 

@@ -172,6 +172,15 @@ Game::Game(int steamId, QObject *parent)
                     else if (type == "music"_L1)
                         m_type = AppType::Music;
                 }
+                else if (key == "icon"_L1)
+                {
+                    const QString logoId{static_cast<const char *>(value.second)};
+                    if (QFileInfo fi{u"%1/appcache/librarycache/%2/%3.jpg"_s.arg(
+                                Steam::instance()->steamRoot(), QString::number(m_id), logoId)};
+                            fi.exists())
+                        m_icon = fi.absoluteFilePath();
+                    // TODO: could also extract clienticon key to find icons in $steamroot/steam/games
+                }
             }
         }
     }

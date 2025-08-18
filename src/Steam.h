@@ -12,6 +12,8 @@ class Steam : public QAbstractListModel
     QML_ELEMENT
     QML_SINGLETON
 
+    Q_PROPERTY(ViewType viewType READ viewType WRITE setViewType NOTIFY viewTypeChanged FINAL)
+
 public:
     static Steam *instance();
     static Steam *create(QQmlEngine *qml, QJSEngine *js);
@@ -24,8 +26,16 @@ public:
         CardImage,
         HeroImage,
         LogoImage,
+        Icon,
         LastPlayed,
     };
+
+    enum ViewType
+    {
+        Grid,
+        List,
+    };
+    Q_ENUM(ViewType)
 
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
@@ -33,8 +43,12 @@ public:
 
     QString steamRoot() const { return m_steamRoot; }
     Q_INVOKABLE Game *gameFromId(int steamId) const;
+    ViewType viewType() const { return m_viewType; }
+
+    void setViewType(ViewType viewType);
 
 signals:
+    void viewTypeChanged(ViewType viewType);
 
 private:
     explicit Steam(QObject *parent = nullptr);
@@ -44,6 +58,7 @@ private:
 
     QString m_steamRoot;
     QList<Game *> m_games;
+    ViewType m_viewType;
 };
 
 class SteamFilter : public QSortFilterProxyModel
