@@ -15,6 +15,7 @@ ApplicationWindow {
     minimumHeight: 480
 
     SystemPalette { id: palette }
+    SystemPalette { id: disabledPalette; colorGroup: SystemPalette.Disabled }
 
     header: Pane {
         RowLayout {
@@ -72,7 +73,7 @@ ApplicationWindow {
             ToolButton {
                 icon.name: "download"
                 icon.source: Qt.resolvedUrl("icons/download.svg")
-                icon.color: palette.buttonText
+                icon.color: enabled ? palette.buttonText : disabledPalette.buttonText
                 enabled: UEVR.currentUevr && !UEVR.currentUevr.installed
                 onClicked: UEVR.downloadUEVR(UEVR.currentUevr)
             }
