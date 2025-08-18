@@ -220,7 +220,6 @@ void UEVR::downloadUEVR(UEVRRelease *release)
             process.setWorkingDirectory(targetDir);
             QStringList args;
             args << "-o" << zipPath;
-            process.execute("unzip", args);
             process.start("unzip", args);
             process.waitForFinished();
 
