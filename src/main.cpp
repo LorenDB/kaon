@@ -1,7 +1,8 @@
 #include <QApplication>
 #include <QIcon>
 #include <QQmlApplicationEngine>
-#include <QQmlContext>
+
+#include "Aptabase.h"
 
 using namespace Qt::Literals;
 
@@ -12,6 +13,9 @@ int main(int argc, char *argv[])
     QCoreApplication::setOrganizationName("LorenDB"_L1);
     QCoreApplication::setOrganizationDomain("lorendb.dev"_L1);
     QApplication app(argc, argv);
+
+    Aptabase::init("aptabase.lorendb.dev"_L1, "A-SH-5394792661"_L1);
+    Aptabase::instance()->track("startup"_L1);
 
     QQmlApplicationEngine engine;
     QObject::connect(

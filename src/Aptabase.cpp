@@ -1,0 +1,92 @@
+#include "Aptabase.h"
+
+#include <QCoreApplication>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonValue>
+#include <QNetworkAccessManager>
+#include <QRandomGenerator64>
+#include <QSettings>
+
+using namespace Qt::Literals;
+
+Aptabase *Aptabase::s_instance = nullptr;
+
+Aptabase::Aptabase(const QString &host, const QString &key, QObject *parent)
+    : QObject{parent},
+      m_host{host},
+      m_key{key}
+{
+    m_sessionId = QDateTime::currentDateTime().currentSecsSinceEpoch() + QRandomGenerator64::global()->generate64();
+
+    QSettings settings;
+    settings.beginGroup("Aptabase"_L1);
+    m_enabled = settings.value("enabled"_L1, true).toBool();
+}
+
+void Aptabase::init(const QString &host, const QString &key)
+{
+    if (s_instance)
+        s_instance->deleteLater();
+    s_instance = new Aptabase{host, key};
+}
+
+Aptabase *Aptabase::instance()
+{
+    return s_instance;
+}
+
+Aptabase *Aptabase::create(QQmlEngine *qmlEngine, QJSEngine *jsEngine)
+{
+    return s_instance;
+}
+
+void Aptabase::setEnabled(bool state)
+{
+    m_enabled = state;
+    emit enabledChanged(state);
+
+    QSettings settings;
+    settings.beginGroup("Aptabase"_L1);
+    settings.setValue("enabled"_L1, m_enabled);
+}
+
+void Aptabase::track(const QString &event, const QJsonObject &properties) const
+{
+    if (!m_enabled)
+        return;
+
+    static QNetworkAccessManager net;
+    net.setAutoDeleteReplies(true);
+
+    QNetworkRequest req{"https://%1/api/v0/events"_L1.arg(m_host)};
+    req.setHeader(QNetworkRequest::ContentTypeHeader, "application/json"_L1);
+    req.setRawHeader("App-Key"_ba, m_key.toLatin1());
+
+    QJsonObject body;
+    body["timestamp"_L1] = QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs);
+    body["sessionId"_L1] = QString::number(m_sessionId);
+    body["eventName"_L1] = event;
+
+    QJsonObject systemProperties;
+    systemProperties["locale"_L1] = QLocale::system().name(QLocale::TagSeparator::Dash);
+#if defined(Q_OS_LINUX)
+    systemProperties["osName"_L1] = "Linux"_L1;
+#elif defined(Q_OS_WIN)
+    systemProperties["osName"_L1] = "Windows"_L1;
+#elif defined(Q_OS_DARWIN)
+    systemProperties["osName"_L1] = "macOS"_L1;
+#endif
+#if defined(_DEBUG) || !defined(NDEBUG)
+    systemProperties["isDebug"_L1] = true;
+#else
+    systemProperties["isDebug"_L1] = false;
+#endif
+    systemProperties["appVersion"_L1] = qApp->applicationVersion();
+    systemProperties["sdkVersion"_L1] = "aptabase-qt@0.0.1"_L1;
+
+    body["systemProps"_L1] = systemProperties;
+    body["props"_L1] = properties;
+
+    net.post(req, QJsonDocument{QJsonArray{body}}.toJson(QJsonDocument::Compact));
+}

@@ -13,6 +13,8 @@ qt_add_qml_module(kaon
         Main.qml
         SteamGrid.qml
     SOURCES
+        Aptabase.cpp
+        Aptabase.h
         Dotnet.cpp
         Dotnet.h
         DownloadManager.cpp
@@ -25,13 +27,6 @@ qt_add_qml_module(kaon
         UEVR.h
         VDF.cpp
         VDF.h
-    RESOURCES
-        icons/draw-arrow-back.svg
-        icons/download.svg
-        icons/folder.svg
-        icons/kaon.svg
-        icons/media-playback-start.svg
-        icons/settings-configure.svg
 )
 
 target_link_libraries(kaon
