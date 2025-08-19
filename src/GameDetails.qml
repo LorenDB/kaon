@@ -140,8 +140,15 @@ Pane {
         }
 
         Label {
+            visible: gameDetailsRoot.game.hasLinuxBinary
+            text: "⚠️ " + gameDetailsRoot.game.name + " has multiple launch options available. Make sure you have configured Steam to launch this game using Proton, or else UEVR will not work."
+            wrapMode: Label.WordWrap
+        }
+
+        Label {
             visible: gameDetailsRoot.game.supportsVr
             text: "⚠️ This game already supports VR, so you probably should use its native VR support instead!"
+            wrapMode: Label.WordWrap
         }
 
         Button {

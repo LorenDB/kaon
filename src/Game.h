@@ -20,6 +20,7 @@ class Game : public QObject
     Q_PROPERTY(Store store READ store CONSTANT FINAL)
     Q_PROPERTY(bool supportsVr READ supportsVr CONSTANT FINAL)
     Q_PROPERTY(bool vrOnly READ vrOnly CONSTANT FINAL)
+    Q_PROPERTY(bool hasLinuxBinary READ hasLinuxBinary CONSTANT FINAL)
 
     Q_PROPERTY(QString cardImage READ cardImage CONSTANT)
     Q_PROPERTY(QString heroImage READ heroImage CONSTANT)
@@ -74,6 +75,7 @@ public:
     Store store() const { return m_store; }
     bool supportsVr() const { return m_supportsVr; }
     bool vrOnly() const { return m_vrOnly; }
+    bool hasLinuxBinary() const;
 
     enum LogoPosition
     {
@@ -131,11 +133,20 @@ private:
 
     struct LaunchOption
     {
+        enum Platform
+        {
+            Windows,
+            Linux,
+            MacOS,
+        };
+        Q_DECLARE_FLAGS(Platforms, Platform)
+
+        Platforms platform;
         QString executable;
         QString type;
     };
 
-    QList<LaunchOption> m_executables;
+    QMap<int, LaunchOption> m_executables;
 
     // Older Proton installs use a `dist` folder; newer installs use a `files` folder. We need to differentiate them.
     QString m_filesOrDist;

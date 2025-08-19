@@ -115,15 +115,26 @@ Game::Game(int steamId, QString steamDrive, QObject *parent)
     {
         if (section.name.startsWith("appinfo.config.launch."_L1))
         {
-            LaunchOption lo;
+            int id = section.name.split('.').at(3).toInt();
+            if (!m_executables.contains(id))
+                m_executables[id] = {};
             for (const auto &[key, value] : std::as_const(section.keys))
             {
                 if (key == "executable"_L1)
-                    lo.executable = m_installDir + '/' + static_cast<const char *>(value.second);
+                    m_executables[id].executable = m_installDir + '/' + static_cast<const char *>(value.second);
                 else if (key == "type"_L1)
-                    lo.type = static_cast<const char *>(value.second);
+                    m_executables[id].type = static_cast<const char *>(value.second);
+                else if (key == "oslist"_L1)
+                {
+                    const QString os = static_cast<const char *>(value.second);
+                    if (os.contains("windows"_L1))
+                        m_executables[id].platform |= LaunchOption::Platform::Windows;
+                    if (os.contains("linux"_L1))
+                        m_executables[id].platform |= LaunchOption::Platform::Linux;
+                    if (os.contains("macos"_L1))
+                        m_executables[id].platform |= LaunchOption::Platform::MacOS;
+                }
             }
-            m_executables.push_back(lo);
         }
 
         // This is in theory a great way to detect Source games. Unfortunately it seems to pick up some non-Source games
@@ -207,6 +218,14 @@ Game::Game(int steamId, QString steamDrive, QObject *parent)
     }
 
     detectGameEngine();
+}
+
+bool Game::hasLinuxBinary() const
+{
+    for (const auto &exe : m_executables)
+        if (exe.platform.testFlag(LaunchOption::Platform::Linux))
+            return true;
+    return false;
 }
 
 QString Game::protonBinary() const
