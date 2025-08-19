@@ -139,6 +139,11 @@ Pane {
             }
         }
 
+        Label {
+            visible: gameDetailsRoot.game.supportsVr
+            text: "⚠️ This game already supports VR, so you probably should use its native VR support instead!"
+        }
+
         Button {
             text: gameDetailsRoot.game.dotnetInstalled ? "Repair or uninstall .NET" : "Install .NET desktop runtime"
             enabled: {
