@@ -134,8 +134,8 @@ ApplicationWindow {
         SteamView {
             anchors.fill: parent
             onGameClicked: (steamId) => {
-                               theStack.push(gameDetails, { game: Steam.gameFromId(steamId) })
-                           }
+               theStack.push(gameDetails, { game: Steam.gameFromId(steamId) })
+           }
         }
     }
 
