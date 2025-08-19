@@ -24,6 +24,8 @@ qt_add_qml_module(kaon
         DownloadManager.h
         Game.cpp
         Game.h
+        Mods.cpp
+        Mods.h
         Steam.cpp
         Steam.h
         UEVR.cpp
