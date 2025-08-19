@@ -96,7 +96,7 @@ ApplicationWindow {
 
             ToolButton {
                 icon.name: "settings-configure"
-                icon.source: Qt.resolvedUrl("icons/folder.svg")
+                icon.source: Qt.resolvedUrl("icons/settings-configure.svg")
                 icon.color: enabled ? palette.buttonText : disabledPalette.buttonText
                 enabled: theStack.currentItem ? theStack.currentItem.objectName !== "theOneAndOnlySettingsPage" : true
                 hoverEnabled: true
