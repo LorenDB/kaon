@@ -87,6 +87,12 @@ Pane {
                 Item { Layout.fillHeight: true }
 
                 Tag {
+                    text: "VR"
+                    color: "#ffac26"
+                    visible: gameDetailsRoot.game.supportsVr
+                }
+
+                Tag {
                     text: "Demo"
                     color: "#5d9e00"
                     visible: gameDetailsRoot.game.type === Game.Demo

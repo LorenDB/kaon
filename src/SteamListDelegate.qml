@@ -76,6 +76,12 @@ ListView {
             }
 
             Tag {
+                text: "VR"
+                color: "#ffac26"
+                visible: Steam.gameFromId(delegate.steamId).supportsVr
+            }
+
+            Tag {
                 text: "Demo"
                 color: "#5d9e00"
                 visible: Steam.gameFromId(delegate.steamId).type === Game.Demo

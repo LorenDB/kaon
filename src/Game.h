@@ -18,6 +18,8 @@ class Game : public QObject
     Q_PROPERTY(QString selectedProtonInstall READ selectedProtonInstall NOTIFY selectedProtonInstallChanged FINAL)
     Q_PROPERTY(AppType type READ type CONSTANT)
     Q_PROPERTY(Store store READ store CONSTANT FINAL)
+    Q_PROPERTY(bool supportsVr READ supportsVr CONSTANT FINAL)
+    Q_PROPERTY(bool vrOnly READ vrOnly CONSTANT FINAL)
 
     Q_PROPERTY(QString cardImage READ cardImage CONSTANT)
     Q_PROPERTY(QString heroImage READ heroImage CONSTANT)
@@ -70,6 +72,8 @@ public:
     Engine engine() const { return m_engine; }
     AppType type() const { return m_type; }
     Store store() const { return m_store; }
+    bool supportsVr() const { return m_supportsVr; }
+    bool vrOnly() const { return m_vrOnly; }
 
     enum LogoPosition
     {
@@ -112,6 +116,8 @@ private:
     Engine m_engine = Engine::Unknown;
     AppType m_type = AppType::Game;
     Store m_store;
+    bool m_supportsVr{false};
+    bool m_vrOnly{false};
 
     QString m_cardImage;
     QString m_heroImage;
@@ -122,7 +128,13 @@ private:
     LogoPosition m_logoHPosition;
     LogoPosition m_logoVPosition;
 
-    QStringList m_executables;
+    struct LaunchOption
+    {
+        QString executable;
+        QString type;
+    };
+
+    QList<LaunchOption> m_executables;
 
     // Older Proton installs use a `dist` folder; newer installs use a `files` folder. We need to differentiate them.
     QString m_filesOrDist;

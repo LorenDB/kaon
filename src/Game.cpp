@@ -103,14 +103,15 @@ Game::Game(int steamId, QObject *parent)
     {
         if (section.name.startsWith("appinfo.config.launch."_L1))
         {
+            LaunchOption lo;
             for (const auto &[key, value] : std::as_const(section.keys))
             {
                 if (key == "executable"_L1)
-                {
-                    assert(value.first == AppInfoVDF::AppInfo::Section::String);
-                    m_executables.push_back(m_installDir + '/' + static_cast<const char *>(value.second));
-                }
+                    lo.executable = m_installDir + '/' + static_cast<const char *>(value.second);
+                else if (key == "type"_L1)
+                    lo.type = static_cast<const char *>(value.second);
             }
+            m_executables.push_back(lo);
         }
 
         // This is in theory a great way to detect Source games. Unfortunately it seems to pick up some non-Source games
@@ -182,6 +183,13 @@ Game::Game(int steamId, QObject *parent)
                         m_icon = fi.absoluteFilePath();
                     // TODO: could also extract clienticon key to find icons in $steamroot/steam/games
                 }
+                else if (key == "openvrsupport"_L1 || key == "openxrsupport"_L1)
+                    m_supportsVr |= parseInt(value.first, value.second);
+                else if (key == "onlyvrsupport"_L1)
+                {
+                    m_vrOnly = parseInt(value.first, value.second);
+                    m_supportsVr |= m_vrOnly;
+                }
             }
         }
     }
@@ -243,7 +251,7 @@ void Game::detectGameEngine()
     // https://github.com/Raicuparta/rai-pal/blob/51157fdae6b1d87760580d85082ccd5026bb0320/backend/core/src/game_engines/unity.rs
     for (const auto &e : m_executables)
     {
-        QFileInfo exe{e};
+        QFileInfo exe{e.executable};
         if (QFileInfo dataDir{exe.absolutePath() + '/' + exe.baseName() + "_Data"_L1}; dataDir.exists() && dataDir.isDir())
         {
             m_engine = Engine::Unity;
@@ -258,7 +266,7 @@ void Game::detectGameEngine()
     // https://github.com/SteamDatabase/FileDetectionRuleSets/blob/ac27c7cfc0a63dc07cc9e65157841857d82f347b/tests/FileDetector.php#L316
     for (const auto &e : m_executables)
     {
-        QFileInfo exe{e};
+        QFileInfo exe{e.executable};
         QDirIterator pckFinder{exe.absolutePath()};
         while (pckFinder.hasNext())
         {

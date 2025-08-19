@@ -124,6 +124,12 @@ GridView {
             Item { Layout.fillHeight: true }
 
             Tag {
+                text: "VR"
+                color: "#ffac26"
+                visible: Steam.gameFromId(card.steamId).supportsVr
+            }
+
+            Tag {
                 text: "Demo"
                 color: "#5d9e00"
                 visible: Steam.gameFromId(card.steamId).type === Game.Demo
