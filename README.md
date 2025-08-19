@@ -10,7 +10,9 @@ can be disabled in the settings page.
 
 ## Download
 
-Bleeding-edge builds are available via CI. To get them, click on the latest workflow run
+You can download the latest release of Kaon [on the releases page](https://github.com/LorenDB/kaon/releases/latest).
+
+Alternatively, bleeding-edge builds are available via CI. To get them, click on the latest workflow run
 [here](https://github.com/LorenDB/kaon/actions) and download the AppImage artifact.
 
 ## Features
