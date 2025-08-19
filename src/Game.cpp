@@ -12,7 +12,8 @@ using namespace Qt::Literals;
 
 Game::Game(int steamId, QObject *parent)
     : QObject{parent},
-      m_id{steamId}
+      m_id{steamId},
+      m_store{Store::Steam}
 {
     std::ifstream acfFile{Steam::instance()->steamRoot().toStdString() + "/steamapps/appmanifest_" + std::to_string(m_id) +
                 ".acf"};

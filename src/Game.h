@@ -17,6 +17,7 @@ class Game : public QObject
     Q_PROPERTY(QString protonPrefix READ protonPrefix CONSTANT)
     Q_PROPERTY(QString selectedProtonInstall READ selectedProtonInstall NOTIFY selectedProtonInstallChanged FINAL)
     Q_PROPERTY(AppType type READ type CONSTANT)
+    Q_PROPERTY(Store store READ store CONSTANT FINAL)
 
     Q_PROPERTY(QString cardImage READ cardImage CONSTANT)
     Q_PROPERTY(QString heroImage READ heroImage CONSTANT)
@@ -54,6 +55,11 @@ public:
     Q_ENUM(AppType)
     Q_DECLARE_FLAGS(AppTypes, AppType)
 
+    enum class Store
+    {
+        Steam,
+    };
+
     int id() const { return m_id; }
     QString name() const { return m_name; }
     QString installDir() const { return m_installDir; }
@@ -63,6 +69,7 @@ public:
     QString selectedProtonInstall() const { return m_selectedProtonInstall; }
     Engine engine() const { return m_engine; }
     AppType type() const { return m_type; }
+    Store store() const { return m_store; }
 
     enum LogoPosition
     {
@@ -104,6 +111,7 @@ private:
     QString m_selectedProtonInstall;
     Engine m_engine = Engine::Unknown;
     AppType m_type = AppType::Game;
+    Store m_store;
 
     QString m_cardImage;
     QString m_heroImage;
