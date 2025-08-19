@@ -133,7 +133,7 @@ void Steam::scanSteam()
         game->deleteLater();
     m_games.clear();
 
-    const auto parseLibraryFolders = [this](const QString &vdfPath) {
+    const auto parseLibraryFolders = [this](const QString &vdfPath) -> bool {
         std::ifstream vdfFile{vdfPath.toStdString()};
 
         try
@@ -151,13 +151,19 @@ void Steam::scanSteam()
         catch (const std::length_error &e)
         {
             qDebug() << "Failure while parsing libraryfolders.vdf:" << e.what();
-            Aptabase::instance()->track("failure-parsing-libraryfolders-bug");
+            auto parts = vdfPath.split('/');
+            Aptabase::instance()->track("failure-parsing-libraryfolders-bug"_L1,
+                                        {{"which"_L1, parts.size() >= 2 ? parts[parts.size() - 2] : ""_L1}});
+            return false;
         }
+
+        return true;
     };
 
+    bool parsed{false};
     if (const QFileInfo fi{m_steamRoot + "/steamapps/libraryfolders.vdf"_L1}; fi.exists() && fi.isFile())
-        parseLibraryFolders({fi.absoluteFilePath()});
-    else if (const QFileInfo fi{m_steamRoot + "/config/libraryfolders.vdf"_L1}; fi.exists() && fi.isFile())
+        parsed = parseLibraryFolders({fi.absoluteFilePath()});
+    if (const QFileInfo fi{m_steamRoot + "/config/libraryfolders.vdf"_L1}; !parsed && fi.exists() && fi.isFile())
         parseLibraryFolders({fi.absoluteFilePath()});
     else
         qDebug() << "Could not find libraryfolders.vdf";
