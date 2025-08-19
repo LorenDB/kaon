@@ -15,6 +15,8 @@ qt_add_qml_module(kaon
         SteamView.qml
         SteamGridDelegate.qml
         SteamListDelegate.qml
+
+        components/Tag.qml
     SOURCES
         Aptabase.cpp
         Aptabase.h

@@ -75,20 +75,10 @@ ListView {
                 text: delegate.name
             }
 
-            Rectangle {
+            Tag {
+                text: "Demo"
                 color: "#5d9e00"
-                Layout.preferredWidth: demoLabel.implicitWidth + 4
-                Layout.preferredHeight: demoLabel.implicitHeight + 4
-                radius: 3
                 visible: Steam.gameFromId(delegate.steamId).type === Game.Demo
-
-                Label {
-                    id: demoLabel
-
-                    text: "Demo"
-                    font.bold: true
-                    anchors.centerIn: parent
-                }
             }
 
             Item { Layout.fillWidth: true }
