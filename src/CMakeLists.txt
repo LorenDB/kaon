@@ -7,16 +7,18 @@ qt_add_executable(kaon
 qt_add_qml_module(kaon
     URI dev.lorendb.kaon
     VERSION 1.0
-    QML_FILES
-        DotnetDownloadDialog.qml
-        GameDetails.qml
-        Main.qml
-        SettingsPage.qml
-        SteamView.qml
-        SteamGridDelegate.qml
-        SteamListDelegate.qml
 
-        components/Tag.qml
+    QML_FILES
+        qml/DotnetDownloadDialog.qml
+        qml/GameDetails.qml
+        qml/Main.qml
+        qml/SettingsPage.qml
+        qml/SteamView.qml
+
+        qml/components/SteamGridDelegate.qml
+        qml/components/SteamListDelegate.qml
+        qml/components/Tag.qml
+
     SOURCES
         Aptabase.cpp
         Aptabase.h
@@ -26,12 +28,14 @@ qt_add_qml_module(kaon
         DownloadManager.h
         Game.cpp
         Game.h
-        Steam.cpp
-        Steam.h
         UEVR.cpp
         UEVR.h
         VDF.cpp
         VDF.h
+
+        stores/Steam.cpp
+        stores/Steam.h
+
     RESOURCES
         icons/delete.svg
         icons/download.svg
@@ -41,6 +45,9 @@ qt_add_qml_module(kaon
         icons/media-playback-start.svg
         icons/settings-configure.svg
 )
+
+# needed to make the QML module compilation find headers that aren't directly in src
+target_include_directories(kaon PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/stores>)
 
 target_link_libraries(kaon
     PRIVATE

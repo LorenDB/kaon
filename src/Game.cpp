@@ -5,8 +5,8 @@
 
 #include "Aptabase.h"
 #include "Dotnet.h"
-#include "Steam.h"
 #include "VDF.h"
+#include "stores/Steam.h"
 #include "vdf_parser.hpp"
 
 using namespace Qt::Literals;

@@ -34,7 +34,7 @@
 #include <QStandardPaths>
 #include <QTimer>
 
-#include "Steam.h"
+#include "stores/Steam.h"
 
 using namespace Qt::Literals;
 

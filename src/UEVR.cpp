@@ -11,7 +11,7 @@
 
 #include "Aptabase.h"
 #include "DownloadManager.h"
-#include "Steam.h"
+#include "stores/Steam.h"
 
 using namespace Qt::Literals;
 
