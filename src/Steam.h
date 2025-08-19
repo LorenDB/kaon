@@ -12,6 +12,7 @@ class Steam : public QAbstractListModel
     QML_ELEMENT
     QML_SINGLETON
 
+    Q_PROPERTY(QString steamRoot READ steamRoot CONSTANT FINAL)
     Q_PROPERTY(ViewType viewType READ viewType WRITE setViewType NOTIFY viewTypeChanged FINAL)
 
 public:

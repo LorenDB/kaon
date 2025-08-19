@@ -29,6 +29,18 @@ Pane {
                 onCheckedChanged: Aptabase.enabled = checked
             }
 
+            MenuSeparator {}
+
+            Label {
+                text: "Info"
+                font.bold: true
+                font.pointSize: fontInfo.pointSize * 1.4
+            }
+
+            Label {
+                text: Steam.steamRoot === "" ? "No Steam installation detected" : "Steam install detected: " + Steam.steamRoot
+            }
+
             Item { Layout.fillHeight: true }
         }
     }
