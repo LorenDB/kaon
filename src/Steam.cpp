@@ -164,7 +164,7 @@ void Steam::scanSteam()
         parsed = parseLibraryFolders({fi.absoluteFilePath()});
     if (const QFileInfo fi{m_steamRoot + "/config/libraryfolders.vdf"_L1}; !parsed && fi.exists() && fi.isFile())
         parseLibraryFolders({fi.absoluteFilePath()});
-    else
+    if (!parsed)
         qDebug() << "Could not find libraryfolders.vdf";
 
     endResetModel();
