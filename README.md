@@ -8,6 +8,10 @@ Currently, Kaon does not support Steam installed via Flatpak.
 Kaon collects basic anonymous usage information to help inform development; these analytics
 can be disabled in the settings page.
 
+## Screenshot
+
+![Screenshot of Kaon](https://github.com/LorenDB/Kaon/blob/master/screenshot.png)
+
 ## Download
 
 You can download the latest release of Kaon [on the releases page](https://github.com/LorenDB/kaon/releases/latest).
