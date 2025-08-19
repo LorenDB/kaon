@@ -22,10 +22,13 @@ Steam::Steam(QObject *parent)
     static const QStringList steamPaths = {
         QDir::homePath() + "/.local/share/Steam"_L1,
         QDir::homePath() + "/.steam/steam"_L1,
+        // Debian ships a Steam installer script that uses this path for some weird reason
+        QDir::homePath() + "/.steam/debian-installation"_L1,
         // TODO: sandboxing used in flatpak appears to make UEVR not work, so I'm disabling flatpak detection for now
         // QDir::homePath() + "/.var/app/com.valvesoftware.Steam/data/Steam"_L1,
-        QDir::homePath() + "/snap/steam/common/.local/share/Steam"_L1,
-        QDir::homePath() + "/.snap/data/steam/common/.local/share/Steam"_L1,
+        // TODO: Snap appears to be broken as well. This should get fixed eventually.
+        // QDir::homePath() + "/snap/steam/common/.local/share/Steam"_L1,
+        // QDir::homePath() + "/.snap/data/steam/common/.local/share/Steam"_L1,
     };
 
     for (const auto &path : steamPaths)
