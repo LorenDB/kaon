@@ -132,7 +132,6 @@ ApplicationWindow {
         anchors.margins: 10
 
         initialItem: SteamView {
-            anchors.fill: parent
             onGameClicked: (steamId) => {
                theStack.push(gameDetails, { game: Steam.gameFromId(steamId) })
            }
