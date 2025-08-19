@@ -11,7 +11,6 @@ Pane {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 10
         spacing: 10
 
         Image {
