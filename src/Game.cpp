@@ -3,6 +3,7 @@
 #include <QDirIterator>
 #include <QFileInfo>
 
+#include "Aptabase.h"
 #include "Dotnet.h"
 #include "Steam.h"
 #include "VDF.h"
@@ -16,13 +17,25 @@ Game::Game(int steamId, QString steamDrive, QObject *parent)
       m_steamDrive{steamDrive},
       m_store{Store::Steam}
 {
-    std::ifstream acfFile{m_steamDrive.toStdString() + "/steamapps/appmanifest_" + std::to_string(m_id) + ".acf"};
-    auto app = tyti::vdf::read(acfFile);
+    const QString acfPath = "%1/steamapps/appmanifest_%2.acf"_L1.arg(m_steamDrive, QString::number(m_id));
+    try
+    {
+        std::ifstream acfFile{acfPath.toStdString()};
+        auto app = tyti::vdf::read(acfFile);
 
-    m_name = QString::fromStdString(app.attribs["name"]);
-    m_installDir = m_steamDrive + "/steamapps/common/"_L1 + QString::fromStdString(app.attribs["installdir"]);
-    if (app.attribs.contains("LastPlayed"))
-        m_lastPlayed = QDateTime::fromSecsSinceEpoch(std::stoi(app.attribs["LastPlayed"]));
+        m_name = QString::fromStdString(app.attribs["name"]);
+        m_installDir = m_steamDrive + "/steamapps/common/"_L1 + QString::fromStdString(app.attribs["installdir"]);
+        if (app.attribs.contains("LastPlayed"))
+            m_lastPlayed = QDateTime::fromSecsSinceEpoch(std::stoi(app.attribs["LastPlayed"]));
+
+    }
+    catch (const std::length_error &e)
+    {
+        qDebug() << "Failure while parsing game from libraryfolders.vdf:" << e.what();
+        auto parts = acfPath.split('/');
+        Aptabase::instance()->track("failure-parsing-game-libraryfolders-bug"_L1,
+                                    {{"which"_L1, parts.size() >= 2 ? parts[parts.size() - 2] : ""_L1}});
+    }
 
     const auto imageDir = Steam::instance()->steamRoot() + "/appcache/librarycache/"_L1 + QString::number(m_id);
     QDirIterator images{imageDir, QDirIterator::Subdirectories};
