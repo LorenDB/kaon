@@ -26,8 +26,8 @@ ApplicationWindow {
                 icon.name: "draw-arrow-back"
                 icon.source: Qt.resolvedUrl("icons/draw-arrow-back.svg")
                 icon.color: palette.buttonText
-                visible: theStack.depth > 0
-                onClicked: theStack.popCurrentItem()
+                visible: theStack.depth > 1
+                onClicked: if (theStack.depth > 1) theStack.popCurrentItem()
             }
 
             Item { Layout.fillWidth: true }
@@ -131,7 +131,7 @@ ApplicationWindow {
         anchors.fill: root.contentItem
         anchors.margins: 10
 
-        SteamView {
+        initialItem: SteamView {
             anchors.fill: parent
             onGameClicked: (steamId) => {
                theStack.push(gameDetails, { game: Steam.gameFromId(steamId) })
