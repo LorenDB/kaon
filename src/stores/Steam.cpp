@@ -20,8 +20,9 @@ Steam::Steam(QObject *parent)
     m_viewType = settings.value("viewType"_L1, ViewType::Grid).value<ViewType>();
 
     static const QStringList steamPaths = {
-        QDir::homePath() + "/.local/share/Steam"_L1,
+        // ~/.steam comes first since it *should* point to the active Steam install
         QDir::homePath() + "/.steam/steam"_L1,
+        QDir::homePath() + "/.local/share/Steam"_L1,
         // Debian ships a Steam installer script that uses this path for some weird reason
         QDir::homePath() + "/.steam/debian-installation"_L1,
         // TODO: sandboxing used in flatpak appears to make UEVR not work, so I'm disabling flatpak detection for now
