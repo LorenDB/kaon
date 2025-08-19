@@ -42,11 +42,12 @@ Game::Game(int steamId, QString steamDrive, QObject *parent)
     while (images.hasNext())
     {
         images.next();
-        if (images.fileName() == "library_600x900.jpg"_L1 && m_cardImage.isEmpty())
+        if ((images.fileName() == "library_600x900.jpg"_L1 || images.fileName() == "library_capsule.jpg"_L1) &&
+                m_cardImage.isEmpty())
             m_cardImage = "file://"_L1 + images.filePath();
-        if (images.fileName() == "library_hero.jpg"_L1 && m_heroImage.isEmpty())
+        else if (images.fileName() == "library_hero.jpg"_L1 && m_heroImage.isEmpty())
             m_heroImage = "file://"_L1 + images.filePath();
-        if (images.fileName() == "logo.png"_L1 && m_logoImage.isEmpty())
+        else if (images.fileName() == "logo.png"_L1 && m_logoImage.isEmpty())
             m_logoImage = "file://"_L1 + images.filePath();
     }
 
