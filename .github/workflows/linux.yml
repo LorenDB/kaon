@@ -11,6 +11,16 @@ jobs:
       fail-fast: false
 
     steps:
+      - name: Add universe repo
+        run: |
+          sudo DEBIAN_FRONTEND=noninteractive apt-add-repository universe
+
+      - name: Install packages
+        uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: build-essential libgl1-mesa-dev libgstreamer-gl1.0-0 libpulse-dev libxcb-glx0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-render0 libxcb-shape0 libxcb-shm0 libxcb-sync1 libxcb-util1 libxcb-xfixes0 libxcb-xinerama0 libxcb1 libxkbcommon-dev libxkbcommon-x11-0 libxcb-xkb-dev libxcb-cursor libfuse2t64
+          version: 1.0
+
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
@@ -32,11 +42,6 @@ jobs:
         with:
           plugins: qt appimage
           dir: ${{ github.workspace }}
-
-      - name: Install packages
-        run: |
-          sudo DEBIAN_FRONTEND=noninteractive apt-add-repository universe
-          sudo DEBIAN_FRONTEND=noninteractive apt install libfuse2t64 -y
 
       - name: Build release package
         run: |
