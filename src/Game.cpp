@@ -1,7 +1,7 @@
 #include "Game.h"
 
-#include <QFileInfo>
 #include <QDirIterator>
+#include <QFileInfo>
 
 #include "Dotnet.h"
 #include "Steam.h"
@@ -10,18 +10,17 @@
 
 using namespace Qt::Literals;
 
-Game::Game(int steamId, QObject *parent)
+Game::Game(int steamId, QString steamDrive, QObject *parent)
     : QObject{parent},
       m_id{steamId},
+      m_steamDrive{steamDrive},
       m_store{Store::Steam}
 {
-    std::ifstream acfFile{Steam::instance()->steamRoot().toStdString() + "/steamapps/appmanifest_" + std::to_string(m_id) +
-                ".acf"};
+    std::ifstream acfFile{m_steamDrive.toStdString() + "/steamapps/appmanifest_" + std::to_string(m_id) + ".acf"};
     auto app = tyti::vdf::read(acfFile);
 
     m_name = QString::fromStdString(app.attribs["name"]);
-    m_installDir =
-            Steam::instance()->steamRoot() + "/steamapps/common/"_L1 + QString::fromStdString(app.attribs["installdir"]);
+    m_installDir = m_steamDrive + "/steamapps/common/"_L1 + QString::fromStdString(app.attribs["installdir"]);
     if (app.attribs.contains("LastPlayed"))
         m_lastPlayed = QDateTime::fromSecsSinceEpoch(std::stoi(app.attribs["LastPlayed"]));
 
@@ -38,7 +37,7 @@ Game::Game(int steamId, QObject *parent)
             m_logoImage = "file://"_L1 + images.filePath();
     }
 
-    QString compatdata = Steam::instance()->steamRoot() + "/steamapps/compatdata/"_L1 + QString::number(m_id);
+    QString compatdata = m_steamDrive + "/steamapps/compatdata/"_L1 + QString::number(m_id);
     if (QFileInfo fi{compatdata}; fi.exists() && fi.isDir())
     {
         m_protonExists = true;

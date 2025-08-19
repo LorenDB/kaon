@@ -139,10 +139,9 @@ void Steam::scanSteam()
         try
         {
             auto libraryFolders = tyti::vdf::read(vdfFile);
-
             for (const auto &[_, folder] : libraryFolders.childs)
                 for (const auto &[appId, _] : folder->childs["apps"]->attribs)
-                    m_games.push_back(new Game{std::stoi(appId), this});
+                    m_games.push_back(new Game{std::stoi(appId), QString::fromStdString(folder->attribs["path"]), this});
 
             std::sort(m_games.begin(), m_games.end(), [](const auto &a, const auto &b) {
                 return a->lastPlayed() > b->lastPlayed();

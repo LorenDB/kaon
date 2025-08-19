@@ -33,7 +33,7 @@ class Game : public QObject
     Q_PROPERTY(bool dotnetInstalled READ dotnetInstalled NOTIFY dotnetInstalledChanged FINAL)
 
 public:
-    explicit Game(int steamId, QObject *parent = nullptr);
+    explicit Game(int steamId, QString steamDrive, QObject *parent = nullptr);
 
     enum Engine
     {
@@ -108,6 +108,7 @@ private:
 
     int m_id = 0;
     QString m_name;
+    QString m_steamDrive;
     QString m_installDir;
     QDateTime m_lastPlayed;
     bool m_protonExists{false};
