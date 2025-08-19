@@ -9,6 +9,8 @@ Pane {
 
     required property Game game
 
+    anchors.fill: parent
+
     ColumnLayout {
         anchors.fill: parent
         spacing: 10
