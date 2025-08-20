@@ -5,6 +5,8 @@
 #include <QQmlEngine>
 #include <QSortFilterProxyModel>
 
+#include "Game.h"
+
 class UEVRRelease : public QObject
 {
     Q_OBJECT
@@ -90,7 +92,7 @@ public:
     QString path(const Paths path) const;
 
 public slots:
-    void launchUEVR(const int steamId);
+    void launchUEVR(const Game *game);
     void downloadUEVR(UEVRRelease *uevr);
     void deleteUEVR(UEVRRelease *uevr);
 

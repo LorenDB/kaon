@@ -8,12 +8,12 @@ import dev.lorendb.kaon
 GridView {
     id: grid
 
-    signal gameClicked(int steamId)
+    signal gameClicked(Game game)
 
     readonly property int cardWidth: 120
     readonly property int cardHeight: 180
 
-    model: SteamFilter
+    model: GamesFilterModel
     cellWidth: {
         let usableWidth = width - (leftMargin + rightMargin + sb.width)
         return usableWidth / Math.floor(usableWidth / (cardWidth * 1.1))
@@ -26,14 +26,12 @@ GridView {
     delegate: Item {
         id: card
 
-        required property string name
-        required property int steamId
-        required property string cardImage
+        required property Game game
 
         width: grid.cellWidth
         height: grid.cardHeight
         scale: ma.containsMouse ? 1.07 : 1.0
-        ToolTip.text: name
+        ToolTip.text: game.name
         ToolTip.delay: 1000
         ToolTip.visible: ma.containsMouse
 
@@ -48,7 +46,7 @@ GridView {
             id: cardImage
 
             anchors.centerIn: card
-            source: card.cardImage
+            source: card.game.cardImage
             fillMode: Image.PreserveAspectCrop
             asynchronous: true
             width: grid.cardWidth
@@ -85,7 +83,7 @@ GridView {
                 anchors.fill: textFallback
                 anchors.margins: 5
                 wrapMode: Label.WordWrap
-                text: card.name
+                text: card.game.name
             }
         }
 
@@ -113,7 +111,7 @@ GridView {
             anchors.fill: card
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
-            onClicked: grid.gameClicked(card.steamId)
+            onClicked: grid.gameClicked(card.game)
         }
 
         ColumnLayout {
@@ -126,13 +124,13 @@ GridView {
             Tag {
                 text: "VR"
                 color: "#ffac26"
-                visible: Steam.gameFromId(card.steamId).supportsVr
+                visible: game.supportsVr
             }
 
             Tag {
                 text: "Demo"
                 color: "#5d9e00"
-                visible: Steam.gameFromId(card.steamId).type === Game.Demo
+                visible: game.type === Game.Demo
             }
         }
     }

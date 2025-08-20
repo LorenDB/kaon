@@ -33,6 +33,7 @@ signals:
     void downloadingChanged();
     void currentDownloadNameChanged();
     void downloadFailed(const QString &whatWasBeingDownloaded);
+    void newDownloadEnqueued();
 
 private:
     explicit DownloadManager(QObject *parent = nullptr);

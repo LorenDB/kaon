@@ -3,6 +3,8 @@
 #include <QObject>
 #include <QQmlEngine>
 
+#include "Game.h"
+
 class Dotnet : public QObject
 {
     Q_OBJECT
@@ -20,15 +22,15 @@ public:
     bool dotnetDownloadInProgress() const;
 
 public slots:
-    void installDotnetDesktopRuntime(int steamId);
-    void downloadDotnetDesktopRuntime(int steamId = 0);
+    void installDotnetDesktopRuntime(Game *game);
+    void downloadDotnetDesktopRuntime(Game *game = nullptr);
 
-    bool isDotnetInstalled(int steamId);
+    bool isDotnetInstalled(const Game *game);
 
 signals:
     void hasDotnetCachedChanged(const bool);
     void dotnetDownloadInProgressChanged(const bool);
-    void promptDotnetDownload(const int steamId = 0);
+    void promptDotnetDownload(const Game *game = nullptr);
     void dotnetDownloadFailed();
 
 private:

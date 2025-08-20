@@ -131,9 +131,9 @@ ApplicationWindow {
         anchors.fill: root.contentItem
         anchors.margins: 10
 
-        initialItem: SteamView {
-            onGameClicked: (steamId) => {
-               theStack.push(gameDetails, { game: Steam.gameFromId(steamId) })
+        initialItem: GamesView {
+            onGameClicked: (game) => {
+               theStack.push(gameDetails, { game: game })
            }
         }
     }
@@ -208,8 +208,8 @@ ApplicationWindow {
     }
 
     Connections {
-        function onPromptDotnetDownload(steamId: int) {
-            dotnetDownloadDialog.steamId = steamId;
+        function onPromptDotnetDownload(game: Game) {
+            dotnetDownloadDialog.game = game;
             dotnetDownloadDialog.open();
         }
 

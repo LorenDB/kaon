@@ -15,10 +15,6 @@ Steam *Steam::s_instance = nullptr;
 Steam::Steam(QObject *parent)
     : QAbstractListModel{parent}
 {
-    QSettings settings;
-    settings.beginGroup("Steam"_L1);
-    m_viewType = settings.value("viewType"_L1, ViewType::Grid).value<ViewType>();
-
     static const QStringList steamPaths = {
         // ~/.steam comes first since it *should* point to the active Steam install
         QDir::homePath() + "/.steam/steam"_L1,
@@ -75,22 +71,9 @@ QVariant Steam::data(const QModelIndex &index, int role) const
     switch (role)
     {
     case Qt::DisplayRole:
-    case Roles::Name:
         return item->name();
-    case Roles::SteamID:
-        return item->id();
-    case Roles::InstallDir:
-        return item->installDir();
-    case Roles::CardImage:
-        return item->cardImage();
-    case Roles::HeroImage:
-        return item->heroImage();
-    case Roles::LogoImage:
-        return item->logoImage();
-    case Roles::Icon:
-        return item->icon();
-    case Roles::LastPlayed:
-        return item->lastPlayed();
+    case Roles::GameObject:
+        return QVariant::fromValue(item);
     }
 
     return {};
@@ -98,14 +81,7 @@ QVariant Steam::data(const QModelIndex &index, int role) const
 
 QHash<int, QByteArray> Steam::roleNames() const
 {
-    return {{Roles::Name, "name"_ba},
-        {Roles::SteamID, "steamId"_ba},
-        {Roles::InstallDir, "installDir"_ba},
-        {Roles::CardImage, "cardImage"_ba},
-        {Roles::HeroImage, "heroImage"_ba},
-        {Roles::LogoImage, "logoImage"_ba},
-        {Roles::Icon, "iconImage"_ba},
-        {Roles::LastPlayed, "lastPlayed"_ba}};
+    return {{Roles::GameObject, "game"_ba}};
 }
 
 Game *Steam::gameFromId(int steamId) const
@@ -114,16 +90,6 @@ Game *Steam::gameFromId(int steamId) const
         if (game->id() == steamId)
             return game;
     return nullptr;
-}
-
-void Steam::setViewType(ViewType viewType)
-{
-    m_viewType = viewType;
-    emit viewTypeChanged(m_viewType);
-
-    QSettings settings;
-    settings.beginGroup("Steam"_L1);
-    settings.setValue("viewType"_L1, m_viewType);
 }
 
 void Steam::scanSteam()
@@ -145,7 +111,7 @@ void Steam::scanSteam()
             auto libraryFolders = tyti::vdf::read(vdfFile);
             for (const auto &[_, folder] : libraryFolders.childs)
                 for (const auto &[appId, _] : folder->childs["apps"]->attribs)
-                    m_games.push_back(new Game{std::stoi(appId), QString::fromStdString(folder->attribs["path"]), this});
+                    m_games.push_back(Game::fromSteam(std::stoi(appId), QString::fromStdString(folder->attribs["path"]), this));
 
             std::sort(m_games.begin(), m_games.end(), [](const auto &a, const auto &b) {
                 return a->lastPlayed() > b->lastPlayed();
@@ -172,61 +138,4 @@ void Steam::scanSteam()
         qDebug() << "Could not find libraryfolders.vdf";
 
     endResetModel();
-}
-
-SteamFilter::SteamFilter(QObject *parent)
-{
-    m_engineFilter.setFlag(Game::Engine::Unreal);
-
-    m_typeFilter.setFlag(Game::AppType::Game);
-    m_typeFilter.setFlag(Game::AppType::Demo);
-
-    setSourceModel(Steam::instance());
-    connect(this, &SteamFilter::engineFilterChanged, this, &SteamFilter::invalidateFilter);
-    connect(this, &SteamFilter::typeFilterChanged, this, &SteamFilter::invalidateFilter);
-    connect(this, &SteamFilter::searchChanged, this, &SteamFilter::invalidateFilter);
-}
-
-void SteamFilter::setSearch(const QString &search)
-{
-    m_search = search;
-    emit searchChanged();
-}
-
-bool SteamFilter::isEngineFilterSet(Game::Engine engine)
-{
-    return m_engineFilter.testFlag(engine);
-}
-
-void SteamFilter::setEngineFilter(Game::Engine engine, bool state)
-{
-    m_engineFilter.setFlag(engine, state);
-    emit engineFilterChanged();
-}
-
-bool SteamFilter::isTypeFilterSet(Game::AppType type)
-{
-    return m_typeFilter.testFlag(type);
-}
-
-void SteamFilter::setTypeFilter(Game::AppType type, bool state)
-{
-    m_typeFilter.setFlag(type, state);
-    emit typeFilterChanged();
-}
-
-bool SteamFilter::filterAcceptsRow(int row, const QModelIndex &parent) const
-{
-    const auto g = Steam::instance()->gameFromId(
-                sourceModel()->data(sourceModel()->index(row, 0, parent), Steam::Roles::SteamID).toInt());
-    if (!g)
-        return false;
-    if (!m_engineFilter.testFlag(g->engine()))
-        return false;
-    if (!m_typeFilter.testFlag(g->type()))
-        return false;
-    if (!m_search.isEmpty() && !g->name().contains(m_search, Qt::CaseInsensitive))
-        return false;
-
-    return QSortFilterProxyModel::filterAcceptsRow(row, parent);
 }

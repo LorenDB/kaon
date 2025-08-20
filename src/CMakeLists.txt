@@ -11,9 +11,9 @@ qt_add_qml_module(kaon
     QML_FILES
         qml/DotnetDownloadDialog.qml
         qml/GameDetails.qml
+        qml/GamesView.qml
         qml/Main.qml
         qml/SettingsPage.qml
-        qml/SteamView.qml
 
         qml/components/SteamGridDelegate.qml
         qml/components/SteamListDelegate.qml
@@ -28,6 +28,8 @@ qt_add_qml_module(kaon
         DownloadManager.h
         Game.cpp
         Game.h
+        GamesFilterModel.cpp
+        GamesFilterModel.h
         UEVR.cpp
         UEVR.h
         UpdateChecker.cpp

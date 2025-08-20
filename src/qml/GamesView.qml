@@ -9,7 +9,7 @@ import dev.lorendb.kaon
 RowLayout {
     id: gridRoot
 
-    signal gameClicked(int steamId)
+    signal gameClicked(Game game)
     spacing: 10
 
     SystemPalette { id: palette }
@@ -28,13 +28,13 @@ RowLayout {
             TextField {
                 Layout.fillWidth: true
                 placeholderText: "Search..."
-                onTextChanged: SteamFilter.search = text
+                onTextChanged: GamesFilterModel.search = text
             }
 
             Component.onCompleted: {
-                if (Steam.viewType === Steam.Grid)
+                if (GamesFilterModel.viewType === GamesFilterModel.Grid)
                     gridButton.checked = true;
-                else if (Steam.viewType === Steam.List)
+                else if (GamesFilterModel.viewType === GamesFilterModel.List)
                     listButton.checked = true;
             }
 
@@ -42,14 +42,14 @@ RowLayout {
                 id: gridButton
 
                 text: "Grid"
-                onCheckedChanged: Steam.viewType = Steam.Grid
+                onCheckedChanged: GamesFilterModel.viewType = GamesFilterModel.Grid
             }
 
             RadioButton {
                 id: listButton
 
                 text: "List"
-                onCheckedChanged: Steam.viewType = Steam.List
+                onCheckedChanged: GamesFilterModel.viewType = GamesFilterModel.List
             }
 
             Loader {
@@ -61,7 +61,7 @@ RowLayout {
                     id: gridView
 
                     SteamGridDelegate {
-                        onGameClicked: (steamId) => { gridRoot.gameClicked(steamId) }
+                        onGameClicked: (game) => { gridRoot.gameClicked(game) }
                     }
                 }
 
@@ -69,7 +69,7 @@ RowLayout {
                     id: listView
 
                     SteamListDelegate {
-                        onGameClicked: (steamId) => { gridRoot.gameClicked(steamId) }
+                        onGameClicked: (game) => { gridRoot.gameClicked(game) }
                     }
                 }
 
@@ -135,40 +135,40 @@ RowLayout {
                 id: unrealCb
 
                 text: "Unreal Engine"
-                Component.onCompleted: checked = SteamFilter.isEngineFilterSet(Game.Unreal)
-                onCheckedChanged: SteamFilter.setEngineFilter(Game.Unreal, checked)
+                Component.onCompleted: checked = GamesFilterModel.isEngineFilterSet(Game.Unreal)
+                onCheckedChanged: GamesFilterModel.setEngineFilter(Game.Unreal, checked)
             }
 
             CheckBox {
                 id: unityCb
 
                 text: "Unity"
-                Component.onCompleted: checked = SteamFilter.isEngineFilterSet(Game.Unity)
-                onCheckedChanged: SteamFilter.setEngineFilter(Game.Unity, checked)
+                Component.onCompleted: checked = GamesFilterModel.isEngineFilterSet(Game.Unity)
+                onCheckedChanged: GamesFilterModel.setEngineFilter(Game.Unity, checked)
             }
 
             CheckBox {
                 id: godotCb
 
                 text: "Godot"
-                Component.onCompleted: checked = SteamFilter.isEngineFilterSet(Game.Godot)
-                onCheckedChanged: SteamFilter.setEngineFilter(Game.Godot, checked)
+                Component.onCompleted: checked = GamesFilterModel.isEngineFilterSet(Game.Godot)
+                onCheckedChanged: GamesFilterModel.setEngineFilter(Game.Godot, checked)
             }
 
             CheckBox {
                 id: sourceCb
 
                 text: "Source"
-                Component.onCompleted: checked = SteamFilter.isEngineFilterSet(Game.Source)
-                onCheckedChanged: SteamFilter.setEngineFilter(Game.Source, checked)
+                Component.onCompleted: checked = GamesFilterModel.isEngineFilterSet(Game.Source)
+                onCheckedChanged: GamesFilterModel.setEngineFilter(Game.Source, checked)
             }
 
             CheckBox {
                 id: unknownCb
 
                 text: "Other/Unknown"
-                Component.onCompleted: checked = SteamFilter.isEngineFilterSet(Game.Unknown)
-                onCheckedChanged: SteamFilter.setEngineFilter(Game.Unknown, checked)
+                Component.onCompleted: checked = GamesFilterModel.isEngineFilterSet(Game.Unknown)
+                onCheckedChanged: GamesFilterModel.setEngineFilter(Game.Unknown, checked)
             }
 
             MenuSeparator {}
@@ -208,40 +208,40 @@ RowLayout {
                 id: gameCb
 
                 text: "Game"
-                Component.onCompleted: checked = SteamFilter.isTypeFilterSet(Game.Game)
-                onCheckedChanged: SteamFilter.setTypeFilter(Game.Game, checked)
+                Component.onCompleted: checked = GamesFilterModel.isTypeFilterSet(Game.Game)
+                onCheckedChanged: GamesFilterModel.setTypeFilter(Game.Game, checked)
             }
 
             CheckBox {
                 id: demoCb
 
                 text: "Demo"
-                Component.onCompleted: checked = SteamFilter.isTypeFilterSet(Game.Demo)
-                onCheckedChanged: SteamFilter.setTypeFilter(Game.Demo, checked)
+                Component.onCompleted: checked = GamesFilterModel.isTypeFilterSet(Game.Demo)
+                onCheckedChanged: GamesFilterModel.setTypeFilter(Game.Demo, checked)
             }
 
             CheckBox {
                 id: appCb
 
                 text: "Application"
-                Component.onCompleted: checked = SteamFilter.isTypeFilterSet(Game.App)
-                onCheckedChanged: SteamFilter.setTypeFilter(Game.App, checked)
+                Component.onCompleted: checked = GamesFilterModel.isTypeFilterSet(Game.App)
+                onCheckedChanged: GamesFilterModel.setTypeFilter(Game.App, checked)
             }
 
             CheckBox {
                 id: toolCb
 
                 text: "Tool"
-                Component.onCompleted: checked = SteamFilter.isTypeFilterSet(Game.Tool)
-                onCheckedChanged: SteamFilter.setTypeFilter(Game.Tool, checked)
+                Component.onCompleted: checked = GamesFilterModel.isTypeFilterSet(Game.Tool)
+                onCheckedChanged: GamesFilterModel.setTypeFilter(Game.Tool, checked)
             }
 
             CheckBox {
                 id: musicCb
 
                 text: "Music"
-                Component.onCompleted: checked = SteamFilter.isTypeFilterSet(Game.Music)
-                onCheckedChanged: SteamFilter.setTypeFilter(Game.Music, checked)
+                Component.onCompleted: checked = GamesFilterModel.isTypeFilterSet(Game.Music)
+                onCheckedChanged: GamesFilterModel.setTypeFilter(Game.Music, checked)
             }
 
             Item { Layout.fillHeight: true }

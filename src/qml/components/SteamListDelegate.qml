@@ -8,27 +8,24 @@ import dev.lorendb.kaon
 ListView {
     id: list
 
-    signal gameClicked(int steamId)
+    signal gameClicked(Game game)
 
-    model: SteamFilter
+    model: GamesFilterModel
     clip: true
 
     ScrollBar.vertical: ScrollBar { id: sb }
     delegate: ItemDelegate {
         id: delegate
 
-        required property string name
-        required property int steamId
-        required property string iconImage
+        required property Game game
 
-        // height: content.implicitHeight
         height: 48
         width: ListView.view.width - (sb.visible ? sb.width : 0)
 
         Image {
             id: iconImage
 
-            source: "file://" + delegate.iconImage
+            source: delegate.game.icon
             fillMode: Image.PreserveAspectFit
             Layout.preferredHeight: 32
             Layout.preferredWidth: 32
@@ -72,19 +69,19 @@ ListView {
             }
 
             Label {
-                text: delegate.name
+                text: delegate.game.name
             }
 
             Tag {
                 text: "VR"
                 color: "#ffac26"
-                visible: Steam.gameFromId(delegate.steamId).supportsVr
+                visible: delegate.game.supportsVr
             }
 
             Tag {
                 text: "Demo"
                 color: "#5d9e00"
-                visible: Steam.gameFromId(delegate.steamId).type === Game.Demo
+                visible: delegate.game.type === Game.Demo
             }
 
             Item { Layout.fillWidth: true }
@@ -96,7 +93,7 @@ ListView {
             anchors.fill: delegate
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
-            onClicked: list.gameClicked(delegate.steamId)
+            onClicked: list.gameClicked(delegate.game)
         }
     }
 }

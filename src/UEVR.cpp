@@ -168,15 +168,14 @@ void UEVR::setCurrentUevr(const int id)
     settings.setValue("currentUevr"_L1, id);
 }
 
-void UEVR::launchUEVR(const int steamId)
+void UEVR::launchUEVR(const Game *game)
 {
     Aptabase::instance()->track("launch-uevr"_L1, {{"version"_L1, m_currentUevr->name()}});
 
-    auto game = Steam::instance()->gameFromId(steamId);
-
     auto injector = new QProcess;
     QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
-    env.insert("WINEPREFIX"_L1, game->protonPrefix());
+    if (game->protonPrefixExists())
+        env.insert("WINEPREFIX"_L1, game->protonPrefix());
     env.insert("WINEFSYNC"_L1, "1"_L1);
     injector->setProcessEnvironment(env);
     injector->start(game->protonBinary(), {path(Paths::CurrentUEVRInjector)});

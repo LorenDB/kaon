@@ -37,18 +37,18 @@ bool Dotnet::dotnetDownloadInProgress() const
     return m_dotnetDownloadInProgress;
 }
 
-void Dotnet::downloadDotnetDesktopRuntime(int steamId)
+void Dotnet::downloadDotnetDesktopRuntime(Game *game)
 {
-    if (steamId != 0)
+    if (game)
     {
         // Uh, clang-format, you feeling OK?
         connect(
                     this,
                     &Dotnet::hasDotnetCachedChanged,
                     this,
-                    [this, steamId](bool isCached) {
+                    [this, game](bool isCached) {
             if (isCached)
-                installDotnetDesktopRuntime(steamId);
+                installDotnetDesktopRuntime(game);
         },
         Qt::SingleShotConnection);
     }
@@ -97,34 +97,34 @@ void Dotnet::downloadDotnetDesktopRuntime(int steamId)
     });
 }
 
-bool Dotnet::isDotnetInstalled(int steamId)
+bool Dotnet::isDotnetInstalled(const Game *game)
 {
-    auto game = Steam::instance()->gameFromId(steamId);
+    if (!game || !game->protonPrefixExists())
+        return false;
     const auto basepath = game->protonPrefix() + "/drive_c/Program Files/dotnet"_L1;
     return QFileInfo::exists(basepath + "/dotnet.exe"_L1) && QFileInfo::exists(basepath + "/host/fxr/6.0.36");
 }
 
-void Dotnet::installDotnetDesktopRuntime(int steamId)
+void Dotnet::installDotnetDesktopRuntime(Game *game)
 {
     if (!hasDotnetCached())
     {
-        emit promptDotnetDownload(steamId);
+        emit promptDotnetDownload(game);
         return;
     }
 
-    auto game = Steam::instance()->gameFromId(steamId);
-
     auto installer = new QProcess;
     QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
-    env.insert("WINEPREFIX"_L1, game->protonPrefix());
+    if (game->protonPrefixExists())
+        env.insert("WINEPREFIX"_L1, game->protonPrefix());
     env.insert("WINEFSYNC"_L1, "1"_L1);
     installer->setProcessEnvironment(env);
     installer->start(
                 game->protonBinary(),
                 {QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + "/windowsdesktop-runtime-6.0.36-win-x64.exe"_L1});
-    connect(installer, &QProcess::finished, this, [installer, steamId] {
+    connect(installer, &QProcess::finished, this, [installer, game] {
         installer->deleteLater();
-        if (auto game = Steam::instance()->gameFromId(steamId); game)
+        if (game)
             emit game->dotnetInstalledChanged();
     });
 }

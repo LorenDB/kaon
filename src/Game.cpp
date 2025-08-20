@@ -2,6 +2,8 @@
 
 #include <QDirIterator>
 #include <QFileInfo>
+#include <QProcess>
+#include <QTemporaryDir>
 
 #include "Aptabase.h"
 #include "Dotnet.h"
@@ -11,23 +13,29 @@
 
 using namespace Qt::Literals;
 
-Game::Game(int steamId, QString steamDrive, QObject *parent)
-    : QObject{parent},
-      m_id{steamId},
-      m_steamDrive{steamDrive},
-      m_store{Store::Steam}
+Game::Game(QObject *parent)
+    : QObject{parent}
 {
-    const QString acfPath = "%1/steamapps/appmanifest_%2.acf"_L1.arg(m_steamDrive, QString::number(m_id));
+}
+
+Game *Game::fromSteam(int steamId, const QString &steamDrive, QObject *parent)
+{
+    auto g = new Game{parent};
+    g->m_id = steamId;
+    g->m_store = Store::Steam;
+    g->m_canLaunch = true;
+    g->m_canOpenSettings = true;
+
+    const QString acfPath = "%1/steamapps/appmanifest_%2.acf"_L1.arg(steamDrive, QString::number(g->m_id));
     try
     {
         std::ifstream acfFile{acfPath.toStdString()};
         auto app = tyti::vdf::read(acfFile);
 
-        m_name = QString::fromStdString(app.attribs["name"]);
-        m_installDir = m_steamDrive + "/steamapps/common/"_L1 + QString::fromStdString(app.attribs["installdir"]);
+        g->m_name = QString::fromStdString(app.attribs["name"]);
+        g->m_installDir = steamDrive + "/steamapps/common/"_L1 + QString::fromStdString(app.attribs["installdir"]);
         if (app.attribs.contains("LastPlayed"))
-            m_lastPlayed = QDateTime::fromSecsSinceEpoch(std::stoi(app.attribs["LastPlayed"]));
-
+            g->m_lastPlayed = QDateTime::fromSecsSinceEpoch(std::stoi(app.attribs["LastPlayed"]));
     }
     catch (const std::length_error &e)
     {
@@ -37,28 +45,24 @@ Game::Game(int steamId, QString steamDrive, QObject *parent)
                                     {{"which"_L1, parts.size() >= 2 ? parts[parts.size() - 2] : ""_L1}});
     }
 
-    const auto imageDir = Steam::instance()->steamRoot() + "/appcache/librarycache/"_L1 + QString::number(m_id);
+    const auto imageDir = Steam::instance()->steamRoot() + "/appcache/librarycache/"_L1 + QString::number(g->m_id);
     QDirIterator images{imageDir, QDirIterator::Subdirectories};
     while (images.hasNext())
     {
         images.next();
         if ((images.fileName() == "library_600x900.jpg"_L1 || images.fileName() == "library_capsule.jpg"_L1) &&
-                m_cardImage.isEmpty())
-            m_cardImage = "file://"_L1 + images.filePath();
-        else if (images.fileName() == "library_hero.jpg"_L1 && m_heroImage.isEmpty())
-            m_heroImage = "file://"_L1 + images.filePath();
-        else if (images.fileName() == "logo.png"_L1 && m_logoImage.isEmpty())
-            m_logoImage = "file://"_L1 + images.filePath();
+                g->m_cardImage.isEmpty())
+            g->m_cardImage = "file://"_L1 + images.filePath();
+        else if (images.fileName() == "library_hero.jpg"_L1 && g->m_heroImage.isEmpty())
+            g->m_heroImage = "file://"_L1 + images.filePath();
+        else if (images.fileName() == "logo.png"_L1 && g->m_logoImage.isEmpty())
+            g->m_logoImage = "file://"_L1 + images.filePath();
     }
 
-    QString compatdata = m_steamDrive + "/steamapps/compatdata/"_L1 + QString::number(m_id);
+    QString compatdata = steamDrive + "/steamapps/compatdata/"_L1 + QString::number(g->m_id);
+    g->m_protonPrefix = compatdata + "/pfx"_L1;
     if (QFileInfo fi{compatdata}; fi.exists() && fi.isDir())
     {
-        m_protonExists = true;
-
-        if (QFileInfo pfx{compatdata + "/pfx"_L1}; pfx.exists() && pfx.isDir())
-            m_protonPrefix = pfx.absoluteFilePath();
-
         QFile file{compatdata + "/config_info"_L1};
         if (file.open(QIODevice::ReadOnly | QIODevice::Text))
         {
@@ -68,16 +72,16 @@ Game::Game(int steamId, QString steamDrive, QObject *parent)
             static const QRegularExpression re("/(files|dist)/share/fonts/$");
             if (proton.contains(re))
             {
-                m_selectedProtonInstall = proton.remove(re);
-                if (QFileInfo files{m_selectedProtonInstall + "/files"_L1}; files.exists() && files.isDir())
-                    m_filesOrDist = "files"_L1;
+                QString protonBase = proton.remove(re);
+                if (QFileInfo files{protonBase + "/files"_L1}; files.exists() && files.isDir())
+                    g->m_protonBinary = protonBase + "/files/bin/wine"_L1;
                 else
-                    m_filesOrDist = "dist"_L1;
+                    g->m_protonBinary = protonBase + "/dist/bin/wine"_L1;
             }
         }
     }
 
-    auto *info = AppInfoVDF::instance()->game(m_id);
+    auto *info = AppInfoVDF::instance()->game(g->m_id);
     AppInfoVDF::AppInfo::Section section;
     AppInfoVDF::AppInfo::SectionDesc app_desc{};
 
@@ -117,23 +121,23 @@ Game::Game(int steamId, QString steamDrive, QObject *parent)
         if (section.name.startsWith("appinfo.config.launch."_L1))
         {
             int id = section.name.split('.').at(3).toInt();
-            if (!m_executables.contains(id))
-                m_executables[id] = {};
+            if (!g->m_executables.contains(id))
+                g->m_executables[id] = {};
             for (const auto &[key, value] : std::as_const(section.keys))
             {
                 if (key == "executable"_L1)
-                    m_executables[id].executable = m_installDir + '/' + static_cast<const char *>(value.second);
+                    g->m_executables[id].executable = g->m_installDir + '/' + static_cast<const char *>(value.second);
                 else if (key == "type"_L1)
-                    m_executables[id].type = static_cast<const char *>(value.second);
+                    g->m_executables[id].type = static_cast<const char *>(value.second);
                 else if (key == "oslist"_L1)
                 {
                     const QString os = static_cast<const char *>(value.second);
                     if (os.contains("windows"_L1))
-                        m_executables[id].platform |= LaunchOption::Platform::Windows;
+                        g->m_executables[id].platform |= LaunchOption::Platform::Windows;
                     if (os.contains("linux"_L1))
-                        m_executables[id].platform |= LaunchOption::Platform::Linux;
+                        g->m_executables[id].platform |= LaunchOption::Platform::Linux;
                     if (os.contains("macos"_L1))
-                        m_executables[id].platform |= LaunchOption::Platform::MacOS;
+                        g->m_executables[id].platform |= LaunchOption::Platform::MacOS;
                 }
             }
         }
@@ -157,25 +161,25 @@ Game::Game(int steamId, QString steamDrive, QObject *parent)
             for (const auto &[key, value] : std::as_const(section.keys))
             {
                 if (key == "width_pct"_L1)
-                    m_logoWidth = parseDouble(value.first, value.second);
+                    g->m_logoWidth = parseDouble(value.first, value.second);
                 else if (key == "height_pct"_L1)
-                    m_logoHeight = parseDouble(value.first, value.second);
+                    g->m_logoHeight = parseDouble(value.first, value.second);
                 else if (key == "pinned_position"_L1)
                 {
                     QString posStr = static_cast<char *>(value.second);
                     if (posStr.startsWith("Center"_L1))
-                        m_logoVPosition = LogoPosition::Center;
+                        g->m_logoVPosition = LogoPosition::Center;
                     else if (posStr.startsWith("Top"_L1))
-                        m_logoVPosition = LogoPosition::Top;
+                        g->m_logoVPosition = LogoPosition::Top;
                     else if (posStr.startsWith("Bottom"_L1))
-                        m_logoVPosition = LogoPosition::Bottom;
+                        g->m_logoVPosition = LogoPosition::Bottom;
 
                     if (posStr.endsWith("Center"_L1))
-                        m_logoHPosition = LogoPosition::Center;
+                        g->m_logoHPosition = LogoPosition::Center;
                     else if (posStr.endsWith("Left"_L1))
-                        m_logoHPosition = LogoPosition::Left;
+                        g->m_logoHPosition = LogoPosition::Left;
                     else if (posStr.endsWith("Right"_L1))
-                        m_logoHPosition = LogoPosition::Right;
+                        g->m_logoHPosition = LogoPosition::Right;
                 }
             }
         }
@@ -188,37 +192,43 @@ Game::Game(int steamId, QString steamDrive, QObject *parent)
                     QString type{static_cast<const char *>(value.second)};
                     type = type.toLower();
                     if (type == "game"_L1)
-                        m_type = AppType::Game;
+                        g->m_type = AppType::Game;
                     else if (type == "application"_L1)
-                        m_type = AppType::App;
+                        g->m_type = AppType::App;
                     else if (type == "tool"_L1)
-                        m_type = AppType::Tool;
+                        g->m_type = AppType::Tool;
                     else if (type == "demo"_L1)
-                        m_type = AppType::Demo;
+                        g->m_type = AppType::Demo;
                     else if (type == "music"_L1)
-                        m_type = AppType::Music;
+                        g->m_type = AppType::Music;
                 }
                 else if (key == "icon"_L1)
                 {
                     const QString logoId{static_cast<const char *>(value.second)};
                     if (QFileInfo fi{u"%1/appcache/librarycache/%2/%3.jpg"_s.arg(
-                                Steam::instance()->steamRoot(), QString::number(m_id), logoId)};
+                                Steam::instance()->steamRoot(), QString::number(g->m_id), logoId)};
                             fi.exists())
-                        m_icon = fi.absoluteFilePath();
+                        g->m_icon = "file://"_L1 + fi.absoluteFilePath();
                     // TODO: could also extract clienticon key to find icons in $steamroot/steam/games
                 }
                 else if (key == "openvrsupport"_L1 || key == "openxrsupport"_L1)
-                    m_supportsVr |= parseInt(value.first, value.second);
+                    g->m_supportsVr |= parseInt(value.first, value.second);
                 else if (key == "onlyvrsupport"_L1)
                 {
-                    m_vrOnly = parseInt(value.first, value.second);
-                    m_supportsVr |= m_vrOnly;
+                    g->m_vrOnly = parseInt(value.first, value.second);
+                    g->m_supportsVr |= g->m_vrOnly;
                 }
             }
         }
     }
 
-    detectGameEngine();
+    g->detectGameEngine();
+    return g;
+}
+
+bool Game::protonPrefixExists() const
+{
+    return QFileInfo::exists(m_protonPrefix);
 }
 
 bool Game::hasLinuxBinary() const
@@ -229,14 +239,9 @@ bool Game::hasLinuxBinary() const
     return false;
 }
 
-QString Game::protonBinary() const
-{
-    return m_selectedProtonInstall + '/' + m_filesOrDist + "/bin/wine"_L1;
-}
-
 bool Game::dotnetInstalled() const
 {
-    return Dotnet::instance()->isDotnetInstalled(m_id);
+    return Dotnet::instance()->isDotnetInstalled(this);
 }
 
 void Game::detectGameEngine()
@@ -281,7 +286,7 @@ void Game::detectGameEngine()
     //
     // Detection method sourced from Rai Pal
     // https://github.com/Raicuparta/rai-pal/blob/51157fdae6b1d87760580d85082ccd5026bb0320/backend/core/src/game_engines/unity.rs
-    for (const auto &e : m_executables)
+    for (const auto &e : std::as_const(m_executables))
     {
         QFileInfo exe{e.executable};
         if (QFileInfo dataDir{exe.absolutePath() + '/' + exe.baseName() + "_Data"_L1}; dataDir.exists() && dataDir.isDir())
@@ -296,7 +301,7 @@ void Game::detectGameEngine()
     //
     // Dectection method sourced from SteamDB
     // https://github.com/SteamDatabase/FileDetectionRuleSets/blob/ac27c7cfc0a63dc07cc9e65157841857d82f347b/tests/FileDetector.php#L316
-    for (const auto &e : m_executables)
+    for (const auto &e : std::as_const(m_executables))
     {
         QFileInfo exe{e.executable};
         QDirIterator pckFinder{exe.absolutePath()};

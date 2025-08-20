@@ -7,7 +7,12 @@ DownloadManager *DownloadManager::s_instance = nullptr;
 
 DownloadManager::DownloadManager(QObject *parent)
     : QObject{parent}
-{}
+{
+    connect(this, &DownloadManager::newDownloadEnqueued, this, [this] {
+        if (m_queue.count() == 1)
+            downloadNextInQueue();
+    });
+}
 
 DownloadManager *DownloadManager::instance()
 {
@@ -24,8 +29,7 @@ void DownloadManager::download(const QNetworkRequest &request,
                                std::function<void()> finallyCallback)
 {
     m_queue.enqueue({request, prettyName, notifyOnFailure, successCallback, failureCallback, finallyCallback});
-    if (m_queue.count() == 1)
-        downloadNextInQueue();
+    emit newDownloadEnqueued();
 }
 
 void DownloadManager::downloadNextInQueue()

@@ -5,14 +5,14 @@ import dev.lorendb.kaon
 Dialog {
     id: dotnetRoot
 
-    property int steamId: 0
+    property Game game: null
 
     title: "Download .NET desktop runtime"
     modal: true
     standardButtons: Dialog.Ok | Dialog.Cancel
     onAccepted: {
-        Dotnet.downloadDotnetDesktopRuntime(steamId);
-        steamId = 0;
+        Dotnet.downloadDotnetDesktopRuntime(game);
+        game = null;
     }
 
     Label {

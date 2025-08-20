@@ -123,6 +123,8 @@ Pane {
                     ToolTip.text: "Change Steam game settings"
                     ToolTip.delay: 1000
                     ToolTip.visible: hovered
+                    visible: gameDetailsRoot.game.canOpenSettings
+                    // TODO: make this work with other stores if possible
                     onClicked: Qt.openUrlExternally("steam://gameproperties/" + gameDetailsRoot.game.id)
                 }
 
@@ -134,6 +136,8 @@ Pane {
                     ToolTip.text: "Launch game in Steam"
                     ToolTip.delay: 1000
                     ToolTip.visible: hovered
+                    visible: gameDetailsRoot.game.canLaunch
+                    // TODO: make this work with other stores if possible
                     onClicked: Qt.openUrlExternally("steam://launch/" + gameDetailsRoot.game.id)
                 }
             }
@@ -161,7 +165,7 @@ Pane {
                 else
                     return true;
             }
-            onClicked: Dotnet.installDotnetDesktopRuntime(gameDetailsRoot.game.id)
+            onClicked: Dotnet.installDotnetDesktopRuntime(gameDetailsRoot.game)
         }
 
         RowLayout {
@@ -169,8 +173,8 @@ Pane {
 
             Button {
                 text: "Launch UEVR injector"
-                enabled: UEVR.currentUevr.installed && gameDetailsRoot.game.dotnetInstalled
-                onClicked: UEVR.launchUEVR(gameDetailsRoot.game.id)
+                enabled: UEVR.currentUevr.installed && gameDetailsRoot.game.dotnetInstalled && gameDetailsRoot.game.protonPrefixExists
+                onClicked: UEVR.launchUEVR(gameDetailsRoot.game)
             }
 
             Label {

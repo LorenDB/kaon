@@ -13,9 +13,9 @@ class Game : public QObject
     Q_PROPERTY(QString name READ name CONSTANT)
     Q_PROPERTY(QString installDir READ installDir CONSTANT)
     Q_PROPERTY(QDateTime lastPlayed READ lastPlayed CONSTANT)
-    Q_PROPERTY(bool protonExists READ protonExists NOTIFY protonExistsChanged FINAL)
     Q_PROPERTY(QString protonPrefix READ protonPrefix CONSTANT)
-    Q_PROPERTY(QString selectedProtonInstall READ selectedProtonInstall NOTIFY selectedProtonInstallChanged FINAL)
+    Q_PROPERTY(bool protonPrefixExists READ protonPrefixExists NOTIFY protonPrefixExistsChanged FINAL)
+    Q_PROPERTY(QString protonBinary READ protonBinary NOTIFY protonBinaryChanged FINAL)
     Q_PROPERTY(AppType type READ type CONSTANT)
     Q_PROPERTY(Store store READ store CONSTANT FINAL)
     Q_PROPERTY(bool supportsVr READ supportsVr CONSTANT FINAL)
@@ -31,10 +31,14 @@ class Game : public QObject
     Q_PROPERTY(LogoPosition logoHPosition READ logoHPosition CONSTANT)
     Q_PROPERTY(LogoPosition logoVPosition READ logoVPosition CONSTANT)
 
+    // We can't always perform actions depending on what store the games are from.
+    Q_PROPERTY(bool canLaunch MEMBER m_canLaunch CONSTANT FINAL)
+    Q_PROPERTY(bool canOpenSettings MEMBER m_canOpenSettings CONSTANT FINAL)
+
     Q_PROPERTY(bool dotnetInstalled READ dotnetInstalled NOTIFY dotnetInstalledChanged FINAL)
 
 public:
-    explicit Game(int steamId, QString steamDrive, QObject *parent = nullptr);
+    static Game *fromSteam(int steamId, const QString &steamDrive, QObject *parent = nullptr);
 
     enum Engine
     {
@@ -54,6 +58,7 @@ public:
         Tool = 1 << 2,
         Demo = 1 << 3,
         Music = 1 << 4,
+        Other = 1 << 5,
     };
     Q_ENUM(AppType)
     Q_DECLARE_FLAGS(AppTypes, AppType)
@@ -67,9 +72,9 @@ public:
     QString name() const { return m_name; }
     QString installDir() const { return m_installDir; }
     QDateTime lastPlayed() const { return m_lastPlayed; }
-    bool protonExists() const { return m_protonExists; }
     QString protonPrefix() const { return m_protonPrefix; }
-    QString selectedProtonInstall() const { return m_selectedProtonInstall; }
+    bool protonPrefixExists() const;
+    QString protonBinary() const { return m_protonBinary; }
     Engine engine() const { return m_engine; }
     AppType type() const { return m_type; }
     Store store() const { return m_store; }
@@ -96,28 +101,27 @@ public:
     LogoPosition logoHPosition() const { return m_logoHPosition; }
     LogoPosition logoVPosition() const { return m_logoVPosition; }
 
-    QString protonBinary() const;
     bool dotnetInstalled() const;
 
 signals:
-    void protonExistsChanged(bool state);
-    void selectedProtonInstallChanged(QString path);
+    void protonPrefixExistsChanged(bool state);
+    void protonBinaryChanged(QString path);
 
     void dotnetInstalledChanged();
 
 private:
+    explicit Game(QObject *parent = nullptr);
+
     void detectGameEngine();
 
     int m_id = 0;
     QString m_name;
-    QString m_steamDrive;
     QString m_installDir;
     QDateTime m_lastPlayed;
-    bool m_protonExists{false};
     QString m_protonPrefix;
-    QString m_selectedProtonInstall;
+    QString m_protonBinary;
     Engine m_engine = Engine::Unknown;
-    AppType m_type = AppType::Game;
+    AppType m_type = AppType::Other;
     Store m_store;
     bool m_supportsVr{false};
     bool m_vrOnly{false};
@@ -148,9 +152,10 @@ private:
 
     QMap<int, LaunchOption> m_executables;
 
-    // Older Proton installs use a `dist` folder; newer installs use a `files` folder. We need to differentiate them.
-    QString m_filesOrDist;
+    bool m_canLaunch{false};
+    bool m_canOpenSettings{false};
 };
+Q_DECLARE_METATYPE(Game)
 
 Q_DECLARE_OPERATORS_FOR_FLAGS(Game::Engines)
 Q_DECLARE_OPERATORS_FOR_FLAGS(Game::AppTypes)

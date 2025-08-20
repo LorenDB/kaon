@@ -13,7 +13,6 @@ class Steam : public QAbstractListModel
     QML_SINGLETON
 
     Q_PROPERTY(QString steamRoot READ steamRoot CONSTANT FINAL)
-    Q_PROPERTY(ViewType viewType READ viewType WRITE setViewType NOTIFY viewTypeChanged FINAL)
 
 public:
     static Steam *instance();
@@ -21,22 +20,8 @@ public:
 
     enum Roles
     {
-        Name = Qt::UserRole + 1,
-        SteamID,
-        InstallDir,
-        CardImage,
-        HeroImage,
-        LogoImage,
-        Icon,
-        LastPlayed,
+        GameObject = Qt::UserRole + 1,
     };
-
-    enum ViewType
-    {
-        Grid,
-        List,
-    };
-    Q_ENUM(ViewType)
 
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
@@ -44,12 +29,6 @@ public:
 
     QString steamRoot() const { return m_steamRoot; }
     Q_INVOKABLE Game *gameFromId(int steamId) const;
-    ViewType viewType() const { return m_viewType; }
-
-    void setViewType(ViewType viewType);
-
-signals:
-    void viewTypeChanged(ViewType viewType);
 
 private:
     explicit Steam(QObject *parent = nullptr);
@@ -59,43 +38,4 @@ private:
 
     QString m_steamRoot;
     QList<Game *> m_games;
-    ViewType m_viewType;
-};
-
-class SteamFilter : public QSortFilterProxyModel
-{
-    Q_OBJECT
-    QML_ELEMENT
-    QML_SINGLETON
-
-    Q_PROPERTY(Game::Engines engineFilter READ engineFilter NOTIFY engineFilterChanged FINAL)
-    Q_PROPERTY(Game::AppTypes typeFilter READ typeFilter NOTIFY typeFilterChanged FINAL)
-    Q_PROPERTY(QString search READ search WRITE setSearch NOTIFY searchChanged FINAL)
-
-public:
-    explicit SteamFilter(QObject *parent = nullptr);
-
-    Game::Engines engineFilter() const { return m_engineFilter; }
-    Game::AppTypes typeFilter() const { return m_typeFilter; }
-    QString search() const { return m_search; }
-
-    void setSearch(const QString &search);
-
-    Q_INVOKABLE bool isEngineFilterSet(Game::Engine engine);
-    Q_INVOKABLE void setEngineFilter(Game::Engine engine, bool state);
-    Q_INVOKABLE bool isTypeFilterSet(Game::AppType type);
-    Q_INVOKABLE void setTypeFilter(Game::AppType type, bool state);
-
-signals:
-    void engineFilterChanged();
-    void typeFilterChanged();
-    void searchChanged();
-
-protected:
-    bool filterAcceptsRow(int row, const QModelIndex &parent) const override;
-
-private:
-    Game::Engines m_engineFilter;
-    Game::AppTypes m_typeFilter;
-    QString m_search;
 };
