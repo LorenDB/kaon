@@ -11,6 +11,8 @@ class Itch : public QAbstractListModel
     QML_ELEMENT
     QML_SINGLETON
 
+    Q_PROPERTY(QString itchRoot READ itchRoot CONSTANT FINAL)
+
 public:
     static Itch *instance();
     static Itch *create(QQmlEngine *qml, QJSEngine *js) { return instance(); }
@@ -24,7 +26,7 @@ public:
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
     QHash<int, QByteArray> roleNames() const override;
 
-signals:
+    QString itchRoot() const { return m_itchRoot; }
 
 private:
     explicit Itch(QObject *parent = nullptr);

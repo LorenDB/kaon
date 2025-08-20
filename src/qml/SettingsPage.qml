@@ -41,6 +41,10 @@ Pane {
                 text: Steam.steamRoot === "" ? "No Steam installation detected" : "Steam install detected: " + Steam.steamRoot
             }
 
+            Label {
+                text: Itch.itchRoot === "" ? "No Itch installation detected" : "Itch install detected: " + Itch.itchRoot
+            }
+
             Item { Layout.fillHeight: true }
         }
     }
