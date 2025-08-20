@@ -18,8 +18,11 @@ GamesFilterModel::GamesFilterModel(QObject *parent)
     m_typeFilter.setFlag(Game::AppType::Game);
     m_typeFilter.setFlag(Game::AppType::Demo);
 
+    m_storeFilter.setFlag(Game::Store::Steam);
+
     connect(this, &GamesFilterModel::engineFilterChanged, this, &GamesFilterModel::invalidateFilter);
     connect(this, &GamesFilterModel::typeFilterChanged, this, &GamesFilterModel::invalidateFilter);
+    connect(this, &GamesFilterModel::storeFilterChanged, this, &GamesFilterModel::invalidateFilter);
     connect(this, &GamesFilterModel::searchChanged, this, &GamesFilterModel::invalidateFilter);
 
     QSettings settings;
@@ -54,21 +57,32 @@ bool GamesFilterModel::isEngineFilterSet(Game::Engine engine)
     return m_engineFilter.testFlag(engine);
 }
 
+bool GamesFilterModel::isTypeFilterSet(Game::AppType type)
+{
+    return m_typeFilter.testFlag(type);
+}
+
+bool GamesFilterModel::isStoreFilterSet(Game::Store store)
+{
+    return m_storeFilter.testFlag(store);
+}
+
 void GamesFilterModel::setEngineFilter(Game::Engine engine, bool state)
 {
     m_engineFilter.setFlag(engine, state);
     emit engineFilterChanged();
 }
 
-bool GamesFilterModel::isTypeFilterSet(Game::AppType type)
-{
-    return m_typeFilter.testFlag(type);
-}
-
 void GamesFilterModel::setTypeFilter(Game::AppType type, bool state)
 {
     m_typeFilter.setFlag(type, state);
     emit typeFilterChanged();
+}
+
+void GamesFilterModel::setStoreFilter(Game::Store store, bool state)
+{
+    m_storeFilter.setFlag(store, state);
+    emit storeFilterChanged();
 }
 
 bool GamesFilterModel::filterAcceptsRow(int row, const QModelIndex &parent) const
@@ -79,6 +93,8 @@ bool GamesFilterModel::filterAcceptsRow(int row, const QModelIndex &parent) cons
     if (!m_engineFilter.testFlag(g->engine()))
         return false;
     if (!m_typeFilter.testFlag(g->type()))
+        return false;
+    if (!m_storeFilter.testFlag(g->store()))
         return false;
     if (!m_search.isEmpty() && !g->name().contains(m_search, Qt::CaseInsensitive))
         return false;

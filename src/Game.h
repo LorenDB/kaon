@@ -65,8 +65,10 @@ public:
 
     enum class Store
     {
-        Steam,
+        Steam = 1,
     };
+    Q_ENUM(Store)
+    Q_DECLARE_FLAGS(Stores, Store)
 
     int id() const { return m_id; }
     QString name() const { return m_name; }

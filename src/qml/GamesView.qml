@@ -244,6 +244,39 @@ RowLayout {
                 onCheckedChanged: GamesFilterModel.setTypeFilter(Game.Music, checked)
             }
 
+            MenuSeparator {}
+
+            Label {
+                text: "Filter by store"
+                font.bold: true
+            }
+
+            RowLayout {
+                spacing: 10
+
+                Button {
+                    text: "All"
+                    onClicked: {
+                        steamCb.checked = true
+                    }
+                }
+
+                Button {
+                    text: "None"
+                    onClicked: {
+                        steamCb.checked = false
+                    }
+                }
+            }
+
+            CheckBox {
+                id: steamCb
+
+                text: "Steam"
+                Component.onCompleted: checked = GamesFilterModel.isStoreFilterSet(Game.Steam)
+                onCheckedChanged: GamesFilterModel.setStoreFilter(Game.Steam, checked)
+            }
+
             Item { Layout.fillHeight: true }
         }
     }
