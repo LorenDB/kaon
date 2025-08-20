@@ -2,6 +2,7 @@
 
 #include <QSettings>
 
+#include "Itch.h"
 #include "Steam.h"
 
 using namespace Qt::Literals;
@@ -11,6 +12,7 @@ GamesFilterModel::GamesFilterModel(QObject *parent)
       m_models{new QConcatenateTablesProxyModel{this}}
 {
     m_models->addSourceModel(Steam::instance());
+    m_models->addSourceModel(Itch::instance());
     setSourceModel(m_models);
 
     m_engineFilter.setFlag(Game::Engine::Unreal);
@@ -19,6 +21,7 @@ GamesFilterModel::GamesFilterModel(QObject *parent)
     m_typeFilter.setFlag(Game::AppType::Demo);
 
     m_storeFilter.setFlag(Game::Store::Steam);
+    m_storeFilter.setFlag(Game::Store::Itch);
 
     connect(this, &GamesFilterModel::engineFilterChanged, this, &GamesFilterModel::invalidateFilter);
     connect(this, &GamesFilterModel::typeFilterChanged, this, &GamesFilterModel::invalidateFilter);

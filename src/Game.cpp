@@ -226,6 +226,80 @@ Game *Game::fromSteam(int steamId, const QString &steamDrive, QObject *parent)
     return g;
 }
 
+Game *Game::fromItch(const QString &installPath, QObject *parent)
+{
+    QTemporaryDir tempDir;
+    if (!tempDir.isValid())
+    {
+        qDebug() << "Itch failed to create temporary directory";
+        Aptabase::instance()->track("itch-failed-tempdir-bug"_L1);
+        return nullptr;
+    }
+
+    const QString zipPath = installPath + "/.itch/receipt.json.gz"_L1;
+    QProcess unzipJsonProc;
+    unzipJsonProc.setWorkingDirectory(tempDir.path());
+    QStringList args;
+    args << "-c"_L1 << zipPath;
+    unzipJsonProc.start("gunzip"_L1, args);
+    unzipJsonProc.waitForFinished();
+    if (unzipJsonProc.exitCode() != 0)
+    {
+        qDebug() << "Unzip Itch info failed:" << unzipJsonProc.errorString();
+        qDebug() << unzipJsonProc.readAllStandardError();
+        Aptabase::instance()->track("itch-failed-unzip-bug"_L1);
+        return nullptr;
+    }
+
+    const auto json = QJsonDocument::fromJson(unzipJsonProc.readAllStandardOutput());
+    const auto game = json["game"_L1].toObject();
+
+    auto g = new Game{parent};
+    g->m_store = Store::Itch;
+
+    g->m_id = game["id"_L1].toInt();
+    g->m_name = game["title"_L1].toString();
+    g->m_installDir = installPath;
+    g->m_cardImage = "image://itch-image/"_L1 + game["coverUrl"_L1].toString();
+    g->m_heroImage = g->m_cardImage;
+    g->m_icon = g->m_cardImage;
+
+    QProcess whichWineProc;
+    whichWineProc.start("which"_L1, {"wine"_L1});
+    whichWineProc.waitForFinished();
+    if (whichWineProc.exitCode() == 0)
+        g->m_protonBinary = whichWineProc.readAllStandardOutput().trimmed();
+    g->m_protonPrefix = qEnvironmentVariable("WINEPREFIX", QDir::homePath() + "/.wine"_L1);
+
+    if (const auto type = game["classification"_L1]; type == "game"_L1)
+        g->m_type = Game::AppType::Game;
+    // Itch refers to generic apps as tools, but we normally use Tools for things like Proton
+    else if (type == "tool"_L1)
+        g->m_type = Game::AppType::App;
+    else if (type == "soundtrack"_L1)
+        g->m_type = Game::AppType::Music;
+
+    auto entries = QDir{installPath}.entryInfoList(QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot);
+    entries.removeIf([](const QFileInfo &fi) { return fi.baseName() == ".itch"_L1; });
+    if (entries.size() == 1)
+        entries = QDir{entries.first().absoluteFilePath()}.entryInfoList(QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot);
+
+    // TODO: better binary detection algorithm than this!
+    for (const auto &entry : std::as_const(entries))
+    {
+        if (entry.suffix() == "exe"_L1)
+        {
+            LaunchOption lo;
+            lo.executable = entry.absoluteFilePath();
+            lo.platform |= LaunchOption::Platform::Windows;
+            g->m_executables[0] = lo;
+        }
+    }
+
+    g->detectGameEngine();
+    return g;
+}
+
 bool Game::protonPrefixExists() const
 {
     return QFileInfo::exists(m_protonPrefix);
@@ -246,15 +320,25 @@ bool Game::dotnetInstalled() const
 
 void Game::detectGameEngine()
 {
+    QString binaryDir{m_installDir};
+    for (const auto &exe : std::as_const(m_executables))
+    {
+        if (QFileInfo fi{exe.executable}; fi.absolutePath() != m_installDir)
+        {
+            binaryDir = fi.absolutePath();
+            break;
+        }
+    }
+
     // =======================================
     // Unreal detection
     //
     // Detection method sourced from Rai Pal
     // https://github.com/Raicuparta/rai-pal/blob/51157fdae6b1d87760580d85082ccd5026bb0320/backend/core/src/game_engines/unreal.rs
     const QStringList signsOfUnreal = {
-        m_installDir + "/Engine/Binaries/Win64"_L1,
-        m_installDir + "/Engine/Binaries/Win32"_L1,
-        m_installDir + "/Engine/Binaries/ThirdParty"_L1,
+        binaryDir + "/Engine/Binaries/Win64"_L1,
+        binaryDir + "/Engine/Binaries/Win32"_L1,
+        binaryDir + "/Engine/Binaries/ThirdParty"_L1,
     };
     for (const auto &sign : signsOfUnreal)
     {
@@ -271,9 +355,9 @@ void Game::detectGameEngine()
     // Regex sourced from SteamDB
     // https://github.com/SteamDatabase/FileDetectionRuleSets/blob/ac27c7cfc0a63dc07cc9e65157841857d82f347b/rules.ini#L191
     static const QRegularExpression signsOfSource{R"((?:^|/)(?:vphysics|bsppack)\.(?:dylib|dll|so)$)"_L1};
-    for (QDirIterator gameDirIterator{m_installDir, QDirIterator::Subdirectories}; gameDirIterator.hasNext();)
+    for (QDirIterator gameDirIterator{binaryDir, QDirIterator::Subdirectories}; gameDirIterator.hasNext();)
     {
-        auto localName = gameDirIterator.next().remove(m_installDir);
+        auto localName = gameDirIterator.next().remove(binaryDir);
         if (localName.contains(signsOfSource))
         {
             m_engine = Engine::Source;
@@ -318,7 +402,7 @@ void Game::detectGameEngine()
 
     // fall back to looking for a single data.pck file
     QStringList pcks;
-    for (QDirIterator dirit{m_installDir, QDirIterator::Subdirectories}; dirit.hasNext();)
+    for (QDirIterator dirit{binaryDir, QDirIterator::Subdirectories}; dirit.hasNext();)
     {
         const auto file = dirit.next();
         if (file.endsWith(".pck"_L1, Qt::CaseInsensitive))

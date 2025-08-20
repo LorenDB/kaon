@@ -39,6 +39,7 @@ class Game : public QObject
 
 public:
     static Game *fromSteam(int steamId, const QString &steamDrive, QObject *parent = nullptr);
+    static Game *fromItch(const QString &installPath, QObject *parent = nullptr);
 
     enum Engine
     {
@@ -66,6 +67,7 @@ public:
     enum class Store
     {
         Steam = 1,
+        Itch = 1 << 1,
     };
     Q_ENUM(Store)
     Q_DECLARE_FLAGS(Stores, Store)

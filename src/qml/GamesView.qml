@@ -258,6 +258,7 @@ RowLayout {
                     text: "All"
                     onClicked: {
                         steamCb.checked = true
+                        itchCb.checked = true
                     }
                 }
 
@@ -265,6 +266,7 @@ RowLayout {
                     text: "None"
                     onClicked: {
                         steamCb.checked = false
+                        itchCb.checked = false
                     }
                 }
             }
@@ -275,6 +277,14 @@ RowLayout {
                 text: "Steam"
                 Component.onCompleted: checked = GamesFilterModel.isStoreFilterSet(Game.Steam)
                 onCheckedChanged: GamesFilterModel.setStoreFilter(Game.Steam, checked)
+            }
+
+            CheckBox {
+                id: itchCb
+
+                text: "Itch"
+                Component.onCompleted: checked = GamesFilterModel.isStoreFilterSet(Game.Itch)
+                onCheckedChanged: GamesFilterModel.setStoreFilter(Game.Itch, checked)
             }
 
             Item { Layout.fillHeight: true }

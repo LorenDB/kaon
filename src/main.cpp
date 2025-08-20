@@ -3,6 +3,7 @@
 #include <QQmlApplicationEngine>
 
 #include "Aptabase.h"
+#include "Itch.h"
 
 using namespace Qt::Literals;
 
@@ -24,6 +25,7 @@ int main(int argc, char *argv[])
                 &app,
                 []() { QCoreApplication::exit(-1); },
     Qt::QueuedConnection);
+    engine.addImageProvider("itch-image", new ItchImageCache);
     engine.loadFromModule("dev.lorendb.kaon", "Main");
 
     app.setWindowIcon(QIcon::fromTheme("kaon", QIcon{":/qt/qml/dev/lorendb/kaon/icons/kaon.svg"}));
