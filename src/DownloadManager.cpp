@@ -7,25 +7,23 @@ DownloadManager *DownloadManager::s_instance = nullptr;
 
 DownloadManager::DownloadManager(QObject *parent)
     : QObject{parent}
-{
-    if (s_instance != nullptr)
-        throw std::runtime_error{"Attempted to double initialize download manager"};
-    else
-        s_instance = this;
-}
+{}
 
 DownloadManager *DownloadManager::instance()
 {
+    if (!s_instance)
+        s_instance = new DownloadManager;
     return s_instance;
 }
 
 void DownloadManager::download(const QNetworkRequest &request,
                                const QString &prettyName,
+                               bool notifyOnFailure,
                                std::function<void(QByteArray)> successCallback,
                                std::function<void(QNetworkReply::NetworkError, QString)> failureCallback,
                                std::function<void()> finallyCallback)
 {
-    m_queue.enqueue({request, prettyName, successCallback, failureCallback, finallyCallback});
+    m_queue.enqueue({request, prettyName, notifyOnFailure, successCallback, failureCallback, finallyCallback});
     if (m_queue.count() == 1)
         downloadNextInQueue();
 }
@@ -47,7 +45,8 @@ void DownloadManager::downloadNextInQueue()
         if (reply->error() != QNetworkReply::NoError)
         {
             qDebug() << "Download error:" << reply->errorString();
-            emit downloadFailed(download.prettyName);
+            if (download.notifyOnFailure)
+                emit downloadFailed(download.prettyName);
             download.failureCallback(reply->error(), reply->errorString());
         }
         else

@@ -188,6 +188,25 @@ ApplicationWindow {
         }
     }
 
+    Dialog {
+        id: updateAvailableDialog
+
+        property string updateVersion
+        property string updateUrl
+
+        title: "Update available"
+        modal: true
+        standardButtons: Dialog.Ok
+
+        Label {
+            anchors.fill: parent
+            text: "Kaon " + updateAvailableDialog.updateVersion + " is now available. Find out more and download the update at <a href=\""
+                  + updateAvailableDialog.updateUrl + "\">the release page</a>."
+            wrapMode: Text.WordWrap
+            onLinkActivated: (link) => Qt.openUrlExternally(link)
+        }
+    }
+
     Connections {
         function onPromptDotnetDownload(steamId: int) {
             dotnetDownloadDialog.steamId = steamId;
@@ -208,5 +227,13 @@ ApplicationWindow {
         }
 
         target: DownloadManager
+    }
+
+    UpdateChecker {
+        onUpdateAvailable: (version, url) => {
+            updateAvailableDialog.updateVersion = version;
+            updateAvailableDialog.updateUrl = url;
+            updateAvailableDialog.open();
+        }
     }
 }

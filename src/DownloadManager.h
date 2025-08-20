@@ -15,12 +15,13 @@ class DownloadManager : public QObject
     Q_PROPERTY(QString currentDownloadName READ currentDownloadName NOTIFY currentDownloadNameChanged FINAL)
 
 public:
-    explicit DownloadManager(QObject *parent = nullptr);
     static DownloadManager *instance();
+    static DownloadManager *create(QQmlEngine *qml, QJSEngine *js) { return instance(); }
 
     void download(
             const QNetworkRequest &request,
             const QString &prettyName,
+            bool notifyOnFailure,
             std::function<void(QByteArray)> successCallback,
             std::function<void(QNetworkReply::NetworkError, QString)> failureCallback,
             std::function<void()> finallyCallback = [] {});
@@ -34,6 +35,7 @@ signals:
     void downloadFailed(const QString &whatWasBeingDownloaded);
 
 private:
+    explicit DownloadManager(QObject *parent = nullptr);
     static DownloadManager *s_instance;
 
     void downloadNextInQueue();
@@ -42,6 +44,7 @@ private:
     {
         QNetworkRequest request;
         QString prettyName;
+        bool notifyOnFailure;
         std::function<void(QByteArray)> successCallback;
         std::function<void(QNetworkReply::NetworkError, QString)> failureCallback;
         std::function<void()> finallyCallback;

@@ -30,6 +30,8 @@ qt_add_qml_module(kaon
         Game.h
         UEVR.cpp
         UEVR.h
+        UpdateChecker.cpp
+        UpdateChecker.h
         VDF.cpp
         VDF.h
 

@@ -211,6 +211,7 @@ void UEVR::downloadUEVR(UEVRRelease *release)
     DownloadManager::instance()->download(
                 QNetworkRequest{url},
                 release->name(),
+                true,
                 [this, zipPath, release](const QByteArray &data) {
         QFile file(zipPath);
         if (file.open(QIODevice::WriteOnly))
@@ -292,6 +293,7 @@ void UEVR::updateAvailableReleases()
         DownloadManager::instance()->download(
                     req,
                     "UEVR release information"_L1,
+                    true,
                     [this, cachePath, semaphore](const QByteArray &data) {
             QFile cache{cachePath};
             if (cache.open(QFile::WriteOnly))
