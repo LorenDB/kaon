@@ -47,4 +47,4 @@ jobs:
         with:
           name: AppImage
           path: Kaon-x86_64.AppImage
-          retention-days: 7
+          retention-days: 1
