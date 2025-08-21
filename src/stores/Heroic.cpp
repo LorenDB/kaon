@@ -55,17 +55,19 @@ public:
 
             m_executables[m_executables.size()] = lo;
 
-            QFile metadataFile{Heroic::instance()->storeRoot() +
-                        "/legendaryConfig/legendary/metadata/%1.json"_L1.arg(m_id)};
-            metadataFile.open(QIODevice::ReadOnly);
-            const auto metadata = QJsonDocument::fromJson(metadataFile.readAll());
-
-            for (const auto &image : metadata["metadata"_L1]["keyImages"_L1].toArray())
+            if (QFile metadataFile{Heroic::instance()->storeRoot() +
+                    "/legendaryConfig/legendary/metadata/%1.json"_L1.arg(m_id)};
+                    metadataFile.open(QIODevice::ReadOnly))
             {
-                if (image["type"_L1] == "DieselGameBox"_L1)
-                    m_heroImage = "image://heroic-image/"_L1 + image["url"_L1].toString();
-                else if (image["type"_L1] == "DieselGameBoxTall"_L1)
-                    m_cardImage = "image://heroic-image/"_L1 + image["url"_L1].toString();
+                const auto metadata = QJsonDocument::fromJson(metadataFile.readAll());
+
+                for (const auto &image : metadata["metadata"_L1]["keyImages"_L1].toArray())
+                {
+                    if (image["type"_L1] == "DieselGameBox"_L1)
+                        m_heroImage = "image://heroic-image/"_L1 + image["url"_L1].toString();
+                    else if (image["type"_L1] == "DieselGameBoxTall"_L1)
+                        m_cardImage = "image://heroic-image/"_L1 + image["url"_L1].toString();
+                }
             }
         }
         else if (store == SubStore::GOG)
@@ -73,47 +75,49 @@ public:
             m_id = json["appName"_L1].toString();
             m_installDir = json["install_path"_L1].toString();
 
-            QFile gogGameInfo{"%1/goggame-%2.info"_L1.arg(m_installDir, m_id)};
-            gogGameInfo.open(QIODevice::ReadOnly);
-            const auto info = QJsonDocument::fromJson(gogGameInfo.readAll()).object();
-
-            m_name = info["name"_L1].toString();
-
-            LaunchOption::Platform platform;
-            if (const auto p = json["platform"].toString(); p == "windows"_L1)
-                platform = LaunchOption::Platform::Windows;
-            else if (p == "osx"_L1)
-                platform = LaunchOption::Platform::MacOS;
-            else if (p == "linux"_L1)
-                platform = LaunchOption::Platform::Linux;
-
-            for (const auto &entry : info["playTasks"_L1].toArray())
+            if (QFile gogGameInfo{"%1/goggame-%2.info"_L1.arg(m_installDir, m_id)}; gogGameInfo.open(QIODevice::ReadOnly))
             {
-                LaunchOption lo;
-                lo.executable = m_installDir + '/' + entry["path"_L1].toString();
-                lo.platform = platform;
+                const auto info = QJsonDocument::fromJson(gogGameInfo.readAll()).object();
+                m_name = info["name"_L1].toString();
 
-                if (entry["isPrimary"_L1].toBool())
+                LaunchOption::Platform platform;
+                if (const auto p = json["platform"].toString(); p == "windows"_L1)
+                    platform = LaunchOption::Platform::Windows;
+                else if (p == "osx"_L1)
+                    platform = LaunchOption::Platform::MacOS;
+                else if (p == "linux"_L1)
+                    platform = LaunchOption::Platform::Linux;
+
+                for (const auto &entry : info["playTasks"_L1].toArray())
                 {
-                    if (const auto typeStr = entry["category"_L1].toString(); typeStr == "game")
-                        m_type = AppType::Game;
-                }
+                    LaunchOption lo;
+                    lo.executable = m_installDir + '/' + entry["path"_L1].toString();
+                    lo.platform = platform;
 
-                m_executables[m_executables.size()] = lo;
+                    if (entry["isPrimary"_L1].toBool())
+                    {
+                        if (const auto typeStr = entry["category"_L1].toString(); typeStr == "game")
+                            m_type = AppType::Game;
+                    }
+
+                    m_executables[m_executables.size()] = lo;
+                }
             }
 
-            QFile storeCacheFile{Heroic::instance()->storeRoot() + "/store_cache/gog_api_info.json"};
-            storeCacheFile.open(QIODevice::ReadOnly);
-            auto storeCache = QJsonDocument::fromJson(storeCacheFile.readAll())["gog_%1"_L1.arg(m_id)];
+            if (QFile storeCacheFile{Heroic::instance()->storeRoot() + "/store_cache/gog_api_info.json"};
+                    storeCacheFile.open(QIODevice::ReadOnly))
+            {
+                auto storeCache = QJsonDocument::fromJson(storeCacheFile.readAll())["gog_%1"_L1.arg(m_id)];
 
-            m_cardImage = "image://heroic-image/"_L1 + storeCache["game"_L1]["vertical_cover"_L1]["url_format"_L1]
-                    .toString()
-                    .replace("{formatter}"_L1, ""_L1)
-                    .replace("{ext}"_L1, "jpg"_L1);
-            m_heroImage = "image://heroic-image/"_L1 + storeCache["game"_L1]["logo"_L1]["url_format"_L1]
-                    .toString()
-                    .replace("{formatter}"_L1, ""_L1)
-                    .replace("{ext}"_L1, "jpg"_L1);
+                m_cardImage = "image://heroic-image/"_L1 + storeCache["game"_L1]["vertical_cover"_L1]["url_format"_L1]
+                        .toString()
+                        .replace("{formatter}"_L1, ""_L1)
+                        .replace("{ext}"_L1, "jpg"_L1);
+                m_heroImage = "image://heroic-image/"_L1 + storeCache["game"_L1]["logo"_L1]["url_format"_L1]
+                        .toString()
+                        .replace("{formatter}"_L1, ""_L1)
+                        .replace("{ext}"_L1, "jpg"_L1);
+            }
         }
         else if (store == SubStore::Amazon)
         {
@@ -137,34 +141,37 @@ public:
                         "image://heroic-image/"_L1 + product["productDetail"_L1]["details"_L1]["backgroundUrl2"_L1].toString();
             }
 
-            QFile fuelJson{m_installDir + "/fuel.json"_L1};
-            fuelJson.open(QIODevice::ReadOnly);
-            const auto fuel = QJsonDocument::fromJson(fuelJson.readAll());
+            if (QFile fuelJson{m_installDir + "/fuel.json"_L1}; fuelJson.open(QIODevice::ReadOnly))
+            {
+                const auto fuel = QJsonDocument::fromJson(fuelJson.readAll());
 
-            LaunchOption lo;
-            lo.platform = LaunchOption::Platform::Windows;
-            lo.executable = m_installDir + '/' + fuel["Main"_L1]["Command"_L1].toString();
-            m_executables[0] = lo;
+                LaunchOption lo;
+                lo.platform = LaunchOption::Platform::Windows;
+                lo.executable = m_installDir + '/' + fuel["Main"_L1]["Command"_L1].toString();
+                m_executables[0] = lo;
+            }
         }
 
         // Common to all substores
-        QFile gamesConfig{Heroic::instance()->storeRoot() + "/GamesConfig/%1.json"_L1.arg(m_id)};
-        gamesConfig.open(QIODevice::ReadOnly);
-        const auto installationInfo = QJsonDocument::fromJson(gamesConfig.readAll())[m_id];
-
-        m_protonPrefix = installationInfo["winePrefix"_L1].toString();
-        m_protonBinary = installationInfo["wineVersion"_L1]["bin"_L1].toString();
-
-        // For some reason launching Proton directly doesn't seem to work right, so we'll try to bypass Proton
-        // installations and use the underlying wine directly
-        if (m_protonBinary.endsWith("/proton"_L1))
+        if (QFile gamesConfig{Heroic::instance()->storeRoot() + "/GamesConfig/%1.json"_L1.arg(m_id)};
+                gamesConfig.open(QIODevice::ReadOnly))
         {
-            auto protonBase = m_protonBinary;
-            protonBase.remove("/proton"_L1);
-            if (QFileInfo files{protonBase + "/files"_L1}; files.exists() && files.isDir())
-                m_protonBinary = protonBase + "/files/bin/wine"_L1;
-            else if (QFileInfo dist{protonBase + "/dist"_L1}; dist.exists() && dist.isDir())
-                m_protonBinary = protonBase + "/dist/bin/wine"_L1;
+            const auto installationInfo = QJsonDocument::fromJson(gamesConfig.readAll())[m_id];
+
+            m_protonPrefix = installationInfo["winePrefix"_L1].toString();
+            m_protonBinary = installationInfo["wineVersion"_L1]["bin"_L1].toString();
+
+            // For some reason launching Proton directly doesn't seem to work right, so we'll try to bypass Proton
+            // installations and use the underlying wine directly
+            if (m_protonBinary.endsWith("/proton"_L1))
+            {
+                auto protonBase = m_protonBinary;
+                protonBase.remove("/proton"_L1);
+                if (QFileInfo files{protonBase + "/files"_L1}; files.exists() && files.isDir())
+                    m_protonBinary = protonBase + "/files/bin/wine"_L1;
+                else if (QFileInfo dist{protonBase + "/dist"_L1}; dist.exists() && dist.isDir())
+                    m_protonBinary = protonBase + "/dist/bin/wine"_L1;
+            }
         }
 
         QDirIterator icons{Heroic::instance()->storeRoot() + "/icons"_L1};
@@ -233,32 +240,34 @@ void Heroic::scanStore()
 
     // Here begins a three-part journey.
     // Part the first: Epic
-    QFile epicInstalled{m_heroicRoot + "/legendaryConfig/legendary/installed.json"_L1};
-    epicInstalled.open(QIODevice::ReadOnly);
-    const auto epicJson = QJsonDocument::fromJson(epicInstalled.readAll()).object();
-
-    for (const auto &game : epicJson)
-        m_games.push_back(new HeroicGame{HeroicGame::SubStore::Epic, game.toObject(), this});
+    if (QFile epicInstalled{m_heroicRoot + "/legendaryConfig/legendary/installed.json"_L1};
+            epicInstalled.open(QIODevice::ReadOnly))
+    {
+        const auto epicJson = QJsonDocument::fromJson(epicInstalled.readAll()).object();
+        for (const auto &game : epicJson)
+            m_games.push_back(new HeroicGame{HeroicGame::SubStore::Epic, game.toObject(), this});
+    }
 
     // Part the second: GOG
-    QFile gogInstalled{m_heroicRoot + "/gog_store/installed.json"_L1};
-    gogInstalled.open(QIODevice::ReadOnly);
-    const auto gogJson = QJsonDocument::fromJson(gogInstalled.readAll()).object();
-
-    for (const auto &game : gogJson["installed"_L1].toArray())
-        m_games.push_back(new HeroicGame{HeroicGame::SubStore::GOG, game.toObject(), this});
+    if (QFile gogInstalled{m_heroicRoot + "/gog_store/installed.json"_L1}; gogInstalled.open(QIODevice::ReadOnly))
+    {
+        const auto gogJson = QJsonDocument::fromJson(gogInstalled.readAll()).object();
+        for (const auto &game : gogJson["installed"_L1].toArray())
+            m_games.push_back(new HeroicGame{HeroicGame::SubStore::GOG, game.toObject(), this});
+    }
 
     // Part the third: Amazon
-    QFile amazonLibrary{m_heroicRoot + "/nile_config/nile/library.json"_L1};
-    amazonLibrary.open(QIODevice::ReadOnly);
-    amazonLibraryCache = QJsonDocument::fromJson(amazonLibrary.readAll()).array();
-
-    QFile amazonInstalled{m_heroicRoot + "/nile_config/nile/installed.json"_L1};
-    amazonInstalled.open(QIODevice::ReadOnly);
-    const auto amazonJson = QJsonDocument::fromJson(amazonInstalled.readAll()).array();
-
-    for (const auto &game : amazonJson)
-        m_games.push_back(new HeroicGame{HeroicGame::SubStore::Amazon, game.toObject(), this});
+    if (QFile amazonLibrary{m_heroicRoot + "/nile_config/nile/library.json"_L1}; amazonLibrary.open(QIODevice::ReadOnly))
+    {
+        amazonLibraryCache = QJsonDocument::fromJson(amazonLibrary.readAll()).array();
+        if (QFile amazonInstalled{m_heroicRoot + "/nile_config/nile/installed.json"_L1};
+                amazonInstalled.open(QIODevice::ReadOnly))
+        {
+            const auto amazonJson = QJsonDocument::fromJson(amazonInstalled.readAll()).array();
+            for (const auto &game : amazonJson)
+                m_games.push_back(new HeroicGame{HeroicGame::SubStore::Amazon, game.toObject(), this});
+        }
+    }
 
     endResetModel();
 }
