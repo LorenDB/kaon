@@ -1,3 +1,5 @@
+#pragma once
+
 #include <QAbstractListModel>
 #include <QObject>
 #include <QQmlEngine>
