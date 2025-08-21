@@ -40,7 +40,6 @@ class Game : public QObject
 public:
     static Game *fromSteam(const QString &steamId, const QString &steamDrive, QObject *parent = nullptr);
     static Game *fromItch(const QString &installPath, QObject *parent = nullptr);
-    static Game *fromHeroic(const QString &installPath, QObject *parent = nullptr);
 
     enum Engine
     {

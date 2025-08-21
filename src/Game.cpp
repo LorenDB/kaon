@@ -300,13 +300,6 @@ Game *Game::fromItch(const QString &installPath, QObject *parent)
     return g;
 }
 
-Game *Game::fromHeroic(const QString &installPath, QObject *parent)
-{
-    auto g = new Game{parent};
-    g->m_store = Store::Heroic;
-    return g;
-}
-
 bool Game::protonPrefixExists() const
 {
     return QFileInfo::exists(m_protonPrefix);
