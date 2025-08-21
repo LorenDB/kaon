@@ -38,9 +38,6 @@ class Game : public QObject
     Q_PROPERTY(bool dotnetInstalled READ dotnetInstalled NOTIFY dotnetInstalledChanged FINAL)
 
 public:
-    static Game *fromSteam(const QString &steamId, const QString &steamDrive, QObject *parent = nullptr);
-    static Game *fromItch(const QString &installPath, QObject *parent = nullptr);
-
     enum Engine
     {
         Unknown = 1,
@@ -82,10 +79,11 @@ public:
     QString protonBinary() const { return m_protonBinary; }
     Engine engine() const { return m_engine; }
     AppType type() const { return m_type; }
-    Store store() const { return m_store; }
     bool supportsVr() const { return m_supportsVr; }
     bool vrOnly() const { return m_vrOnly; }
     bool hasLinuxBinary() const;
+
+    virtual Store store() const = 0;
 
     enum LogoPosition
     {
@@ -127,7 +125,6 @@ protected:
     QString m_protonBinary;
     Engine m_engine = Engine::Unknown;
     AppType m_type = AppType::Other;
-    Store m_store;
     bool m_supportsVr{false};
     bool m_vrOnly{false};
 

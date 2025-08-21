@@ -29,8 +29,6 @@ public:
     HeroicGame(SubStore store, const QJsonObject &json, QObject *parent = nullptr)
         : Game{parent}
     {
-        m_store = Game::Store::Heroic;
-
         if (store == SubStore::Epic)
         {
             m_id = json["app_name"_L1].toString();
@@ -144,6 +142,8 @@ public:
 
         detectGameEngine();
     }
+
+    Store store() const override { return Store::Heroic; }
 };
 
 Heroic::Heroic(QObject *parent)
