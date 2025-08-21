@@ -9,7 +9,7 @@ class Game : public QObject
     QML_ELEMENT
     QML_UNCREATABLE("Model only object")
 
-    Q_PROPERTY(int id READ id CONSTANT)
+    Q_PROPERTY(QString id READ id CONSTANT)
     Q_PROPERTY(QString name READ name CONSTANT)
     Q_PROPERTY(QString installDir READ installDir CONSTANT)
     Q_PROPERTY(QDateTime lastPlayed READ lastPlayed CONSTANT)
@@ -38,8 +38,9 @@ class Game : public QObject
     Q_PROPERTY(bool dotnetInstalled READ dotnetInstalled NOTIFY dotnetInstalledChanged FINAL)
 
 public:
-    static Game *fromSteam(int steamId, const QString &steamDrive, QObject *parent = nullptr);
+    static Game *fromSteam(const QString &steamId, const QString &steamDrive, QObject *parent = nullptr);
     static Game *fromItch(const QString &installPath, QObject *parent = nullptr);
+    static Game *fromHeroic(const QString &installPath, QObject *parent = nullptr);
 
     enum Engine
     {
@@ -68,11 +69,12 @@ public:
     {
         Steam = 1,
         Itch = 1 << 1,
+        Heroic = 1 << 2,
     };
     Q_ENUM(Store)
     Q_DECLARE_FLAGS(Stores, Store)
 
-    int id() const { return m_id; }
+    QString id() const { return m_id; }
     QString name() const { return m_name; }
     QString installDir() const { return m_installDir; }
     QDateTime lastPlayed() const { return m_lastPlayed; }
@@ -113,12 +115,12 @@ signals:
 
     void dotnetInstalledChanged();
 
-private:
+protected:
     explicit Game(QObject *parent = nullptr);
 
     void detectGameEngine();
 
-    int m_id = 0;
+    QString m_id;
     QString m_name;
     QString m_installDir;
     QDateTime m_lastPlayed;
@@ -151,6 +153,8 @@ private:
 
         Platforms platform;
         QString executable;
+
+        // Information only shared by Steam right now. Helps with VR detection, maybe.
         QString type;
     };
 

@@ -18,7 +18,7 @@ Game::Game(QObject *parent)
 {
 }
 
-Game *Game::fromSteam(int steamId, const QString &steamDrive, QObject *parent)
+Game *Game::fromSteam(const QString &steamId, const QString &steamDrive, QObject *parent)
 {
     auto g = new Game{parent};
     g->m_id = steamId;
@@ -26,7 +26,7 @@ Game *Game::fromSteam(int steamId, const QString &steamDrive, QObject *parent)
     g->m_canLaunch = true;
     g->m_canOpenSettings = true;
 
-    const QString acfPath = "%1/steamapps/appmanifest_%2.acf"_L1.arg(steamDrive, QString::number(g->m_id));
+    const QString acfPath = "%1/steamapps/appmanifest_%2.acf"_L1.arg(steamDrive, g->m_id);
     try
     {
         std::ifstream acfFile{acfPath.toStdString()};
@@ -45,7 +45,7 @@ Game *Game::fromSteam(int steamId, const QString &steamDrive, QObject *parent)
                                     {{"which"_L1, parts.size() >= 2 ? parts[parts.size() - 2] : ""_L1}});
     }
 
-    const auto imageDir = Steam::instance()->steamRoot() + "/appcache/librarycache/"_L1 + QString::number(g->m_id);
+    const auto imageDir = Steam::instance()->steamRoot() + "/appcache/librarycache/"_L1 + g->m_id;
     QDirIterator images{imageDir, QDirIterator::Subdirectories};
     while (images.hasNext())
     {
@@ -59,7 +59,7 @@ Game *Game::fromSteam(int steamId, const QString &steamDrive, QObject *parent)
             g->m_logoImage = "file://"_L1 + images.filePath();
     }
 
-    QString compatdata = steamDrive + "/steamapps/compatdata/"_L1 + QString::number(g->m_id);
+    QString compatdata = steamDrive + "/steamapps/compatdata/"_L1 + g->m_id;
     g->m_protonPrefix = compatdata + "/pfx"_L1;
     if (QFileInfo fi{compatdata}; fi.exists() && fi.isDir())
     {
@@ -81,7 +81,7 @@ Game *Game::fromSteam(int steamId, const QString &steamDrive, QObject *parent)
         }
     }
 
-    auto *info = AppInfoVDF::instance()->game(g->m_id);
+    auto *info = AppInfoVDF::instance()->game(g->m_id.toInt());
     AppInfoVDF::AppInfo::Section section;
     AppInfoVDF::AppInfo::SectionDesc app_desc{};
 
@@ -206,7 +206,7 @@ Game *Game::fromSteam(int steamId, const QString &steamDrive, QObject *parent)
                 {
                     const QString logoId{static_cast<const char *>(value.second)};
                     if (QFileInfo fi{u"%1/appcache/librarycache/%2/%3.jpg"_s.arg(
-                                Steam::instance()->steamRoot(), QString::number(g->m_id), logoId)};
+                                Steam::instance()->steamRoot(), g->m_id, logoId)};
                             fi.exists())
                         g->m_icon = "file://"_L1 + fi.absoluteFilePath();
                     // TODO: could also extract clienticon key to find icons in $steamroot/steam/games
@@ -257,7 +257,7 @@ Game *Game::fromItch(const QString &installPath, QObject *parent)
     auto g = new Game{parent};
     g->m_store = Store::Itch;
 
-    g->m_id = game["id"_L1].toInt();
+    g->m_id = game["id"_L1].toString();
     g->m_name = game["title"_L1].toString();
     g->m_installDir = installPath;
     g->m_cardImage = "image://itch-image/"_L1 + game["coverUrl"_L1].toString();
@@ -297,6 +297,13 @@ Game *Game::fromItch(const QString &installPath, QObject *parent)
     }
 
     g->detectGameEngine();
+    return g;
+}
+
+Game *Game::fromHeroic(const QString &installPath, QObject *parent)
+{
+    auto g = new Game{parent};
+    g->m_store = Store::Heroic;
     return g;
 }
 

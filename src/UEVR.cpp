@@ -175,7 +175,10 @@ void UEVR::launchUEVR(const Game *game)
     auto injector = new QProcess;
     QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
     if (game->protonPrefixExists())
+    {
         env.insert("WINEPREFIX"_L1, game->protonPrefix());
+        env.insert("STEAM_COMPAT_DATA_PATH"_L1, game->protonPrefix());
+    }
     env.insert("WINEFSYNC"_L1, "1"_L1);
     injector->setProcessEnvironment(env);
     injector->start(game->protonBinary(), {path(Paths::CurrentUEVRInjector)});

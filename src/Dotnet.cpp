@@ -116,7 +116,10 @@ void Dotnet::installDotnetDesktopRuntime(Game *game)
     auto installer = new QProcess;
     QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
     if (game->protonPrefixExists())
+    {
         env.insert("WINEPREFIX"_L1, game->protonPrefix());
+        env.insert("STEAM_COMPAT_DATA_PATH"_L1, game->protonPrefix());
+    }
     env.insert("WINEFSYNC"_L1, "1"_L1);
     installer->setProcessEnvironment(env);
     installer->start(

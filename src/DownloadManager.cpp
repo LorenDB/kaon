@@ -9,7 +9,7 @@ DownloadManager::DownloadManager(QObject *parent)
     : QObject{parent}
 {
     connect(this, &DownloadManager::newDownloadEnqueued, this, [this] {
-        if (m_queue.count() == 1)
+        if (!m_downloading)
             downloadNextInQueue();
     });
 }

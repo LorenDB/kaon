@@ -257,16 +257,18 @@ RowLayout {
                 Button {
                     text: "All"
                     onClicked: {
-                        steamCb.checked = true
-                        itchCb.checked = true
+                        steamCb.checked = true;
+                        itchCb.checked = true;
+                        heroicCb.checked = true;
                     }
                 }
 
                 Button {
                     text: "None"
                     onClicked: {
-                        steamCb.checked = false
-                        itchCb.checked = false
+                        steamCb.checked = false;
+                        itchCb.checked = false;
+                        heroicCb.checked = false;
                     }
                 }
             }
@@ -277,6 +279,14 @@ RowLayout {
                 text: "Steam"
                 Component.onCompleted: checked = GamesFilterModel.isStoreFilterSet(Game.Steam)
                 onCheckedChanged: GamesFilterModel.setStoreFilter(Game.Steam, checked)
+            }
+
+            CheckBox {
+                id: heroicCb
+
+                text: "Heroic"
+                Component.onCompleted: checked = GamesFilterModel.isStoreFilterSet(Game.Heroic)
+                onCheckedChanged: GamesFilterModel.setStoreFilter(Game.Heroic, checked)
             }
 
             CheckBox {

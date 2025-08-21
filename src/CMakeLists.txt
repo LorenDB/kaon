@@ -37,6 +37,8 @@ qt_add_qml_module(kaon
         VDF.cpp
         VDF.h
 
+        stores/Heroic.cpp
+        stores/Heroic.h
         stores/Itch.cpp
         stores/Itch.h
         stores/Steam.cpp

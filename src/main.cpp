@@ -4,6 +4,7 @@
 
 #include "Aptabase.h"
 #include "Itch.h"
+#include "Heroic.h"
 
 using namespace Qt::Literals;
 
@@ -25,9 +26,10 @@ int main(int argc, char *argv[])
                 &app,
                 []() { QCoreApplication::exit(-1); },
     Qt::QueuedConnection);
-    engine.addImageProvider("itch-image", new ItchImageCache);
-    engine.loadFromModule("dev.lorendb.kaon", "Main");
+    engine.addImageProvider("itch-image"_L1, new ItchImageCache);
+    engine.addImageProvider("heroic-image"_L1, new HeroicImageCache);
+    engine.loadFromModule("dev.lorendb.kaon"_L1, "Main"_L1);
 
-    app.setWindowIcon(QIcon::fromTheme("kaon", QIcon{":/qt/qml/dev/lorendb/kaon/icons/kaon.svg"}));
+    app.setWindowIcon(QIcon::fromTheme("kaon"_L1, QIcon{":/qt/qml/dev/lorendb/kaon/icons/kaon.svg"_L1}));
     return app.exec();
 }

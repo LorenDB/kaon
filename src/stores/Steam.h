@@ -28,7 +28,6 @@ public:
     QHash<int, QByteArray> roleNames() const override;
 
     QString steamRoot() const { return m_steamRoot; }
-    Q_INVOKABLE Game *gameFromId(int steamId) const;
 
 private:
     explicit Steam(QObject *parent = nullptr);
