@@ -164,8 +164,10 @@ public:
         auto file = new QFile{cache.path() + "/itch_cache/"_L1 + url.split('/').last()};
         if (file->exists() && file->fileTime(QFileDevice::FileModificationTime).daysTo(QDateTime::currentDateTime()) < 30)
         {
-            file->open(QIODevice::ReadOnly);
-            m_image = QImage::fromData(file->readAll());
+            if (file->open(QIODevice::ReadOnly))
+                m_image = QImage::fromData(file->readAll());
+            else
+                m_error = "Could not open cached file";
             emit finished();
         }
         else
@@ -188,6 +190,8 @@ public:
                     file->open(QIODevice::ReadOnly);
                     m_image = QImage::fromData(file->readAll());
                 }
+                else
+                    m_error = "Could not download or find in cache";
             },
             [this] { emit finished(); });
         }
@@ -195,13 +199,12 @@ public:
         connect(this, &ItchImageFetcher::finished, file, &QFile::deleteLater);
     }
 
-    QQuickTextureFactory *textureFactory() const override
-    {
-        return QQuickTextureFactory::textureFactoryForImage(m_image);
-    }
+    QQuickTextureFactory *textureFactory() const override { return QQuickTextureFactory::textureFactoryForImage(m_image); }
+    QString errorString() const override { return m_error; }
 
 private:
     QImage m_image;
+    QString m_error;
 };
 
 QQuickImageResponse *ItchImageCache::requestImageResponse(const QString &id, const QSize &requestedSize)
