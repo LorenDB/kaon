@@ -9,6 +9,8 @@ Pane {
 
     required property Game game
 
+    FontInfo { id: fontInfo }
+
     ColumnLayout {
         anchors.fill: parent
         spacing: 10
@@ -141,6 +143,19 @@ Pane {
                     onClicked: Qt.openUrlExternally("steam://launch/" + gameDetailsRoot.game.id)
                 }
             }
+        }
+
+        Label {
+            id: nameLabel
+
+            text: gameDetailsRoot.game.name
+            font.pointSize: fontInfo.pointSize * 1.5
+            font.bold: true
+        }
+
+        MenuSeparator {
+            Layout.minimumWidth: nameLabel.width
+            Layout.preferredWidth: gameDetailsRoot.width / 2
         }
 
         Label {
