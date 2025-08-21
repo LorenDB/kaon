@@ -38,15 +38,15 @@ Pane {
             }
 
             Label {
-                text: Steam.steamRoot === "" ? "No Steam installation detected" : "Steam install detected: " + Steam.steamRoot
+                text: Steam.storeRoot === "" ? "No Steam installation detected" : "Steam install detected: " + Steam.storeRoot
             }
 
             Label {
-                text: Heroic.heroicRoot === "" ? "No Heroic installation detected" : "Heroic install detected: " + Heroic.heroicRoot
+                text: Heroic.storeRoot === "" ? "No Heroic installation detected" : "Heroic install detected: " + Heroic.storeRoot
             }
 
             Label {
-                text: Itch.itchRoot === "" ? "No Itch installation detected" : "Itch install detected: " + Itch.itchRoot
+                text: Itch.storeRoot === "" ? "No Itch installation detected" : "Itch install detected: " + Itch.storeRoot
             }
 
             Item { Layout.fillHeight: true }

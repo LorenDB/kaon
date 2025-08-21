@@ -3,11 +3,11 @@
 #include <QDir>
 #include <QDirIterator>
 #include <QJsonArray>
+#include <QJsonObject>
 #include <QSettings>
 #include <QStandardPaths>
 #include <QTimer>
 
-#include "Aptabase.h"
 #include "DownloadManager.h"
 
 using namespace Qt::Literals;
@@ -48,7 +48,7 @@ public:
             else if (platform == "Mac"_L1)
                 lo.platform = LaunchOption::Platform::MacOS;
 
-            QFile metadataFile{Heroic::instance()->heroicRoot() +
+            QFile metadataFile{Heroic::instance()->storeRoot() +
                         "/legendaryConfig/legendary/metadata/%1.json"_L1.arg(m_id)};
             metadataFile.open(QIODevice::ReadOnly);
             const auto metadata = QJsonDocument::fromJson(metadataFile.readAll());
@@ -95,7 +95,7 @@ public:
                 m_executables[m_executables.size()] = lo;
             }
 
-            QFile storeCacheFile{Heroic::instance()->heroicRoot() + "/store_cache/gog_api_info.json"};
+            QFile storeCacheFile{Heroic::instance()->storeRoot() + "/store_cache/gog_api_info.json"};
             storeCacheFile.open(QIODevice::ReadOnly);
             auto storeCache = QJsonDocument::fromJson(storeCacheFile.readAll())["gog_%1"_L1.arg(m_id)];
 
@@ -110,7 +110,7 @@ public:
         }
 
         // Common to all substores
-        QFile gamesConfig{Heroic::instance()->heroicRoot() + "/GamesConfig/%1.json"_L1.arg(m_id)};
+        QFile gamesConfig{Heroic::instance()->storeRoot() + "/GamesConfig/%1.json"_L1.arg(m_id)};
         gamesConfig.open(QIODevice::ReadOnly);
         const auto installationInfo = QJsonDocument::fromJson(gamesConfig.readAll())[m_id];
 
@@ -129,7 +129,7 @@ public:
                 m_protonBinary = protonBase + "/dist/bin/wine"_L1;
         }
 
-        QDirIterator icons{Heroic::instance()->heroicRoot() + "/icons"_L1};
+        QDirIterator icons{Heroic::instance()->storeRoot() + "/icons"_L1};
         while (icons.hasNext())
         {
             icons.next();
@@ -147,7 +147,7 @@ public:
 };
 
 Heroic::Heroic(QObject *parent)
-    : QAbstractListModel{parent}
+    : Store{parent}
 {
     static const QStringList heroicPaths = {
         QDir::homePath() + "/.config/heroic"_L1,
@@ -167,7 +167,7 @@ Heroic::Heroic(QObject *parent)
     if (m_heroicRoot.isEmpty())
         qDebug() << "Heroic not found";
 
-    QTimer::singleShot(0, this, &Heroic::scanHeroic);
+    QTimer::singleShot(0, this, &Heroic::scanStore);
 }
 
 Heroic *Heroic::instance()
@@ -182,33 +182,7 @@ Heroic *Heroic::create(QQmlEngine *qml, QJSEngine *js)
     return instance();
 }
 
-int Heroic::rowCount(const QModelIndex &parent) const
-{
-    return m_games.count();
-}
-
-QVariant Heroic::data(const QModelIndex &index, int role) const
-{
-    if (!index.isValid() || index.row() < 0 || index.row() >= m_games.size())
-        return {};
-    const auto &item = m_games.at(index.row());
-    switch (role)
-    {
-    case Qt::DisplayRole:
-        return item->name();
-    case Roles::GameObject:
-        return QVariant::fromValue(item);
-    }
-
-    return {};
-}
-
-QHash<int, QByteArray> Heroic::roleNames() const
-{
-    return {{Roles::GameObject, "game"_ba}};
-}
-
-void Heroic::scanHeroic()
+void Heroic::scanStore()
 {
     if (m_heroicRoot.isEmpty())
         return;

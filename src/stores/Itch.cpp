@@ -100,34 +100,8 @@ Itch *Itch::instance()
     return s_instance;
 }
 
-int Itch::rowCount(const QModelIndex &parent) const
-{
-    return m_games.count();
-}
-
-QVariant Itch::data(const QModelIndex &index, int role) const
-{
-    if (!index.isValid() || index.row() < 0 || index.row() >= m_games.size())
-        return {};
-    const auto &item = m_games.at(index.row());
-    switch (role)
-    {
-    case Qt::DisplayRole:
-        return item->name();
-    case Roles::GameObject:
-        return QVariant::fromValue(item);
-    }
-
-    return {};
-}
-
-QHash<int, QByteArray> Itch::roleNames() const
-{
-    return {{Roles::GameObject, "game"_ba}};
-}
-
 Itch::Itch(QObject *parent)
-    : QAbstractListModel{parent}
+    : Store{parent}
 {
     static const QStringList itchPaths = {
         QDir::homePath() + "/.config/itch"_L1,
@@ -147,10 +121,10 @@ Itch::Itch(QObject *parent)
     if (m_itchRoot.isEmpty())
         qDebug() << "Itch not found";
 
-    QTimer::singleShot(0, this, &Itch::scanItch);
+    QTimer::singleShot(0, this, &Itch::scanStore);
 }
 
-void Itch::scanItch()
+void Itch::scanStore()
 {
     if (m_itchRoot.isEmpty())
         return;

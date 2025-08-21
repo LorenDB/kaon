@@ -43,6 +43,8 @@ qt_add_qml_module(kaon
         stores/Itch.h
         stores/Steam.cpp
         stores/Steam.h
+        stores/Store.cpp
+        stores/Store.h
 
     RESOURCES
         icons/delete.svg

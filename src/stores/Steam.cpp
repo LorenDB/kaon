@@ -44,7 +44,7 @@ public:
                                         {{"which"_L1, parts.size() >= 2 ? parts[parts.size() - 2] : ""_L1}});
         }
 
-        const auto imageDir = Steam::instance()->steamRoot() + "/appcache/librarycache/"_L1 + m_id;
+        const auto imageDir = Steam::instance()->storeRoot() + "/appcache/librarycache/"_L1 + m_id;
         QDirIterator images{imageDir, QDirIterator::Subdirectories};
         while (images.hasNext())
         {
@@ -205,7 +205,7 @@ public:
                     {
                         const QString logoId{static_cast<const char *>(value.second)};
                         if (QFileInfo fi{u"%1/appcache/librarycache/%2/%3.jpg"_s.arg(
-                                    Steam::instance()->steamRoot(), m_id, logoId)};
+                                    Steam::instance()->storeRoot(), m_id, logoId)};
                                 fi.exists())
                             m_icon = "file://"_L1 + fi.absoluteFilePath();
                         // TODO: could also extract clienticon key to find icons in $steamroot/steam/games
@@ -228,7 +228,7 @@ public:
 };
 
 Steam::Steam(QObject *parent)
-    : QAbstractListModel{parent}
+    : Store{parent}
 {
     static const QStringList steamPaths = {
         // ~/.steam comes first since it *should* point to the active Steam install
@@ -258,7 +258,7 @@ Steam::Steam(QObject *parent)
     // We need to finish creating this object before scanning Steam. Otherwise the Game constructor will call
     // Steam::instance(), but since we haven't finished creating this object, s_instance hasn't been set, which leads to a
     // brief loop of Steam objects being created.
-    QTimer::singleShot(0, this, &Steam::scanSteam);
+    QTimer::singleShot(0, this, &Steam::scanStore);
 }
 
 Steam *Steam::instance()
@@ -273,33 +273,7 @@ Steam *Steam::create(QQmlEngine *qml, QJSEngine *js)
     return instance();
 }
 
-int Steam::rowCount(const QModelIndex &parent) const
-{
-    return m_games.count();
-}
-
-QVariant Steam::data(const QModelIndex &index, int role) const
-{
-    if (!index.isValid() || index.row() < 0 || index.row() >= m_games.size())
-        return {};
-    const auto &item = m_games.at(index.row());
-    switch (role)
-    {
-    case Qt::DisplayRole:
-        return item->name();
-    case Roles::GameObject:
-        return QVariant::fromValue(item);
-    }
-
-    return {};
-}
-
-QHash<int, QByteArray> Steam::roleNames() const
-{
-    return {{Roles::GameObject, "game"_ba}};
-}
-
-void Steam::scanSteam()
+void Steam::scanStore()
 {
     if (m_steamRoot.isEmpty())
         return;

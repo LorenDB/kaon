@@ -48,7 +48,7 @@ AppInfoVDF *AppInfoVDF::s_instance{nullptr};
 uint32_t AppInfoVDF::vdf_version = 0x27; // Default to Pre-December 2022
 
 AppInfoVDF::AppInfoVDF()
-    : m_appInfoPath{Steam::instance()->steamRoot() + "/appcache/appinfo.vdf"_L1}
+    : m_appInfoPath{Steam::instance()->storeRoot() + "/appcache/appinfo.vdf"_L1}
 {
     if (!QFileInfo::exists(m_appInfoPath))
         return; // TODO: log error
