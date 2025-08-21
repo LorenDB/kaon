@@ -14,6 +14,11 @@ using namespace Qt::Literals;
 
 Heroic *Heroic::s_instance = nullptr;
 
+namespace
+{
+QJsonArray amazonLibraryCache;
+}
+
 class HeroicGame : public Game
 {
     Q_OBJECT
@@ -107,6 +112,37 @@ public:
                     .toString()
                     .replace("{formatter}"_L1, ""_L1)
                     .replace("{ext}"_L1, "jpg"_L1);
+        }
+        else if (store == SubStore::Amazon)
+        {
+            m_id = json["id"_L1].toString();
+            m_installDir = json["path"_L1].toString();
+            m_type = AppType::Game;
+
+            if (const auto it =
+                    std::find_if(amazonLibraryCache.cbegin(),
+                                 amazonLibraryCache.cend(),
+                                 [this](const QJsonValueConstRef v) { return v["product"_L1]["id"_L1] == m_id; });
+                    it != amazonLibraryCache.cend())
+            {
+                const auto info = it->toObject();
+                const auto &product = info["product"_L1];
+
+                m_name = product["title"_L1].toString();
+
+                m_cardImage = "image://heroic-image/"_L1 + product["productDetail"_L1]["iconUrl"_L1].toString();
+                m_heroImage =
+                        "image://heroic-image/"_L1 + product["productDetail"_L1]["details"_L1]["backgroundUrl2"_L1].toString();
+            }
+
+            QFile fuelJson{m_installDir + "/fuel.json"_L1};
+            fuelJson.open(QIODevice::ReadOnly);
+            const auto fuel = QJsonDocument::fromJson(fuelJson.readAll());
+
+            LaunchOption lo;
+            lo.platform = LaunchOption::Platform::Windows;
+            lo.executable = m_installDir + '/' + fuel["Main"_L1]["Command"_L1].toString();
+            m_executables[0] = lo;
         }
 
         // Common to all substores
@@ -211,7 +247,16 @@ void Heroic::scanStore()
         m_games.push_back(new HeroicGame{HeroicGame::SubStore::GOG, game.toObject(), this});
 
     // Part the third: Amazon
-    // TODO
+    QFile amazonLibrary{m_heroicRoot + "/nile_config/nile/library.json"_L1};
+    amazonLibrary.open(QIODevice::ReadOnly);
+    amazonLibraryCache = QJsonDocument::fromJson(amazonLibrary.readAll()).array();
+
+    QFile amazonInstalled{m_heroicRoot + "/nile_config/nile/installed.json"_L1};
+    amazonInstalled.open(QIODevice::ReadOnly);
+    const auto amazonJson = QJsonDocument::fromJson(amazonInstalled.readAll()).array();
+
+    for (const auto &game : amazonJson)
+        m_games.push_back(new HeroicGame{HeroicGame::SubStore::Amazon, game.toObject(), this});
 
     endResetModel();
 }
@@ -235,6 +280,8 @@ public:
             storePart = "epic"_L1;
         else if (url.contains("gog.com"_L1))
             storePart = "gog"_L1;
+        else if (url.contains("amazon.com"_L1))
+            storePart = "amazon"_L1;
         else
             storePart = '.';
 
