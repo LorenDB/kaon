@@ -21,11 +21,10 @@ public:
     QHash<int, QByteArray> roleNames() const final;
 
     virtual QString storeRoot() const = 0;
+    Q_INVOKABLE virtual void scanStore() = 0;
 
 protected:
     explicit Store(QObject *parent = nullptr);
-
-    virtual void scanStore() = 0;
 
     QList<Game *> m_games;
 };

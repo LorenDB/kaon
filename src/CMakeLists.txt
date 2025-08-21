@@ -54,6 +54,7 @@ qt_add_qml_module(kaon
         icons/kaon.svg
         icons/media-playback-start.svg
         icons/settings-configure.svg
+        icons/view-refresh.svg
 )
 
 # needed to make the QML module compilation find headers that aren't directly in src

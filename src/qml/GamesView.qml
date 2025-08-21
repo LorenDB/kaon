@@ -20,36 +20,14 @@ RowLayout {
         Layout.fillWidth: true
         Layout.fillHeight: true
 
-        GridLayout {
+        ColumnLayout {
             anchors.fill: parent
-            rowSpacing: 10
-            columns: 3
+            spacing: 10
 
             TextField {
                 Layout.fillWidth: true
                 placeholderText: "Search..."
                 onTextChanged: GamesFilterModel.search = text
-            }
-
-            Component.onCompleted: {
-                if (GamesFilterModel.viewType === GamesFilterModel.Grid)
-                    gridButton.checked = true;
-                else if (GamesFilterModel.viewType === GamesFilterModel.List)
-                    listButton.checked = true;
-            }
-
-            RadioButton {
-                id: gridButton
-
-                text: "Grid"
-                onCheckedChanged: GamesFilterModel.viewType = GamesFilterModel.Grid
-            }
-
-            RadioButton {
-                id: listButton
-
-                text: "List"
-                onCheckedChanged: GamesFilterModel.viewType = GamesFilterModel.List
             }
 
             Loader {
@@ -94,6 +72,45 @@ RowLayout {
             id: filterColumn
 
             spacing: 10
+
+            RowLayout {
+                spacing: 10
+                Component.onCompleted: {
+                    if (GamesFilterModel.viewType === GamesFilterModel.Grid)
+                        gridButton.checked = true;
+                    else if (GamesFilterModel.viewType === GamesFilterModel.List)
+                        listButton.checked = true;
+                }
+
+                RadioButton {
+                    id: gridButton
+
+                    text: "Grid"
+                    onCheckedChanged: GamesFilterModel.viewType = GamesFilterModel.Grid
+                }
+
+                RadioButton {
+                    id: listButton
+
+                    text: "List"
+                    onCheckedChanged: GamesFilterModel.viewType = GamesFilterModel.List
+                }
+
+                ToolSeparator {}
+
+                ToolButton {
+                    icon.name: "view-refresh"
+                    icon.source: Qt.resolvedUrl("icons/view-refresh.svg")
+                    icon.color: palette.buttonText
+                    onClicked: {
+                        Steam.scanStore();
+                        Heroic.scanStore();
+                        Itch.scanStore();
+                    }
+                }
+            }
+
+            MenuSeparator {}
 
             Label {
                 text: "Filter by game engine"
