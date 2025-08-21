@@ -53,6 +53,8 @@ public:
             else if (platform == "Mac"_L1)
                 lo.platform = LaunchOption::Platform::MacOS;
 
+            m_executables[m_executables.size()] = lo;
+
             QFile metadataFile{Heroic::instance()->storeRoot() +
                         "/legendaryConfig/legendary/metadata/%1.json"_L1.arg(m_id)};
             metadataFile.open(QIODevice::ReadOnly);
