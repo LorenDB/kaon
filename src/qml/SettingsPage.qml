@@ -42,6 +42,10 @@ Pane {
             }
 
             Label {
+                text: Heroic.heroicRoot === "" ? "No Heroic installation detected" : "Heroic install detected: " + Heroic.heroicRoot
+            }
+
+            Label {
                 text: Itch.itchRoot === "" ? "No Itch installation detected" : "Itch install detected: " + Itch.itchRoot
             }
 
