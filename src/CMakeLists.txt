@@ -15,8 +15,8 @@ qt_add_qml_module(kaon
         qml/Main.qml
         qml/SettingsPage.qml
 
-        qml/components/SteamGridDelegate.qml
-        qml/components/SteamListDelegate.qml
+        qml/components/GameGridDelegate.qml
+        qml/components/GameListDelegate.qml
         qml/components/Tag.qml
 
     SOURCES

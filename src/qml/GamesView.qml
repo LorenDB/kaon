@@ -60,7 +60,7 @@ RowLayout {
                 Component {
                     id: gridView
 
-                    SteamGridDelegate {
+                    GameGridDelegate {
                         onGameClicked: (game) => { gridRoot.gameClicked(game) }
                     }
                 }
@@ -68,7 +68,7 @@ RowLayout {
                 Component {
                     id: listView
 
-                    SteamListDelegate {
+                    GameListDelegate {
                         onGameClicked: (game) => { gridRoot.gameClicked(game) }
                     }
                 }
