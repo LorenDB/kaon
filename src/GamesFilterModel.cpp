@@ -31,6 +31,9 @@ GamesFilterModel::GamesFilterModel(QObject *parent)
     connect(this, &GamesFilterModel::storeFilterChanged, this, &GamesFilterModel::invalidateFilter);
     connect(this, &GamesFilterModel::searchChanged, this, &GamesFilterModel::invalidateFilter);
 
+    setDynamicSortFilter(true);
+    sort(0);
+
     QSettings settings;
     settings.beginGroup("GamesFilterModel"_L1);
 
@@ -94,7 +97,7 @@ void GamesFilterModel::setStoreFilter(Game::Store store, bool state)
 bool GamesFilterModel::filterAcceptsRow(int row, const QModelIndex &parent) const
 {
     const auto g = sourceModel()->data(sourceModel()->index(row, 0, parent), Steam::Roles::GameObject).value<Game *>();
-    if (!g)
+    if (!g || !g->isValid())
         return false;
     if (!m_engineFilter.testFlag(g->engine()))
         return false;
@@ -106,4 +109,11 @@ bool GamesFilterModel::filterAcceptsRow(int row, const QModelIndex &parent) cons
         return false;
 
     return QSortFilterProxyModel::filterAcceptsRow(row, parent);
+}
+
+bool GamesFilterModel::lessThan(const QModelIndex &left, const QModelIndex &right) const
+{
+    const auto leftGame = sourceModel()->data(left, Steam::Roles::GameObject).value<Game *>();
+    const auto rightGame = sourceModel()->data(right, Steam::Roles::GameObject).value<Game *>();
+    return leftGame->lastPlayed() > rightGame->lastPlayed();
 }

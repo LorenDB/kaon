@@ -324,10 +324,6 @@ void Steam::scanStore()
                         g->deleteLater();
                 }
             }
-
-            std::sort(m_games.begin(), m_games.end(), [](const auto &a, const auto &b) {
-                return a->lastPlayed() > b->lastPlayed();
-            });
         }
         catch (const std::length_error &e)
         {

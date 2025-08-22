@@ -54,6 +54,7 @@ signals:
 
 protected:
     bool filterAcceptsRow(int row, const QModelIndex &parent) const override;
+    bool lessThan(const QModelIndex &left, const QModelIndex &right) const override;
 
 private:
     QConcatenateTablesProxyModel *m_models;
