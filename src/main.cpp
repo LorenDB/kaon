@@ -1,4 +1,5 @@
 #include <QApplication>
+#include <QCommandLineParser>
 #include <QFile>
 #include <QIcon>
 #include <QQmlApplicationEngine>
@@ -12,7 +13,13 @@ using namespace Qt::Literals;
 
 namespace
 {
-QtMessageHandler originalHandler = nullptr;
+QtMessageHandler ORIGINAL_HANDLER = nullptr;
+
+#if defined(_DEBUG) || !defined(NDEBUG)
+bool DEBUG_TO_STDOUT = true;
+#else
+bool DEBUG_TO_STDOUT = false;
+#endif
 }
 
 // adapted from https://doc.qt.io/qt-6/qtlogging.html#qInstallMessageHandler
@@ -25,13 +32,13 @@ void logToFile(QtMsgType type, const QMessageLogContext &context, const QString 
     logFile.write(message.toLatin1() + '\n');
     logFile.flush();
 
-    if (originalHandler)
-        originalHandler(type, context, msg);
+    if (ORIGINAL_HANDLER && (DEBUG_TO_STDOUT || type != QtMsgType::QtDebugMsg))
+        ORIGINAL_HANDLER(type, context, msg);
 }
 
 int main(int argc, char *argv[])
 {
-    originalHandler = qInstallMessageHandler(logToFile);
+    ORIGINAL_HANDLER = qInstallMessageHandler(logToFile);
     qSetMessagePattern("[%{time}] [%{category}] %{type}: %{message}"_L1);
 
     QCoreApplication::setApplicationName("Kaon"_L1);
@@ -39,6 +46,16 @@ int main(int argc, char *argv[])
     QCoreApplication::setOrganizationName("LorenDB"_L1);
     QCoreApplication::setOrganizationDomain("lorendb.dev"_L1);
     QApplication app(argc, argv);
+
+    QCommandLineParser p;
+    p.setApplicationDescription("VR mod manager"_L1);
+    p.addHelpOption();
+    p.addVersionOption();
+    QCommandLineOption shouldLogDebug{"debug"_L1};
+    p.addOption(shouldLogDebug);
+    p.process(app);
+    if (p.isSet(shouldLogDebug))
+        DEBUG_TO_STDOUT = true;
 
     qInfo() << "This log only represents the most recent run of Kaon!";
 
