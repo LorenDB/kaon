@@ -1,5 +1,6 @@
 #include "Steam.h"
 
+#include <QDesktopServices>
 #include <QDir>
 #include <QDirIterator>
 #include <QLoggingCategory>
@@ -291,6 +292,11 @@ Steam *Steam::create(QQmlEngine *qml, QJSEngine *js)
     return instance();
 }
 
+void Steam::launchSteamVR()
+{
+    QDesktopServices::openUrl({"steam://run/250820"_L1});
+}
+
 void Steam::scanStore()
 {
     if (m_steamRoot.isEmpty())
@@ -302,6 +308,7 @@ void Steam::scanStore()
     for (const auto game : std::as_const(m_games))
         game->deleteLater();
     m_games.clear();
+    m_hasSteamVR = false;
 
     const auto parseLibraryFolders = [this](const QString &vdfPath) -> bool {
         qCDebug(SteamLog) << "Parsing libraryfolders.vdf from" << vdfPath;
@@ -319,7 +326,11 @@ void Steam::scanStore()
                             QString::fromStdString(folder->attribs["path"]),
                             this};
                             g->isValid())
+                    {
                         m_games.push_back(g);
+                        if (g->id() == "250820"_L1)
+                            m_hasSteamVR = true;
+                    }
                     else
                         g->deleteLater();
                 }
@@ -346,6 +357,7 @@ void Steam::scanStore()
         qCWarning(SteamLog) << "Could not find libraryfolders.vdf";
 
     endResetModel();
+    emit hasSteamVRChanged(m_hasSteamVR);
 }
 
 #include "Steam.moc"
