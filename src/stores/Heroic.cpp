@@ -120,6 +120,10 @@ public:
                         .toString()
                         .replace("{formatter}"_L1, ""_L1)
                         .replace("{ext}"_L1, "jpg"_L1);
+                m_icon = "image://heroic-image/"_L1 + storeCache["game"_L1]["square_icon"_L1]["url_format"_L1]
+                        .toString()
+                        .replace("{formatter}"_L1, ""_L1)
+                        .replace("{ext}"_L1, "jpg"_L1);
             }
         }
         else if (store == SubStore::Amazon)
@@ -182,6 +186,7 @@ public:
             }
         }
 
+        // Fall back to local icon cache if it exists to avoid loading from the network
         QDirIterator icons{Heroic::instance()->storeRoot() + "/icons"_L1};
         while (icons.hasNext())
         {
