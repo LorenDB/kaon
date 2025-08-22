@@ -127,7 +127,10 @@ public:
                     if (key == "executable"_L1)
                         m_executables[id].executable = m_installDir + '/' + static_cast<const char *>(value.second);
                     else if (key == "type"_L1)
-                        m_executables[id].type = static_cast<const char *>(value.second);
+                    {
+                        if (QString type{static_cast<const char *>(value.second)}; type == "vr" || type == "openxr")
+                            m_supportsVr = true;
+                    }
                     else if (key == "oslist"_L1)
                     {
                         const QString os = static_cast<const char *>(value.second);

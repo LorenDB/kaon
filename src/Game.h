@@ -149,9 +149,6 @@ protected:
 
         Platforms platform;
         QString executable;
-
-        // Information only shared by Steam right now. Helps with VR detection, maybe.
-        QString type;
     };
 
     QMap<int, LaunchOption> m_executables;
