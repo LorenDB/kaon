@@ -124,7 +124,7 @@ Itch::Itch(QObject *parent)
     }
 
     if (m_itchRoot.isEmpty())
-        qCWarning(ItchLog) << "Itch not found";
+        qCInfo(ItchLog) << "Itch not found";
     else
         qCInfo(ItchLog) << "Found Itch:" << m_itchRoot;
 
