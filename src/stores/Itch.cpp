@@ -25,6 +25,8 @@ public:
     ItchGame(const QString &installPath, QObject *parent)
         : Game{parent}
     {
+        qCDebug(ItchLog) << "Creating game:" << installPath;
+
         QTemporaryDir tempDir;
         if (!tempDir.isValid())
         {
@@ -123,6 +125,8 @@ Itch::Itch(QObject *parent)
 
     if (m_itchRoot.isEmpty())
         qCWarning(ItchLog) << "Itch not found";
+    else
+        qCInfo(ItchLog) << "Found Itch:" << m_itchRoot;
 
     QTimer::singleShot(0, this, &Itch::scanStore);
 }
@@ -132,6 +136,7 @@ void Itch::scanStore()
     if (m_itchRoot.isEmpty())
         return;
 
+    qCDebug(ItchLog) << "Scanning Itch library";
     beginResetModel();
 
     for (const auto game : std::as_const(m_games))

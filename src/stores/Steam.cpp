@@ -24,6 +24,8 @@ public:
     SteamGame(const QString &steamId, const QString &steamDrive, QObject *parent)
         : Game{parent}
     {
+        qCDebug(SteamLog) << "Creating game:" << steamId;
+
         m_id = steamId;
         m_canLaunch = true;
         m_canOpenSettings = true;
@@ -65,6 +67,7 @@ public:
         m_protonPrefix = compatdata + "/pfx"_L1;
         if (QFileInfo fi{compatdata}; fi.exists() && fi.isDir())
         {
+            qCDebug(SteamLog) << "Found Proton prefix for" << m_name << "at" << m_protonPrefix;
             QFile file{compatdata + "/config_info"_L1};
             if (file.open(QIODevice::ReadOnly | QIODevice::Text))
             {
@@ -260,6 +263,8 @@ Steam::Steam(QObject *parent)
 
     if (m_steamRoot.isEmpty())
         qCInfo(SteamLog) << "Steam not found";
+    else
+        qCInfo(SteamLog) << "Found Steam:" << m_steamRoot;
 
     // We need to finish creating this object before scanning Steam. Otherwise the Game constructor will call
     // Steam::instance(), but since we haven't finished creating this object, s_instance hasn't been set, which leads to a
@@ -284,6 +289,7 @@ void Steam::scanStore()
     if (m_steamRoot.isEmpty())
         return;
 
+    qCDebug(SteamLog) << "Scanning Steam library";
     beginResetModel();
 
     for (const auto game : std::as_const(m_games))
@@ -291,15 +297,19 @@ void Steam::scanStore()
     m_games.clear();
 
     const auto parseLibraryFolders = [this](const QString &vdfPath) -> bool {
+        qCDebug(SteamLog) << "Parsing libraryfolders.vdf from" << vdfPath;
         std::ifstream vdfFile{vdfPath.toStdString()};
 
         try
         {
             auto libraryFolders = tyti::vdf::read(vdfFile);
             for (const auto &[_, folder] : libraryFolders.childs)
+            {
+                qCDebug(SteamLog) << "Scanning Steam drive:" << folder->attribs["path"];
                 for (const auto &[appId, _] : folder->childs["apps"]->attribs)
                     m_games.push_back(
                                 new SteamGame{QString::fromStdString(appId), QString::fromStdString(folder->attribs["path"]), this});
+            }
 
             std::sort(m_games.begin(), m_games.end(), [](const auto &a, const auto &b) {
                 return a->lastPlayed() > b->lastPlayed();

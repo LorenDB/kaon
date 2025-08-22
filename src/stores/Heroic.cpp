@@ -155,6 +155,9 @@ public:
             }
         }
 
+        // Kinda weird to have this here, but it doesn't work well anywhere else
+        qCDebug(HeroicLog) << "Creating game:" << m_id;
+
         // Common to all substores
         if (QFile gamesConfig{Heroic::instance()->storeRoot() + "/GamesConfig/%1.json"_L1.arg(m_id)};
                 gamesConfig.open(QIODevice::ReadOnly))
@@ -163,6 +166,8 @@ public:
 
             m_protonPrefix = installationInfo["winePrefix"_L1].toString();
             m_protonBinary = installationInfo["wineVersion"_L1]["bin"_L1].toString();
+
+            qCDebug(HeroicLog) << "Found Proton prefix for" << m_name << "at" << m_protonPrefix;
 
             // For some reason launching Proton directly doesn't seem to work right, so we'll try to bypass Proton
             // installations and use the underlying wine directly
@@ -214,6 +219,8 @@ Heroic::Heroic(QObject *parent)
 
     if (m_heroicRoot.isEmpty())
         qCInfo(HeroicLog) << "Heroic not found";
+    else
+        qCInfo(HeroicLog) << "Found Heroic:" << m_heroicRoot;
 
     QTimer::singleShot(0, this, &Heroic::scanStore);
 }
@@ -235,6 +242,7 @@ void Heroic::scanStore()
     if (m_heroicRoot.isEmpty())
         return;
 
+    qCDebug(HeroicLog) << "Scanning Heroic library";
     beginResetModel();
 
     for (const auto game : std::as_const(m_games))
@@ -246,6 +254,7 @@ void Heroic::scanStore()
     if (QFile epicInstalled{m_heroicRoot + "/legendaryConfig/legendary/installed.json"_L1};
             epicInstalled.open(QIODevice::ReadOnly))
     {
+        qCDebug(HeroicLog) << "Found Epic:" << epicInstalled.fileName();
         const auto epicJson = QJsonDocument::fromJson(epicInstalled.readAll()).object();
         for (const auto &game : epicJson)
             m_games.push_back(new HeroicGame{HeroicGame::SubStore::Epic, game.toObject(), this});
@@ -254,6 +263,7 @@ void Heroic::scanStore()
     // Part the second: GOG
     if (QFile gogInstalled{m_heroicRoot + "/gog_store/installed.json"_L1}; gogInstalled.open(QIODevice::ReadOnly))
     {
+        qCDebug(HeroicLog) << "Found GOG:" << gogInstalled.fileName();
         const auto gogJson = QJsonDocument::fromJson(gogInstalled.readAll()).object();
         for (const auto &game : gogJson["installed"_L1].toArray())
             m_games.push_back(new HeroicGame{HeroicGame::SubStore::GOG, game.toObject(), this});
@@ -266,6 +276,7 @@ void Heroic::scanStore()
         if (QFile amazonInstalled{m_heroicRoot + "/nile_config/nile/installed.json"_L1};
                 amazonInstalled.open(QIODevice::ReadOnly))
         {
+            qCDebug(HeroicLog) << "Found Amazon:" << amazonInstalled.fileName();
             const auto amazonJson = QJsonDocument::fromJson(amazonInstalled.readAll()).array();
             for (const auto &game : amazonJson)
                 m_games.push_back(new HeroicGame{HeroicGame::SubStore::Amazon, game.toObject(), this});
