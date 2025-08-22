@@ -95,7 +95,8 @@ void Game::detectGameEngine()
 
     // Unity fallback: if the crash handler exists, it's a dead giveaway
     for (QDirIterator gameDirIterator{m_installDir, QDirIterator::Subdirectories}; gameDirIterator.hasNext();)
-    {gameDirIterator.next();
+    {
+        gameDirIterator.next();
         if (gameDirIterator.fileName() == "UnityCrashHandler64.exe"_L1 ||
                 gameDirIterator.fileName() == "UnityCrashHandler32.exe"_L1)
         {
