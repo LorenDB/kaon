@@ -29,8 +29,18 @@ void logToFile(QtMsgType type, const QMessageLogContext &context, const QString 
     static QFile logFile{QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + "/kaon.log"_L1};
     if (!logFile.isOpen())
         logFile.open(QIODevice::WriteOnly);
-    logFile.write(message.toLatin1() + '\n');
-    logFile.flush();
+    if (logFile.isOpen())
+    {
+        logFile.write(message.toLatin1() + '\n');
+        logFile.flush();
+    }
+    else
+    {
+        static bool hasWarned = false;
+        if (!hasWarned)
+            ORIGINAL_HANDLER(QtMsgType::QtCriticalMsg, {}, "Failed to open the log file!"_L1);
+        hasWarned = true;
+    }
 
     if (ORIGINAL_HANDLER && (DEBUG_TO_STDOUT || type != QtMsgType::QtDebugMsg))
         ORIGINAL_HANDLER(type, context, msg);
