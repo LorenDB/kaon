@@ -43,7 +43,7 @@ public:
         }
         catch (const std::length_error &e)
         {
-            qCWarning(SteamLog) << "Failure while parsing game from libraryfolders.vdf:" << e.what();
+            qCWarning(SteamLog) << "Failure while parsing " << acfPath << ":" << e.what();
             auto parts = acfPath.split('/');
             Aptabase::instance()->track("failure-parsing-game-libraryfolders-bug"_L1,
                                         {{"which"_L1, parts.size() >= 2 ? parts[parts.size() - 2] : ""_L1}});
@@ -195,7 +195,11 @@ public:
             {
                 for (const auto &[key, value] : std::as_const(section.keys))
                 {
-                    if (key == "type"_L1)
+                    if (key == "name"_L1 && m_name.isEmpty())
+                        m_name = static_cast<const char *>(value.second);
+                    else if (key == "installdir"_L1 && m_installDir.isEmpty())
+                        m_installDir = steamDrive + "/steamapps/common/"_L1 + static_cast<const char *>(value.second);
+                    else if (key == "type"_L1)
                     {
                         QString type{static_cast<const char *>(value.second)};
                         type = type.toLower();
