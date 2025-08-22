@@ -113,8 +113,7 @@ void Game::detectGameEngine()
     for (const auto &e : std::as_const(m_executables))
     {
         QFileInfo exe{e.executable};
-        QDirIterator pckFinder{exe.absolutePath()};
-        while (pckFinder.hasNext())
+        for (QDirIterator pckFinder{exe.absolutePath()}; pckFinder.hasNext();)
         {
             pckFinder.next();
             if (pckFinder.fileName().toLower() == exe.baseName().toLower() + ".pck"_L1)
