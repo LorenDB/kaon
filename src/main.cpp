@@ -1,9 +1,10 @@
 #include <QApplication>
 #include <QCommandLineParser>
+#include <QDir>
 #include <QFile>
 #include <QIcon>
 #include <QQmlApplicationEngine>
-#include <QDir>
+#include <QQmlContext>
 #include <QStandardPaths>
 
 #include "Aptabase.h"
@@ -92,6 +93,6 @@ int main(int argc, char *argv[])
     engine.addImageProvider("heroic-image"_L1, new HeroicImageCache);
     engine.loadFromModule("dev.lorendb.kaon"_L1, "Main"_L1);
 
-    app.setWindowIcon(QIcon::fromTheme("kaon"_L1, QIcon{":/qt/qml/dev/lorendb/kaon/icons/kaon.svg"_L1}));
+    app.setWindowIcon(QIcon::fromTheme("kaon"_L1, QIcon{":/qt/qml/dev/lorendb/kaon/qml/icons/kaon.svg"_L1}));
     return app.exec();
 }

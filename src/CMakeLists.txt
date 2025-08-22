@@ -47,14 +47,14 @@ qt_add_qml_module(kaon
         stores/Store.h
 
     RESOURCES
-        icons/delete.svg
-        icons/download.svg
-        icons/draw-arrow-back.svg
-        icons/folder.svg
-        icons/kaon.svg
-        icons/media-playback-start.svg
-        icons/settings-configure.svg
-        icons/view-refresh.svg
+        qml/icons/delete.svg
+        qml/icons/download.svg
+        qml/icons/draw-arrow-back.svg
+        qml/icons/folder.svg
+        qml/icons/kaon.svg
+        qml/icons/media-playback-start.svg
+        qml/icons/settings-configure.svg
+        qml/icons/view-refresh.svg
 )
 
 # needed to make the QML module compilation find headers that aren't directly in src
