@@ -14,6 +14,9 @@ RowLayout {
 
     SystemPalette { id: palette }
 
+    ButtonGroup { id: viewButtonGroup }
+    ButtonGroup { id: sortButtonGroup }
+
     Frame {
         id: frame
 
@@ -28,6 +31,72 @@ RowLayout {
                 Layout.fillWidth: true
                 placeholderText: "Search..."
                 onTextChanged: GamesFilterModel.search = text
+            }
+
+            RowLayout {
+                spacing: 10
+                Component.onCompleted: {
+                    if (GamesFilterModel.viewType === GamesFilterModel.Grid)
+                        gridButton.checked = true;
+                    else if (GamesFilterModel.viewType === GamesFilterModel.List)
+                        listButton.checked = true;
+
+                    if (GamesFilterModel.sortType === GamesFilterModel.LastPlayed)
+                        sortLastPlayedButton.checked = true;
+                    else if (GamesFilterModel.sortType === GamesFilterModel.Alphabetical)
+                        sortAlphabeticalButton.checked = true;
+                }
+
+                Label { text: "View:" }
+
+                RadioButton {
+                    id: gridButton
+
+                    text: "Grid"
+                    ButtonGroup.group: viewButtonGroup
+                    onCheckedChanged: GamesFilterModel.viewType = GamesFilterModel.Grid
+                }
+
+                RadioButton {
+                    id: listButton
+
+                    text: "List"
+                    ButtonGroup.group: viewButtonGroup
+                    onCheckedChanged: GamesFilterModel.viewType = GamesFilterModel.List
+                }
+
+                ToolSeparator {}
+
+                Label { text: "Sort:" }
+
+                RadioButton {
+                    id: sortLastPlayedButton
+
+                    text: "Last played"
+                    ButtonGroup.group: sortButtonGroup
+                    onCheckedChanged: GamesFilterModel.sortType = GamesFilterModel.LastPlayed
+                }
+
+                RadioButton {
+                    id: sortAlphabeticalButton
+
+                    text: "Alphabetical"
+                    ButtonGroup.group: sortButtonGroup
+                    onCheckedChanged: GamesFilterModel.sortType = GamesFilterModel.Alphabetical
+                }
+
+                ToolSeparator {}
+
+                ToolButton {
+                    icon.name: "view-refresh"
+                    icon.source: Qt.resolvedUrl("icons/view-refresh.svg")
+                    icon.color: palette.buttonText
+                    onClicked: {
+                        Steam.scanStore();
+                        Heroic.scanStore();
+                        Itch.scanStore();
+                    }
+                }
             }
 
             Loader {
@@ -72,45 +141,6 @@ RowLayout {
             id: filterColumn
 
             spacing: 10
-
-            RowLayout {
-                spacing: 10
-                Component.onCompleted: {
-                    if (GamesFilterModel.viewType === GamesFilterModel.Grid)
-                        gridButton.checked = true;
-                    else if (GamesFilterModel.viewType === GamesFilterModel.List)
-                        listButton.checked = true;
-                }
-
-                RadioButton {
-                    id: gridButton
-
-                    text: "Grid"
-                    onCheckedChanged: GamesFilterModel.viewType = GamesFilterModel.Grid
-                }
-
-                RadioButton {
-                    id: listButton
-
-                    text: "List"
-                    onCheckedChanged: GamesFilterModel.viewType = GamesFilterModel.List
-                }
-
-                ToolSeparator {}
-
-                ToolButton {
-                    icon.name: "view-refresh"
-                    icon.source: Qt.resolvedUrl("icons/view-refresh.svg")
-                    icon.color: palette.buttonText
-                    onClicked: {
-                        Steam.scanStore();
-                        Heroic.scanStore();
-                        Itch.scanStore();
-                    }
-                }
-            }
-
-            MenuSeparator {}
 
             Label {
                 text: "Filter by game engine"

@@ -17,6 +17,7 @@ class GamesFilterModel : public QSortFilterProxyModel
     Q_PROPERTY(Game::Stores storeFilter READ storeFilter NOTIFY storeFilterChanged FINAL)
     Q_PROPERTY(QString search READ search WRITE setSearch NOTIFY searchChanged FINAL)
     Q_PROPERTY(ViewType viewType READ viewType WRITE setViewType NOTIFY viewTypeChanged FINAL)
+    Q_PROPERTY(SortType sortType READ sortType WRITE setSortType NOTIFY sortTypeChanged FINAL)
 
 public:
     explicit GamesFilterModel(QObject *parent = nullptr);
@@ -28,14 +29,23 @@ public:
     };
     Q_ENUM(ViewType)
 
+    enum SortType
+    {
+        LastPlayed,
+        Alphabetical,
+    };
+    Q_ENUM(SortType)
+
     Game::Engines engineFilter() const { return m_engineFilter; }
     Game::AppTypes typeFilter() const { return m_typeFilter; }
     Game::Stores storeFilter() const { return m_storeFilter; }
     QString search() const { return m_search; }
     ViewType viewType() const { return m_viewType; }
+    SortType sortType() const { return m_sortType; }
 
     void setSearch(const QString &search);
     void setViewType(ViewType viewType);
+    void setSortType(SortType sortType);
 
     Q_INVOKABLE bool isEngineFilterSet(Game::Engine engine);
     Q_INVOKABLE bool isTypeFilterSet(Game::AppType type);
@@ -51,6 +61,7 @@ signals:
     void storeFilterChanged();
     void searchChanged();
     void viewTypeChanged(GamesFilterModel::ViewType viewType);
+    void sortTypeChanged(GamesFilterModel::SortType sortType);
 
 protected:
     bool filterAcceptsRow(int row, const QModelIndex &parent) const override;
@@ -64,4 +75,5 @@ private:
     Game::Stores m_storeFilter;
     QString m_search;
     ViewType m_viewType;
+    SortType m_sortType;
 };

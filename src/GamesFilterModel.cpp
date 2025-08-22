@@ -2,6 +2,7 @@
 
 #include <QSettings>
 
+#include "Aptabase.h"
 #include "Heroic.h"
 #include "Itch.h"
 #include "Steam.h"
@@ -30,6 +31,7 @@ GamesFilterModel::GamesFilterModel(QObject *parent)
     connect(this, &GamesFilterModel::typeFilterChanged, this, &GamesFilterModel::invalidateFilter);
     connect(this, &GamesFilterModel::storeFilterChanged, this, &GamesFilterModel::invalidateFilter);
     connect(this, &GamesFilterModel::searchChanged, this, &GamesFilterModel::invalidateFilter);
+    connect(this, &GamesFilterModel::sortTypeChanged, this, &GamesFilterModel::invalidate);
 
     setDynamicSortFilter(true);
     sort(0);
@@ -43,6 +45,7 @@ GamesFilterModel::GamesFilterModel(QObject *parent)
     const auto oldSetting = migration.value("viewType"_L1, ViewType::Grid).value<ViewType>();
 
     m_viewType = settings.value("viewType"_L1, oldSetting).value<ViewType>();
+    m_sortType = settings.value("sortType"_L1, SortType::LastPlayed).value<SortType>();
 }
 
 void GamesFilterModel::setSearch(const QString &search)
@@ -59,6 +62,16 @@ void GamesFilterModel::setViewType(ViewType viewType)
     QSettings settings;
     settings.beginGroup("GamesFilterModel"_L1);
     settings.setValue("viewType"_L1, m_viewType);
+}
+
+void GamesFilterModel::setSortType(SortType sortType)
+{
+    m_sortType = sortType;
+    emit sortTypeChanged(m_sortType);
+
+    QSettings settings;
+    settings.beginGroup("GamesFilterModel"_L1);
+    settings.setValue("sortType"_L1, m_sortType);
 }
 
 bool GamesFilterModel::isEngineFilterSet(Game::Engine engine)
@@ -115,5 +128,15 @@ bool GamesFilterModel::lessThan(const QModelIndex &left, const QModelIndex &righ
 {
     const auto leftGame = sourceModel()->data(left, Steam::Roles::GameObject).value<Game *>();
     const auto rightGame = sourceModel()->data(right, Steam::Roles::GameObject).value<Game *>();
-    return leftGame->lastPlayed() > rightGame->lastPlayed();
+
+    switch (m_sortType)
+    {
+    case SortType::Alphabetical:
+        return leftGame->name() < rightGame->name();
+    case SortType::LastPlayed:
+        return leftGame->lastPlayed() > rightGame->lastPlayed();
+    default:
+        Aptabase::instance()->track("invalid-sort-type-bug", {{"sortType", m_sortType}});
+        return leftGame->id() < rightGame->id();
+    }
 }
