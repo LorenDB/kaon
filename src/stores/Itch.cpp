@@ -93,6 +93,8 @@ public:
         }
 
         detectGameEngine();
+
+        m_valid = true;
     }
 
     Store store() const override { return Store::Itch; }
@@ -150,7 +152,7 @@ void Itch::scanStore()
         if (apps.fileName() == "downloads"_L1 || apps.fileName() == "."_L1 || apps.fileName() == ".."_L1)
             continue;
 
-        if (auto g = new ItchGame{apps.filePath(), this}; !g->id().isEmpty())
+        if (auto g = new ItchGame{apps.filePath(), this}; g->isValid())
             m_games.push_back(g);
         else
             g->deleteLater();

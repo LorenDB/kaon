@@ -106,6 +106,9 @@ public:
 
     bool dotnetInstalled() const;
 
+    // This is used to detect if a game has fully loaded or if there were errors parsing it.
+    bool isValid() const { return m_valid; }
+
 signals:
     void protonPrefixExistsChanged(bool state);
     void protonBinaryChanged(QString path);
@@ -155,6 +158,9 @@ protected:
 
     bool m_canLaunch{false};
     bool m_canOpenSettings{false};
+
+    // Set this to true at the very end of your Game constructor
+    bool m_valid = false;
 };
 Q_DECLARE_METATYPE(Game)
 

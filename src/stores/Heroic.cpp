@@ -194,6 +194,8 @@ public:
         }
 
         detectGameEngine();
+
+        m_valid = true;
     }
 
     Store store() const override { return Store::Heroic; }
@@ -257,7 +259,12 @@ void Heroic::scanStore()
         qCDebug(HeroicLog) << "Found Epic:" << epicInstalled.fileName();
         const auto epicJson = QJsonDocument::fromJson(epicInstalled.readAll()).object();
         for (const auto &game : epicJson)
-            m_games.push_back(new HeroicGame{HeroicGame::SubStore::Epic, game.toObject(), this});
+        {
+            if (auto g = new HeroicGame{HeroicGame::SubStore::Epic, game.toObject(), this}; g->isValid())
+                m_games.push_back(g);
+            else
+                g->deleteLater();
+        }
     }
 
     // Part the second: GOG
@@ -266,7 +273,12 @@ void Heroic::scanStore()
         qCDebug(HeroicLog) << "Found GOG:" << gogInstalled.fileName();
         const auto gogJson = QJsonDocument::fromJson(gogInstalled.readAll()).object();
         for (const auto &game : gogJson["installed"_L1].toArray())
-            m_games.push_back(new HeroicGame{HeroicGame::SubStore::GOG, game.toObject(), this});
+        {
+            if (auto g = new HeroicGame{HeroicGame::SubStore::GOG, game.toObject(), this}; g->isValid())
+                m_games.push_back(g);
+            else
+                g->deleteLater();
+        }
     }
 
     // Part the third: Amazon
@@ -279,7 +291,12 @@ void Heroic::scanStore()
             qCDebug(HeroicLog) << "Found Amazon:" << amazonInstalled.fileName();
             const auto amazonJson = QJsonDocument::fromJson(amazonInstalled.readAll()).array();
             for (const auto &game : amazonJson)
-                m_games.push_back(new HeroicGame{HeroicGame::SubStore::Amazon, game.toObject(), this});
+            {
+                if (auto g = new HeroicGame{HeroicGame::SubStore::Amazon, game.toObject(), this}; g->isValid())
+                    m_games.push_back(g);
+                else
+                    g->deleteLater();
+            }
         }
     }
 

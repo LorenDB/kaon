@@ -45,8 +45,9 @@ public:
         {
             qCWarning(SteamLog) << "Failure while parsing " << acfPath << ":" << e.what();
             auto parts = acfPath.split('/');
-            Aptabase::instance()->track("failure-parsing-game-libraryfolders-bug"_L1,
-                                        {{"which"_L1, parts.size() >= 2 ? parts[parts.size() - 2] : ""_L1}});
+            Aptabase::instance()->track(
+                        "failure-parsing-game-libraryfolders-bug"_L1,
+                        {{"which"_L1, parts.size() >= 2 ? parts[parts.size() - 2] : ""_L1}, {"game"_L1, m_id}});
         }
 
         const auto imageDir = Steam::instance()->storeRoot() + "/appcache/librarycache/"_L1 + m_id;
@@ -235,6 +236,8 @@ public:
         }
 
         detectGameEngine();
+
+        m_valid = true;
     }
 
     Store store() const override { return Store::Steam; }
@@ -311,8 +314,15 @@ void Steam::scanStore()
             {
                 qCDebug(SteamLog) << "Scanning Steam drive:" << folder->attribs["path"];
                 for (const auto &[appId, _] : folder->childs["apps"]->attribs)
-                    m_games.push_back(
-                                new SteamGame{QString::fromStdString(appId), QString::fromStdString(folder->attribs["path"]), this});
+                {
+                    if (auto g = new SteamGame{QString::fromStdString(appId),
+                            QString::fromStdString(folder->attribs["path"]),
+                            this};
+                            g->isValid())
+                        m_games.push_back(g);
+                    else
+                        g->deleteLater();
+                }
             }
 
             std::sort(m_games.begin(), m_games.end(), [](const auto &a, const auto &b) {
