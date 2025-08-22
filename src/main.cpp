@@ -3,6 +3,7 @@
 #include <QFile>
 #include <QIcon>
 #include <QQmlApplicationEngine>
+#include <QDir>
 #include <QStandardPaths>
 
 #include "Aptabase.h"
@@ -56,6 +57,9 @@ int main(int argc, char *argv[])
     QCoreApplication::setOrganizationName("LorenDB"_L1);
     QCoreApplication::setOrganizationDomain("lorendb.dev"_L1);
     QApplication app(argc, argv);
+
+    // This needs to exist
+    QDir{}.mkpath(QStandardPaths::writableLocation(QStandardPaths::CacheLocation));
 
     QCommandLineParser p;
     p.setApplicationDescription("VR mod manager"_L1);
