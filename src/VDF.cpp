@@ -27,14 +27,16 @@
 
 #include "VDF.h"
 
-#include <QDebug>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QLoggingCategory>
 #include <QStandardPaths>
 #include <QTimer>
 
 #include "stores/Steam.h"
+
+Q_LOGGING_CATEGORY(VDFLog, "vdf")
 
 using namespace Qt::Literals;
 
@@ -100,7 +102,7 @@ AppInfoVDF::AppInfoVDF()
 
 void AppInfoVDF::dumpAppInfo()
 {
-    qDebug() << "Dumping app info to" << QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + "/appinfo/"_L1;
+    qCDebug(VDFLog) << "Dumping app info to" << QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + "/appinfo/"_L1;
 
     AppInfoVDF::AppInfo *info = root;
     while (info && info->appid != LAST_STEAM_APP)
@@ -168,14 +170,14 @@ void AppInfoVDF::AppInfo::Section::parse(SectionDesc &desc)
                     const auto str_idx = *(uint32_t *)(cur + 1);
 
 #ifdef DEBUG
-                    qDebug() << "String Table Index:  " << str_idx << ", op=" << op;
+                    qCDebug(VDFLog) << "String Table Index:  " << str_idx << ", op=" << op;
 #endif
 
                     if (str_idx < AppInfoVDF::instance()->table->num_strings)
                     {
                         name = AppInfoVDF::instance()->m_strs[str_idx];
 #ifdef DEBUG
-                        qDebug() << "String=" << name;
+                        qCDebug(VDFLog) << "String=" << name;
 #endif
                     }
                     else
@@ -259,13 +261,13 @@ void *AppInfoVDF::AppInfo::getRootSection(size_t *pSize)
         switch (vdf_version)
         {
         case 0x29: // v41
-            qDebug() << "appinfo.vdf version: " << vdf_version << " (June 2024)";
+            qCDebug(VDFLog) << "appinfo.vdf version: " << vdf_version << " (June 2024)";
             break;
         case 0x28: // v40
-            qDebug() << "appinfo.vdf version: " << vdf_version << " (December 2022)";
+            qCDebug(VDFLog) << "appinfo.vdf version: " << vdf_version << " (December 2022)";
             break;
         case 0x27: // v39
-            qDebug() << "appinfo.vdf version: " << vdf_version << " (pre-December 2022)";
+            qCDebug(VDFLog) << "appinfo.vdf version: " << vdf_version << " (pre-December 2022)";
             break;
         default:
             qWarning() << "appinfo.vdf version: " << vdf_version << " (unknown/unsupported)";

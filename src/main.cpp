@@ -10,6 +10,8 @@ using namespace Qt::Literals;
 
 int main(int argc, char *argv[])
 {
+    qSetMessagePattern("[%{time}] [%{category}] %{type}: %{message}"_L1);
+
     QCoreApplication::setApplicationName("Kaon"_L1);
     QCoreApplication::setApplicationVersion("0.1.1"_L1);
     QCoreApplication::setOrganizationName("LorenDB"_L1);

@@ -2,13 +2,15 @@
 
 #include <QDir>
 #include <QFileInfo>
+#include <QLoggingCategory>
 #include <QProcess>
 #include <QStandardPaths>
 
 #include "DownloadManager.h"
-#include "stores/Steam.h"
 
 using namespace Qt::Literals;
+
+Q_LOGGING_CATEGORY(DotNetLog, "dotnet")
 
 Dotnet *Dotnet::s_instance = nullptr;
 
@@ -72,7 +74,7 @@ void Dotnet::downloadDotnetDesktopRuntime(Game *game)
         //                                    "0e762b5626ba8c56c581f4d506aa4de7555f9792c2da254d";
         // if (QCryptographicHash::hash(data, QCryptographicHash::Sha512) != sha512sum_v6_0_36)
         // {
-        //     qDebug() << "Downloaded file did not match compile-time hash";
+        //     qCDebug(DotNetLog) << "Downloaded file did not match compile-time hash";
         //     emit dotnetDownloadFailed();
         //     return;
         // }
@@ -84,10 +86,10 @@ void Dotnet::downloadDotnetDesktopRuntime(Game *game)
             file.close();
         }
         else
-            qDebug() << "Failed to save downloaded .NET desktop runtime";
+            qCDebug(DotNetLog) << "Failed to save downloaded .NET desktop runtime";
     },
     [this](const QNetworkReply::NetworkError error, const QString &errorMessage) {
-        qDebug() << ".NET desktop runtime download failed:" << errorMessage;
+        qCDebug(DotNetLog) << ".NET desktop runtime download failed:" << errorMessage;
         emit dotnetDownloadFailed();
     },
     [this] {

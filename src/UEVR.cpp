@@ -2,6 +2,7 @@
 
 #include <QJsonArray>
 #include <QJsonDocument>
+#include <QLoggingCategory>
 #include <QProcess>
 #include <QSemaphore>
 #include <QSettings>
@@ -14,6 +15,8 @@
 #include "stores/Steam.h"
 
 using namespace Qt::Literals;
+
+Q_LOGGING_CATEGORY(UEVRLog, "uevr")
 
 UEVR *UEVR::s_instance = nullptr;
 
@@ -155,7 +158,7 @@ void UEVR::setCurrentUevr(const int id)
             std::find_if(m_releases.constBegin(), m_releases.constEnd(), [id](const auto &r) { return r->id() == id; });
     if (newVersion == m_releases.constEnd())
     {
-        qDebug() << "Attempted to activate nonexistent UEVR";
+        qCDebug(UEVRLog) << "Attempted to activate nonexistent UEVR";
         Aptabase::instance()->track("nonexistent-uevr-activation-bug");
         return;
     }
@@ -204,7 +207,7 @@ void UEVR::downloadUEVR(UEVRRelease *release)
     auto tempDir = new QTemporaryDir;
     if (!tempDir->isValid())
     {
-        qDebug() << "Failed to create temporary directory";
+        qCDebug(UEVRLog) << "Failed to create temporary directory";
         return;
     }
 
@@ -234,17 +237,17 @@ void UEVR::downloadUEVR(UEVRRelease *release)
 
             if (process.exitCode() != 0)
             {
-                qDebug() << "Unzip UEVR failed:" << process.errorString();
-                qDebug() << process.readAllStandardError();
+                qCDebug(UEVRLog) << "Unzip UEVR failed:" << process.errorString();
+                qCDebug(UEVRLog) << process.readAllStandardError();
             }
             else
                 release->setInstalled(true);
         }
         else
-            qDebug() << "Failed to save UEVR";
+            qCDebug(UEVRLog) << "Failed to save UEVR";
     },
     [](const QNetworkReply::NetworkError error, const QString &errorMessage) {
-        qDebug() << "Download UEVR failed:" << errorMessage;
+        qCDebug(UEVRLog) << "Download UEVR failed:" << errorMessage;
     },
     [tempDir] { delete tempDir; });
 }
@@ -312,7 +315,7 @@ void UEVR::updateAvailableReleases()
             }
         },
         [](const QNetworkReply::NetworkError error, const QString &errorMessage) {
-            qDebug() << "Error while fetching releases:" << errorMessage;
+            qCDebug(UEVRLog) << "Error while fetching releases:" << errorMessage;
             return;
         });
     };

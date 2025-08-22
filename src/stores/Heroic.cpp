@@ -4,6 +4,7 @@
 #include <QDirIterator>
 #include <QJsonArray>
 #include <QJsonObject>
+#include <QLoggingCategory>
 #include <QSettings>
 #include <QStandardPaths>
 #include <QTimer>
@@ -11,6 +12,8 @@
 #include "DownloadManager.h"
 
 using namespace Qt::Literals;
+
+Q_LOGGING_CATEGORY(HeroicLog, "heroic")
 
 Heroic *Heroic::s_instance = nullptr;
 
@@ -210,7 +213,7 @@ Heroic::Heroic(QObject *parent)
     }
 
     if (m_heroicRoot.isEmpty())
-        qDebug() << "Heroic not found";
+        qCDebug(HeroicLog) << "Heroic not found";
 
     QTimer::singleShot(0, this, &Heroic::scanStore);
 }
@@ -314,14 +317,13 @@ public:
                         false,
                         [this, file](const QByteArray &data) {
                 m_image = QImage::fromData(data);
-
                 if (file->open(QIODevice::WriteOnly))
                 {
                     file->write(data);
                     file->close();
                 }
                 else
-                    qDebug() << file->fileName();
+                    qCDebug(HeroicLog) << "Could not cache image:" << file->fileName();
             },
             [this, file](const QNetworkReply::NetworkError, const QString &) {
                 // fall back to cache if possible

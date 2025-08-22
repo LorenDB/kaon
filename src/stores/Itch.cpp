@@ -5,12 +5,15 @@
 #include <QProcess>
 #include <QStandardPaths>
 #include <QTemporaryDir>
+#include <QLoggingCategory>
 #include <QTimer>
 
 #include "Aptabase.h"
 #include "DownloadManager.h"
 
 using namespace Qt::Literals;
+
+Q_LOGGING_CATEGORY(ItchLog, "itch")
 
 Itch *Itch::s_instance = nullptr;
 
@@ -25,7 +28,7 @@ public:
         QTemporaryDir tempDir;
         if (!tempDir.isValid())
         {
-            qDebug() << "Itch failed to create temporary directory";
+            qCDebug(ItchLog) << "Itch failed to create temporary directory";
             Aptabase::instance()->track("itch-failed-tempdir-bug"_L1);
             return;
         }
@@ -39,8 +42,8 @@ public:
         unzipJsonProc.waitForFinished();
         if (unzipJsonProc.exitCode() != 0)
         {
-            qDebug() << "Unzip Itch info failed:" << unzipJsonProc.errorString();
-            qDebug() << unzipJsonProc.readAllStandardError();
+            qCDebug(ItchLog) << "Unzip Itch info failed:" << unzipJsonProc.errorString();
+            qCDebug(ItchLog) << unzipJsonProc.readAllStandardError();
             Aptabase::instance()->track("itch-failed-unzip-bug"_L1);
             return;
         }
@@ -119,7 +122,7 @@ Itch::Itch(QObject *parent)
     }
 
     if (m_itchRoot.isEmpty())
-        qDebug() << "Itch not found";
+        qCDebug(ItchLog) << "Itch not found";
 
     QTimer::singleShot(0, this, &Itch::scanStore);
 }
@@ -178,10 +181,13 @@ public:
                         false,
                         [this, file](const QByteArray &data) {
                 m_image = QImage::fromData(data);
-
-                file->open(QIODevice::WriteOnly);
-                file->write(data);
-                file->close();
+                if (file->open(QIODevice::WriteOnly))
+                {
+                    file->write(data);
+                    file->close();
+                }
+                else
+                    qCDebug(ItchLog) << "Could not cache image:" << file->fileName();
             },
             [this, file](const QNetworkReply::NetworkError, const QString &) {
                 // fall back to cache if possible

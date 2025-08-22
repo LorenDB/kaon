@@ -2,6 +2,9 @@
 
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
+#include <QLoggingCategory>
+
+Q_LOGGING_CATEGORY(DownloadLog, "download")
 
 DownloadManager *DownloadManager::s_instance = nullptr;
 
@@ -48,7 +51,7 @@ void DownloadManager::downloadNextInQueue()
     connect(reply, &QNetworkReply::finished, reply, [=, this] {
         if (reply->error() != QNetworkReply::NoError)
         {
-            qDebug() << "Download error:" << reply->errorString();
+            qCDebug(DownloadLog) << "Download error:" << reply->errorString();
             if (download.notifyOnFailure)
                 emit downloadFailed(download.prettyName);
             download.failureCallback(reply->error(), reply->errorString());
