@@ -102,7 +102,7 @@ AppInfoVDF::AppInfoVDF()
 
 void AppInfoVDF::dumpAppInfo()
 {
-    qCDebug(VDFLog) << "Dumping app info to" << QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + "/appinfo/"_L1;
+    qCInfo(VDFLog) << "Dumping app info to" << QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + "/appinfo/"_L1;
 
     AppInfoVDF::AppInfo *info = root;
     while (info && info->appid != LAST_STEAM_APP)

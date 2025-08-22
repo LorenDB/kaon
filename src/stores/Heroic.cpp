@@ -213,7 +213,7 @@ Heroic::Heroic(QObject *parent)
     }
 
     if (m_heroicRoot.isEmpty())
-        qCDebug(HeroicLog) << "Heroic not found";
+        qCInfo(HeroicLog) << "Heroic not found";
 
     QTimer::singleShot(0, this, &Heroic::scanStore);
 }

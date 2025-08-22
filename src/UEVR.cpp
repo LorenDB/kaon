@@ -158,7 +158,7 @@ void UEVR::setCurrentUevr(const int id)
             std::find_if(m_releases.constBegin(), m_releases.constEnd(), [id](const auto &r) { return r->id() == id; });
     if (newVersion == m_releases.constEnd())
     {
-        qCDebug(UEVRLog) << "Attempted to activate nonexistent UEVR";
+        qCWarning(UEVRLog) << "Attempted to activate nonexistent UEVR";
         Aptabase::instance()->track("nonexistent-uevr-activation-bug");
         return;
     }
@@ -207,7 +207,7 @@ void UEVR::downloadUEVR(UEVRRelease *release)
     auto tempDir = new QTemporaryDir;
     if (!tempDir->isValid())
     {
-        qCDebug(UEVRLog) << "Failed to create temporary directory";
+        qCWarning(UEVRLog) << "Failed to create temporary directory";
         return;
     }
 
@@ -237,17 +237,17 @@ void UEVR::downloadUEVR(UEVRRelease *release)
 
             if (process.exitCode() != 0)
             {
-                qCDebug(UEVRLog) << "Unzip UEVR failed:" << process.errorString();
-                qCDebug(UEVRLog) << process.readAllStandardError();
+                qCWarning(UEVRLog) << "Unzip UEVR failed:" << process.errorString();
+                qCWarning(UEVRLog) << process.readAllStandardError();
             }
             else
                 release->setInstalled(true);
         }
         else
-            qCDebug(UEVRLog) << "Failed to save UEVR";
+            qCWarning(UEVRLog) << "Failed to save UEVR";
     },
     [](const QNetworkReply::NetworkError error, const QString &errorMessage) {
-        qCDebug(UEVRLog) << "Download UEVR failed:" << errorMessage;
+        qCWarning(UEVRLog) << "Download UEVR failed:" << errorMessage;
     },
     [tempDir] { delete tempDir; });
 }
@@ -315,7 +315,7 @@ void UEVR::updateAvailableReleases()
             }
         },
         [](const QNetworkReply::NetworkError error, const QString &errorMessage) {
-            qCDebug(UEVRLog) << "Error while fetching releases:" << errorMessage;
+            qCInfo(UEVRLog) << "Error while fetching releases:" << errorMessage;
             return;
         });
     };

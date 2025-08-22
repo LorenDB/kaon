@@ -41,7 +41,7 @@ public:
         }
         catch (const std::length_error &e)
         {
-            qCDebug(SteamLog) << "Failure while parsing game from libraryfolders.vdf:" << e.what();
+            qCWarning(SteamLog) << "Failure while parsing game from libraryfolders.vdf:" << e.what();
             auto parts = acfPath.split('/');
             Aptabase::instance()->track("failure-parsing-game-libraryfolders-bug"_L1,
                                         {{"which"_L1, parts.size() >= 2 ? parts[parts.size() - 2] : ""_L1}});
@@ -259,7 +259,7 @@ Steam::Steam(QObject *parent)
     }
 
     if (m_steamRoot.isEmpty())
-        qCDebug(SteamLog) << "Steam not found";
+        qCInfo(SteamLog) << "Steam not found";
 
     // We need to finish creating this object before scanning Steam. Otherwise the Game constructor will call
     // Steam::instance(), but since we haven't finished creating this object, s_instance hasn't been set, which leads to a
@@ -307,7 +307,7 @@ void Steam::scanStore()
         }
         catch (const std::length_error &e)
         {
-            qCDebug(SteamLog) << "Failure while parsing libraryfolders.vdf:" << e.what();
+            qCWarning(SteamLog) << "Failure while parsing libraryfolders.vdf:" << e.what();
             auto parts = vdfPath.split('/');
             Aptabase::instance()->track("failure-parsing-libraryfolders-bug"_L1,
                                         {{"which"_L1, parts.size() >= 2 ? parts[parts.size() - 2] : ""_L1}});
@@ -323,7 +323,7 @@ void Steam::scanStore()
     if (const QFileInfo fi{m_steamRoot + "/config/libraryfolders.vdf"_L1}; !parsed && fi.exists() && fi.isFile())
         parseLibraryFolders({fi.absoluteFilePath()});
     if (!parsed)
-        qCDebug(SteamLog) << "Could not find libraryfolders.vdf";
+        qCWarning(SteamLog) << "Could not find libraryfolders.vdf";
 
     endResetModel();
 }

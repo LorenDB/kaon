@@ -28,7 +28,7 @@ public:
         QTemporaryDir tempDir;
         if (!tempDir.isValid())
         {
-            qCDebug(ItchLog) << "Itch failed to create temporary directory";
+            qCWarning(ItchLog) << "Failed to create temporary directory";
             Aptabase::instance()->track("itch-failed-tempdir-bug"_L1);
             return;
         }
@@ -42,8 +42,8 @@ public:
         unzipJsonProc.waitForFinished();
         if (unzipJsonProc.exitCode() != 0)
         {
-            qCDebug(ItchLog) << "Unzip Itch info failed:" << unzipJsonProc.errorString();
-            qCDebug(ItchLog) << unzipJsonProc.readAllStandardError();
+            qCWarning(ItchLog) << "Unzip Itch info failed:" << unzipJsonProc.errorString();
+            qCWarning(ItchLog) << unzipJsonProc.readAllStandardError();
             Aptabase::instance()->track("itch-failed-unzip-bug"_L1);
             return;
         }
@@ -122,7 +122,7 @@ Itch::Itch(QObject *parent)
     }
 
     if (m_itchRoot.isEmpty())
-        qCDebug(ItchLog) << "Itch not found";
+        qCWarning(ItchLog) << "Itch not found";
 
     QTimer::singleShot(0, this, &Itch::scanStore);
 }

@@ -67,18 +67,6 @@ void Dotnet::downloadDotnetDesktopRuntime(Game *game)
                 ".NET Desktop Runtime 6.0.36"_L1,
                 true,
                 [this, exePath](const QByteArray &data) {
-        // TODO: this is not working. Probably has to do with the file not being saved or something.
-        // Might be nice to get it working at some point but I'm not holding my breath.
-        // constexpr auto sha512sum_v6_0_36 =
-        // "86fa63997e7e0dc6f3bf609e00880388dcf8d985c8f6417d07ebbbb1ecc957bf90214c8ff93f559a"
-        //                                    "0e762b5626ba8c56c581f4d506aa4de7555f9792c2da254d";
-        // if (QCryptographicHash::hash(data, QCryptographicHash::Sha512) != sha512sum_v6_0_36)
-        // {
-        //     qCDebug(DotNetLog) << "Downloaded file did not match compile-time hash";
-        //     emit dotnetDownloadFailed();
-        //     return;
-        // }
-
         QFile file{exePath};
         if (file.open(QIODevice::WriteOnly))
         {
@@ -86,10 +74,10 @@ void Dotnet::downloadDotnetDesktopRuntime(Game *game)
             file.close();
         }
         else
-            qCDebug(DotNetLog) << "Failed to save downloaded .NET desktop runtime";
+            qCWarning(DotNetLog) << "Failed to save downloaded .NET desktop runtime";
     },
     [this](const QNetworkReply::NetworkError error, const QString &errorMessage) {
-        qCDebug(DotNetLog) << ".NET desktop runtime download failed:" << errorMessage;
+        qCWarning(DotNetLog) << ".NET desktop runtime download failed:" << errorMessage;
         emit dotnetDownloadFailed();
     },
     [this] {
