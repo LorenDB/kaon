@@ -42,6 +42,8 @@ int main(int argc, char *argv[])
 
     qInfo() << "This log only represents the most recent run of Kaon!";
 
+    QObject::connect(&app, &QApplication::aboutToQuit, &app, [] { qInfo() << "Shutting down"; });
+
     Aptabase::init("aptabase.lorendb.dev"_L1, "A-SH-5394792661"_L1);
     Aptabase::instance()->track("startup"_L1);
 
