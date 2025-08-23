@@ -3,6 +3,8 @@
 #include <QLoggingCategory>
 #include <QProcess>
 
+#include "Aptabase.h"
+
 using namespace Qt::Literals;
 
 Q_LOGGING_CATEGORY(WineLog, "wine")
@@ -30,8 +32,28 @@ void Wine::runInWine(const QString &prettyName,
                      const QString &command,
                      const QStringList &args,
                      std::function<void()> successCallback,
-                     std::function<void()> failureCallback) const
+                     std::function<void()> failureCallback)
 {
+    if (!wineRoot)
+    {
+        Aptabase::instance()->track("null-wine-game-bug"_L1, {{"command"_L1, command}});
+        emit processFailed(prettyName);
+        return;
+    }
+    else if (wineRoot->protonBinary().isEmpty())
+    {
+        Aptabase::instance()->track(
+                    "empty-proton-binary-bug"_L1,
+                    {{"command"_L1, command},
+                     {"game"_L1, wineRoot->id()},
+                     {"store"_L1, QMetaEnum::fromType<Game::Store>().valueToKey(static_cast<quint64>(wineRoot->store()))}});
+        emit processFailed(prettyName);
+        return;
+    }
+
+    if (command.isEmpty())
+        return;
+
     QString commandLog = command;
     if (!args.empty())
         commandLog += args.join(' ');
@@ -47,7 +69,7 @@ void Wine::runInWine(const QString &prettyName,
     env.insert("WINEFSYNC"_L1, "1"_L1);
     process->setProcessEnvironment(env);
 
-    connect(process, &QProcess::finished, this, [=] {
+    connect(process, &QProcess::finished, this, [=, this] {
         if (process->exitCode() == 0)
             successCallback();
         else
@@ -59,6 +81,7 @@ void Wine::runInWine(const QString &prettyName,
                 return;
             }
 
+            emit processFailed(prettyName);
             qCWarning(WineLog) << "Running" << command << "with Wine" << wineRoot->protonBinary() << "failed with exit code"
                                << process->exitCode() << "and error" << process->error();
             failureCallback();

@@ -21,7 +21,10 @@ public:
             const QString &command,
             const QStringList &args = {},
             std::function<void()> successCallback = [] {},
-            std::function<void()> failureCallback = [] {}) const;
+            std::function<void()> failureCallback = [] {});
+
+signals:
+    void processFailed(const QString &prettyName);
 
 private:
     explicit Wine(QObject *parent = nullptr);

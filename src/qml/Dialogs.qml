@@ -78,6 +78,23 @@ Item {
         }
     }
 
+    Dialog {
+        id: wineFailedDialog
+
+        property string prettyName
+
+        title: prettyName === "" ? "Failure during process execution" : prettyName
+        modal: true
+        closePolicy: Popup.CloseOnEscape
+        standardButtons: Dialog.Ok
+
+        Label {
+            anchors.fill: parent
+            text: (wineFailedDialog.prettyName === "" ? "An unknown process" : wineFailedDialog.prettyName) + " failed!"
+            wrapMode: Text.WordWrap
+        }
+    }
+
     Connections {
         function onPromptDotnetDownload(game: Game) {
             dotnetDownloadDialog.game = game;
@@ -106,5 +123,15 @@ Item {
             updateAvailableDialog.updateUrl = url;
             updateAvailableDialog.open();
         }
+    }
+
+    Connections {
+        function onProcessFailed(prettyName: string)
+        {
+            wineFailedDialog.prettyName = prettyName;
+            wineFailedDialog.open();
+        }
+
+        target: Wine
     }
 }
