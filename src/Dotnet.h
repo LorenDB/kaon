@@ -37,4 +37,5 @@ private:
     static Dotnet *s_instance;
 
     bool m_dotnetDownloadInProgress{false};
+    QString m_dotnetInstallerCache;
 };

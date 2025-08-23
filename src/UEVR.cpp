@@ -12,7 +12,7 @@
 
 #include "Aptabase.h"
 #include "DownloadManager.h"
-#include "stores/Steam.h"
+#include "Wine.h"
 
 using namespace Qt::Literals;
 
@@ -174,18 +174,7 @@ void UEVR::setCurrentUevr(const int id)
 void UEVR::launchUEVR(const Game *game)
 {
     Aptabase::instance()->track("launch-uevr"_L1, {{"version"_L1, m_currentUevr->name()}});
-
-    auto injector = new QProcess;
-    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
-    if (game->protonPrefixExists())
-    {
-        env.insert("WINEPREFIX"_L1, game->protonPrefix());
-        env.insert("STEAM_COMPAT_DATA_PATH"_L1, game->protonPrefix());
-    }
-    env.insert("WINEFSYNC"_L1, "1"_L1);
-    injector->setProcessEnvironment(env);
-    injector->start(game->protonBinary(), {path(Paths::CurrentUEVRInjector)});
-    connect(injector, &QProcess::finished, injector, &QObject::deleteLater);
+    Wine::instance()->runInWine(m_currentUevr->name(), game, path(Paths::CurrentUEVRInjector));
 }
 
 void UEVR::downloadUEVR(UEVRRelease *release)

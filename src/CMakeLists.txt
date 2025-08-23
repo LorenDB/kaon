@@ -36,6 +36,8 @@ qt_add_qml_module(kaon
         UpdateChecker.h
         VDF.cpp
         VDF.h
+        Wine.cpp
+        Wine.h
 
         stores/Heroic.cpp
         stores/Heroic.h

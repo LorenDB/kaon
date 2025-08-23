@@ -3,10 +3,10 @@
 #include <QDir>
 #include <QFileInfo>
 #include <QLoggingCategory>
-#include <QProcess>
 #include <QStandardPaths>
 
 #include "DownloadManager.h"
+#include "Wine.h"
 
 using namespace Qt::Literals;
 
@@ -15,7 +15,9 @@ Q_LOGGING_CATEGORY(DotNetLog, "dotnet")
 Dotnet *Dotnet::s_instance = nullptr;
 
 Dotnet::Dotnet(QObject *parent)
-    : QObject{parent}
+    : QObject{parent},
+      m_dotnetInstallerCache{QStandardPaths::writableLocation(QStandardPaths::CacheLocation) +
+                             "/windowsdesktop-runtime-6.0.36-win-x64.exe"_L1}
 {
     if (s_instance != nullptr)
         throw std::runtime_error{"Attempted to double initialize .NET"};
@@ -30,8 +32,7 @@ Dotnet *Dotnet::instance()
 
 bool Dotnet::hasDotnetCached() const
 {
-    return QFileInfo::exists(QStandardPaths::writableLocation(QStandardPaths::CacheLocation) +
-                             "/windowsdesktop-runtime-6.0.36-win-x64.exe"_L1);
+    return QFileInfo::exists(m_dotnetInstallerCache);
 }
 
 bool Dotnet::dotnetDownloadInProgress() const
@@ -57,8 +58,6 @@ void Dotnet::downloadDotnetDesktopRuntime(Game *game)
 
     QUrl url{
         "https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/6.0.36/windowsdesktop-runtime-6.0.36-win-x64.exe"_L1};
-    const QString exePath =
-            QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + "/windowsdesktop-runtime-6.0.36-win-x64.exe"_L1;
 
     m_dotnetDownloadInProgress = true;
     emit dotnetDownloadInProgressChanged(true);
@@ -66,8 +65,8 @@ void Dotnet::downloadDotnetDesktopRuntime(Game *game)
                 QNetworkRequest{url},
                 ".NET Desktop Runtime 6.0.36"_L1,
                 true,
-                [this, exePath](const QByteArray &data) {
-        QFile file{exePath};
+                [this](const QByteArray &data) {
+        QFile file{m_dotnetInstallerCache};
         if (file.open(QIODevice::WriteOnly))
         {
             file.write(data);
@@ -103,20 +102,7 @@ void Dotnet::installDotnetDesktopRuntime(Game *game)
         return;
     }
 
-    auto installer = new QProcess;
-    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
-    if (game->protonPrefixExists())
-    {
-        env.insert("WINEPREFIX"_L1, game->protonPrefix());
-        env.insert("STEAM_COMPAT_DATA_PATH"_L1, game->protonPrefix());
-    }
-    env.insert("WINEFSYNC"_L1, "1"_L1);
-    installer->setProcessEnvironment(env);
-    installer->start(
-                game->protonBinary(),
-                {QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + "/windowsdesktop-runtime-6.0.36-win-x64.exe"_L1});
-    connect(installer, &QProcess::finished, this, [installer, game] {
-        installer->deleteLater();
+    Wine::instance()->runInWine(".NET Desktop Runtime installer"_L1, game, {m_dotnetInstallerCache}, {}, [game] {
         if (game)
             emit game->dotnetInstalledChanged();
     });
