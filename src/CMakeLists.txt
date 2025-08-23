@@ -9,7 +9,7 @@ qt_add_qml_module(kaon
     VERSION 1.0
 
     QML_FILES
-        qml/DotnetDownloadDialog.qml
+        qml/Dialogs.qml
         qml/GameDetails.qml
         qml/GamesView.qml
         qml/Main.qml
