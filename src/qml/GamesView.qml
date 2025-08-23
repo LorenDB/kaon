@@ -10,6 +10,9 @@ RowLayout {
     id: gridRoot
 
     signal gameClicked(Game game)
+
+    readonly property bool shouldFilterStores: [Steam.count, Heroic.count, Itch.count].filter(x => x !== 0).length > 1
+
     spacing: 10
 
     SystemPalette { id: palette }
@@ -291,15 +294,19 @@ RowLayout {
                 onCheckedChanged: GamesFilterModel.setTypeFilter(Game.Music, checked)
             }
 
-            MenuSeparator {}
+            MenuSeparator {
+                visible: gridRoot.shouldFilterStores
+            }
 
             Label {
                 text: "Filter by store"
                 font.bold: true
+                visible: gridRoot.shouldFilterStores
             }
 
             RowLayout {
                 spacing: 10
+                visible: gridRoot.shouldFilterStores
 
                 Button {
                     text: "All"
@@ -324,6 +331,7 @@ RowLayout {
                 id: steamCb
 
                 text: "Steam"
+                visible: gridRoot.shouldFilterStores && Steam.count > 0
                 Component.onCompleted: checked = GamesFilterModel.isStoreFilterSet(Game.Steam)
                 onCheckedChanged: GamesFilterModel.setStoreFilter(Game.Steam, checked)
             }
@@ -332,6 +340,7 @@ RowLayout {
                 id: heroicCb
 
                 text: "Heroic"
+                visible: gridRoot.shouldFilterStores && Heroic.count > 0
                 Component.onCompleted: checked = GamesFilterModel.isStoreFilterSet(Game.Heroic)
                 onCheckedChanged: GamesFilterModel.setStoreFilter(Game.Heroic, checked)
             }
@@ -340,6 +349,7 @@ RowLayout {
                 id: itchCb
 
                 text: "Itch"
+                visible: gridRoot.shouldFilterStores && Itch.count > 0
                 Component.onCompleted: checked = GamesFilterModel.isStoreFilterSet(Game.Itch)
                 onCheckedChanged: GamesFilterModel.setStoreFilter(Game.Itch, checked)
             }

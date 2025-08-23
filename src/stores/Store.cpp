@@ -4,7 +4,11 @@ using namespace Qt::Literals;
 
 Store::Store(QObject *parent)
     : QAbstractListModel{parent}
-{}
+{
+    connect(this, &Store::rowsInserted, this, &Store::countChanged);
+    connect(this, &Store::rowsRemoved, this, &Store::countChanged);
+    connect(this, &Store::modelReset, this, &Store::countChanged);
+}
 
 int Store::rowCount(const QModelIndex &parent) const
 {
@@ -30,4 +34,9 @@ QVariant Store::data(const QModelIndex &index, int role) const
 QHash<int, QByteArray> Store::roleNames() const
 {
     return {{Roles::GameObject, "game"_ba}};
+}
+
+int Store::count() const
+{
+    return m_games.count();
 }

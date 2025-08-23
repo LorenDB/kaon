@@ -9,6 +9,7 @@ class Store : public QAbstractListModel
     Q_OBJECT
 
     Q_PROPERTY(QString storeRoot READ storeRoot CONSTANT FINAL)
+    Q_PROPERTY(int count READ count NOTIFY countChanged FINAL)
 
 public:
     enum Roles
@@ -22,6 +23,10 @@ public:
 
     virtual QString storeRoot() const = 0;
     Q_INVOKABLE virtual void scanStore() = 0;
+    int count() const;
+
+signals:
+    void countChanged();
 
 protected:
     explicit Store(QObject *parent = nullptr);
