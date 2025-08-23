@@ -64,8 +64,8 @@ public:
         whichWineProc.start("which"_L1, {"wine"_L1});
         whichWineProc.waitForFinished();
         if (whichWineProc.exitCode() == 0)
-            m_protonBinary = whichWineProc.readAllStandardOutput().trimmed();
-        m_protonPrefix = qEnvironmentVariable("WINEPREFIX", QDir::homePath() + "/.wine"_L1);
+            m_wineBinary = whichWineProc.readAllStandardOutput().trimmed();
+        m_winePrefix = qEnvironmentVariable("WINEPREFIX", QDir::homePath() + "/.wine"_L1);
 
         if (const auto type = game["classification"_L1]; type == "game"_L1)
             m_type = Game::AppType::Game;

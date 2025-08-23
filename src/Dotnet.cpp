@@ -88,9 +88,9 @@ void Dotnet::downloadDotnetDesktopRuntime(Game *game)
 
 bool Dotnet::isDotnetInstalled(const Game *game)
 {
-    if (!game || !game->protonPrefixExists())
+    if (!game || !game->winePrefixExists())
         return false;
-    const auto basepath = game->protonPrefix() + "/drive_c/Program Files/dotnet"_L1;
+    const auto basepath = game->winePrefix() + "/drive_c/Program Files/dotnet"_L1;
     return QFileInfo::exists(basepath + "/dotnet.exe"_L1) && QFileInfo::exists(basepath + "/host/fxr/6.0.36");
 }
 

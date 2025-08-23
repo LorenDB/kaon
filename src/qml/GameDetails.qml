@@ -161,7 +161,7 @@ Pane {
         Label {
             visible: gameDetailsRoot.game.hasLinuxBinary
             Layout.maximumWidth: parent.width
-            text: "⚠️ " + gameDetailsRoot.game.name + " has multiple launch options available. Make sure you have configured Steam to launch this game using Proton, or else UEVR will not work."
+            text: "⚠️ " + gameDetailsRoot.game.name + " has multiple launch options available. Make sure you are launching this game using Wine or Proton, or else UEVR will not work."
             wrapMode: Label.WordWrap
         }
 
@@ -188,7 +188,7 @@ Pane {
 
             Button {
                 text: "Launch UEVR injector"
-                enabled: UEVR.currentUevr.installed && gameDetailsRoot.game.dotnetInstalled && gameDetailsRoot.game.protonPrefixExists
+                enabled: UEVR.currentUevr.installed && gameDetailsRoot.game.dotnetInstalled && gameDetailsRoot.game.winePrefixExists
                 onClicked: UEVR.launchUEVR(gameDetailsRoot.game)
             }
 

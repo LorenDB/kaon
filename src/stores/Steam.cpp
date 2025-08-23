@@ -64,10 +64,10 @@ public:
         }
 
         QString compatdata = steamDrive + "/steamapps/compatdata/"_L1 + m_id;
-        m_protonPrefix = compatdata + "/pfx"_L1;
+        m_winePrefix = compatdata + "/pfx"_L1;
         if (QFileInfo fi{compatdata}; fi.exists() && fi.isDir())
         {
-            qCDebug(SteamLog) << "Found Proton prefix for" << m_name << "at" << m_protonPrefix;
+            qCDebug(SteamLog) << "Found Proton prefix for" << m_name << "at" << m_winePrefix;
             QFile file{compatdata + "/config_info"_L1};
             if (file.open(QIODevice::ReadOnly | QIODevice::Text))
             {
@@ -79,9 +79,9 @@ public:
                 {
                     QString protonBase = proton.remove(re);
                     if (QFileInfo files{protonBase + "/files"_L1}; files.exists() && files.isDir())
-                        m_protonBinary = protonBase + "/files/bin/wine"_L1;
+                        m_wineBinary = protonBase + "/files/bin/wine"_L1;
                     else
-                        m_protonBinary = protonBase + "/dist/bin/wine"_L1;
+                        m_wineBinary = protonBase + "/dist/bin/wine"_L1;
                 }
             }
         }

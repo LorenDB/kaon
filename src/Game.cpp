@@ -13,9 +13,9 @@ Game::Game(QObject *parent)
 {
 }
 
-bool Game::protonPrefixExists() const
+bool Game::winePrefixExists() const
 {
-    return QFileInfo::exists(m_protonPrefix);
+    return QFileInfo::exists(m_winePrefix);
 }
 
 bool Game::hasLinuxBinary() const

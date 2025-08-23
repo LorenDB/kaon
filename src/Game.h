@@ -13,9 +13,9 @@ class Game : public QObject
     Q_PROPERTY(QString name READ name CONSTANT)
     Q_PROPERTY(QString installDir READ installDir CONSTANT)
     Q_PROPERTY(QDateTime lastPlayed READ lastPlayed CONSTANT)
-    Q_PROPERTY(QString protonPrefix READ protonPrefix CONSTANT)
-    Q_PROPERTY(bool protonPrefixExists READ protonPrefixExists NOTIFY protonPrefixExistsChanged FINAL)
-    Q_PROPERTY(QString protonBinary READ protonBinary NOTIFY protonBinaryChanged FINAL)
+    Q_PROPERTY(QString winePrefix READ winePrefix CONSTANT)
+    Q_PROPERTY(bool winePrefixExists READ winePrefixExists NOTIFY winePrefixExistsChanged FINAL)
+    Q_PROPERTY(QString wineBinary READ wineBinary NOTIFY wineBinaryChanged FINAL)
     Q_PROPERTY(AppType type READ type CONSTANT)
     Q_PROPERTY(Store store READ store CONSTANT FINAL)
     Q_PROPERTY(bool supportsVr READ supportsVr CONSTANT FINAL)
@@ -74,9 +74,9 @@ public:
     QString name() const { return m_name; }
     QString installDir() const { return m_installDir; }
     QDateTime lastPlayed() const { return m_lastPlayed; }
-    QString protonPrefix() const { return m_protonPrefix; }
-    bool protonPrefixExists() const;
-    QString protonBinary() const { return m_protonBinary; }
+    QString winePrefix() const { return m_winePrefix; }
+    bool winePrefixExists() const;
+    QString wineBinary() const { return m_wineBinary; }
     Engine engine() const { return m_engine; }
     AppType type() const { return m_type; }
     bool supportsVr() const { return m_supportsVr; }
@@ -110,8 +110,8 @@ public:
     bool isValid() const { return m_valid; }
 
 signals:
-    void protonPrefixExistsChanged(bool state);
-    void protonBinaryChanged(QString path);
+    void winePrefixExistsChanged(bool state);
+    void wineBinaryChanged(QString path);
 
     void dotnetInstalledChanged();
 
@@ -124,8 +124,8 @@ protected:
     QString m_name;
     QString m_installDir;
     QDateTime m_lastPlayed;
-    QString m_protonPrefix;
-    QString m_protonBinary;
+    QString m_winePrefix;
+    QString m_wineBinary;
     Engine m_engine = Engine::Unknown;
     AppType m_type = AppType::Other;
     bool m_supportsVr{false};

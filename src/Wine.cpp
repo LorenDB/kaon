@@ -40,10 +40,10 @@ void Wine::runInWine(const QString &prettyName,
         emit processFailed(prettyName);
         return;
     }
-    else if (wineRoot->protonBinary().isEmpty())
+    else if (wineRoot->wineBinary().isEmpty())
     {
         Aptabase::instance()->track(
-                    "empty-proton-binary-bug"_L1,
+                    "empty-wine-binary-bug"_L1,
                     {{"command"_L1, command},
                      {"game"_L1, wineRoot->id()},
                      {"store"_L1, QMetaEnum::fromType<Game::Store>().valueToKey(static_cast<quint64>(wineRoot->store()))}});
@@ -57,14 +57,14 @@ void Wine::runInWine(const QString &prettyName,
     QString commandLog = command;
     if (!args.empty())
         commandLog += args.join(' ');
-    qCInfo(WineLog) << "Executing command" << commandLog << "via Wine" << wineRoot->protonBinary();
+    qCInfo(WineLog) << "Executing command" << commandLog << "via Wine" << wineRoot->wineBinary();
 
     auto process = new QProcess;
     QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
-    if (wineRoot->protonPrefixExists())
+    if (wineRoot->winePrefixExists())
     {
-        env.insert("WINEPREFIX"_L1, wineRoot->protonPrefix());
-        env.insert("STEAM_COMPAT_DATA_PATH"_L1, wineRoot->protonPrefix());
+        env.insert("WINEPREFIX"_L1, wineRoot->winePrefix());
+        env.insert("STEAM_COMPAT_DATA_PATH"_L1, wineRoot->winePrefix());
     }
     env.insert("WINEFSYNC"_L1, "1"_L1);
     process->setProcessEnvironment(env);
@@ -82,12 +82,12 @@ void Wine::runInWine(const QString &prettyName,
             }
 
             emit processFailed(prettyName);
-            qCWarning(WineLog) << "Running" << command << "with Wine" << wineRoot->protonBinary() << "failed with exit code"
+            qCWarning(WineLog) << "Running" << command << "with Wine" << wineRoot->wineBinary() << "failed with exit code"
                                << process->exitCode() << "and error" << process->error();
             failureCallback();
         }
     });
     connect(process, &QProcess::finished, process, &QObject::deleteLater);
 
-    process->start(wineRoot->protonBinary(), QStringList{command} + args);
+    process->start(wineRoot->wineBinary(), QStringList{command} + args);
 }

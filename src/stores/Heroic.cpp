@@ -168,21 +168,21 @@ public:
         {
             const auto installationInfo = QJsonDocument::fromJson(gamesConfig.readAll())[m_id];
 
-            m_protonPrefix = installationInfo["winePrefix"_L1].toString();
-            m_protonBinary = installationInfo["wineVersion"_L1]["bin"_L1].toString();
+            m_winePrefix = installationInfo["winePrefix"_L1].toString();
+            m_wineBinary = installationInfo["wineVersion"_L1]["bin"_L1].toString();
 
-            qCDebug(HeroicLog) << "Found Proton prefix for" << m_name << "at" << m_protonPrefix;
+            qCDebug(HeroicLog) << "Found Wine prefix for" << m_name << "at" << m_winePrefix;
 
             // For some reason launching Proton directly doesn't seem to work right, so we'll try to bypass Proton
-            // installations and use the underlying wine directly
-            if (m_protonBinary.endsWith("/proton"_L1))
+            // installations and use the underlying Wine directly
+            if (m_wineBinary.endsWith("/proton"_L1))
             {
-                auto protonBase = m_protonBinary;
+                auto protonBase = m_wineBinary;
                 protonBase.remove("/proton"_L1);
                 if (QFileInfo files{protonBase + "/files"_L1}; files.exists() && files.isDir())
-                    m_protonBinary = protonBase + "/files/bin/wine"_L1;
+                    m_wineBinary = protonBase + "/files/bin/wine"_L1;
                 else if (QFileInfo dist{protonBase + "/dist"_L1}; dist.exists() && dist.isDir())
-                    m_protonBinary = protonBase + "/dist/bin/wine"_L1;
+                    m_wineBinary = protonBase + "/dist/bin/wine"_L1;
             }
         }
 
