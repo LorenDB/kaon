@@ -9,6 +9,7 @@ Dialog {
 
     title: "Download .NET desktop runtime"
     modal: true
+    closePolicy: Popup.CloseOnEscape
     standardButtons: Dialog.Ok | Dialog.Cancel
     onAccepted: {
         Dotnet.downloadDotnetDesktopRuntime(game);

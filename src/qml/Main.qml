@@ -163,6 +163,7 @@ ApplicationWindow {
 
         title: "Download failed"
         modal: true
+        closePolicy: Popup.CloseOnEscape
         standardButtons: Dialog.Ok
         onAccepted: whatWasBeingDownloaded = "<null>"
 
@@ -178,6 +179,7 @@ ApplicationWindow {
 
         title: "Confirm deletion"
         modal: true
+        closePolicy: Popup.CloseOnEscape
         standardButtons: Dialog.Ok | Dialog.Cancel
         onAccepted: UEVR.deleteUEVR(UEVR.currentUevr)
 
@@ -196,6 +198,7 @@ ApplicationWindow {
 
         title: "Update available"
         modal: true
+        closePolicy: Popup.CloseOnEscape
         standardButtons: Dialog.Ok
 
         Label {
