@@ -46,9 +46,7 @@ public:
         {
             qCWarning(SteamLog) << "Failure while parsing " << acfPath << ":" << e.what();
             auto parts = acfPath.split('/');
-            Aptabase::instance()->track(
-                        "failure-parsing-game-libraryfolders-bug"_L1,
-                        {{"which"_L1, parts.size() >= 2 ? parts[parts.size() - 2] : ""_L1}, {"game"_L1, m_id}});
+            Aptabase::instance()->track("failure-parsing-game-libraryfolders-bug"_L1, {{"game"_L1, m_id}});
         }
 
         const auto imageDir = Steam::instance()->storeRoot() + "/appcache/librarycache/"_L1 + m_id;
