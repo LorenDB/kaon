@@ -112,6 +112,8 @@ public:
     // This is used to detect if a game has fully loaded or if there were errors parsing it.
     bool isValid() const { return m_valid; }
 
+    Q_INVOKABLE virtual void launch() const = 0;
+
 signals:
     void winePrefixExistsChanged(bool state);
     void wineBinaryChanged(QString path);

@@ -203,6 +203,7 @@ public:
     }
 
     Store store() const override { return Store::Heroic; }
+    void launch() const override {}
 };
 
 Heroic::Heroic(QObject *parent)

@@ -94,6 +94,7 @@ public:
     }
 
     Store store() const override { return Store::Itch; }
+    void launch() const override {}
 };
 
 Itch *Itch::instance()

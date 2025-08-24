@@ -239,6 +239,12 @@ public:
     }
 
     Store store() const override { return Store::Steam; }
+
+    void launch() const override
+    {
+        qCInfo(SteamLog) << "Launching" << m_id;
+        QDesktopServices::openUrl("steam://launch/"_L1 + m_id);
+    }
 };
 
 Steam::Steam(QObject *parent)

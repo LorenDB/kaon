@@ -6,10 +6,12 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QLoggingCategory>
+#include <QProcess>
 #include <QStandardPaths>
 #include <QUuid>
 
 #include "Aptabase.h"
+#include "Wine.h"
 
 using namespace Qt::Literals;
 
@@ -83,6 +85,25 @@ public:
     }
 
     Store store() const override { return Store::Custom; }
+
+    void launch() const override
+    {
+        const auto lo = m_executables.first();
+
+        if (lo.platform == LaunchOption::Platform::Windows)
+            Wine::instance()->runInWine(m_name, this, lo.executable);
+        else if (lo.platform == LaunchOption::Platform::Linux)
+        {
+            auto process = new QProcess;
+            connect(process, &QProcess::finished, process, &QObject::deleteLater);
+            connect(process, &QProcess::finished, this, [=, this] {
+                if (process->exitCode() != 0)
+                    qCWarning(CustomGameLog) << "Running" << lo.executable << "failed with exit code" << process->exitCode()
+                                             << "and error" << process->error();
+            });
+            process->start(lo.executable);
+        }
+    }
 
     QString executable() const
     {

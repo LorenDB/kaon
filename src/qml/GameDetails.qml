@@ -139,8 +139,7 @@ Pane {
                     ToolTip.delay: 1000
                     ToolTip.visible: hovered
                     visible: gameDetailsRoot.game.canLaunch
-                    // TODO: make this work with other stores if possible
-                    onClicked: Qt.openUrlExternally("steam://launch/" + gameDetailsRoot.game.id)
+                    onClicked: gameDetailsRoot.game.launch()
                 }
             }
         }
