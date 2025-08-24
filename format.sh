@@ -13,6 +13,10 @@
 
 set -eu
 
-FILES=$(find src -type f \( -iname "*.cpp" -o -iname "*.h" \))
-clang-format -i $FILES
+CPP_FILES=$(find src -type f \( -iname "*.cpp" -o -iname "*.h" \))
+clang-format -i $CPP_FILES
+
+QML_FILES=$(find src/qml -type f \( -iname "*.qml" \))
+qmlformat6 -i $QML_FILES
+
 git diff --exit-code
