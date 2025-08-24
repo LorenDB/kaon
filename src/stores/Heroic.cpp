@@ -7,7 +7,6 @@
 #include <QLoggingCategory>
 #include <QSettings>
 #include <QStandardPaths>
-#include <QTimer>
 
 #include "DownloadManager.h"
 
@@ -228,8 +227,6 @@ Heroic::Heroic(QObject *parent)
         qCInfo(HeroicLog) << "Heroic not found";
     else
         qCInfo(HeroicLog) << "Found Heroic:" << m_heroicRoot;
-
-    QTimer::singleShot(0, this, &Heroic::scanStore);
 }
 
 Heroic *Heroic::instance()

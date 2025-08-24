@@ -5,7 +5,6 @@
 #include <QDirIterator>
 #include <QLoggingCategory>
 #include <QSettings>
-#include <QTimer>
 
 #include "Aptabase.h"
 #include "vdf_parser.hpp"
@@ -271,11 +270,6 @@ Steam::Steam(QObject *parent)
         qCInfo(SteamLog) << "Steam not found";
     else
         qCInfo(SteamLog) << "Found Steam:" << m_steamRoot;
-
-    // We need to finish creating this object before scanning Steam. Otherwise the Game constructor will call
-    // Steam::instance(), but since we haven't finished creating this object, s_instance hasn't been set, which leads to a
-    // brief loop of Steam objects being created.
-    QTimer::singleShot(0, this, &Steam::scanStore);
 }
 
 Steam *Steam::instance()

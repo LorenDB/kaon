@@ -6,7 +6,6 @@
 #include <QStandardPaths>
 #include <QTemporaryDir>
 #include <QLoggingCategory>
-#include <QTimer>
 
 #include "Aptabase.h"
 #include "DownloadManager.h"
@@ -126,8 +125,6 @@ Itch::Itch(QObject *parent)
         qCInfo(ItchLog) << "Itch not found";
     else
         qCInfo(ItchLog) << "Found Itch:" << m_itchRoot;
-
-    QTimer::singleShot(0, this, &Itch::scanStore);
 }
 
 void Itch::scanStore()
