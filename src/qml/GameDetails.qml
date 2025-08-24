@@ -159,9 +159,16 @@ Pane {
         }
 
         Label {
-            visible: gameDetailsRoot.game.hasLinuxBinary
+            visible: gameDetailsRoot.game.hasMultiplePlatforms && !gameDetailsRoot.game.noWindowsSupport
             Layout.maximumWidth: parent.width
             text: "⚠️ " + gameDetailsRoot.game.name + " has multiple launch options available. Make sure you are launching this game using Wine or Proton, or else UEVR will not work."
+            wrapMode: Label.WordWrap
+        }
+
+        Label {
+            visible: gameDetailsRoot.game.noWindowsSupport
+            Layout.maximumWidth: parent.width
+            text: "⚠️ " + gameDetailsRoot.game.name + " does not have a Windows executable, so it can't be launched via Wine or Proton. UEVR will not work."
             wrapMode: Label.WordWrap
         }
 
@@ -175,7 +182,9 @@ Pane {
         Button {
             text: gameDetailsRoot.game.dotnetInstalled ? "Repair or uninstall .NET" : "Install .NET desktop runtime"
             enabled: {
-                if (!gameDetailsRoot.game.dotnetInstalled)
+                if (gameDetailsRoot.game.noWindowsSupport)
+                    return false;
+                else if (!gameDetailsRoot.game.dotnetInstalled)
                     return !Dotnet.dotnetDownloadInProgress;
                 else
                     return true;
@@ -188,7 +197,7 @@ Pane {
 
             Button {
                 text: "Launch UEVR injector"
-                enabled: UEVR.currentUevr.installed && gameDetailsRoot.game.dotnetInstalled && gameDetailsRoot.game.winePrefixExists
+                enabled: UEVR.currentUevr.installed && gameDetailsRoot.game.dotnetInstalled && gameDetailsRoot.game.winePrefixExists && !gameDetailsRoot.game.noWindowsSupport
                 onClicked: UEVR.launchUEVR(gameDetailsRoot.game)
             }
 

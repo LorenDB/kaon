@@ -20,7 +20,8 @@ class Game : public QObject
     Q_PROPERTY(Store store READ store CONSTANT FINAL)
     Q_PROPERTY(bool supportsVr READ supportsVr CONSTANT FINAL)
     Q_PROPERTY(bool vrOnly READ vrOnly CONSTANT FINAL)
-    Q_PROPERTY(bool hasLinuxBinary READ hasLinuxBinary CONSTANT FINAL)
+    Q_PROPERTY(bool hasMultiplePlatforms READ hasMultiplePlatforms CONSTANT FINAL)
+    Q_PROPERTY(bool noWindowsSupport READ noWindowsSupport CONSTANT FINAL)
 
     Q_PROPERTY(QString cardImage READ cardImage CONSTANT)
     Q_PROPERTY(QString heroImage READ heroImage CONSTANT)
@@ -81,7 +82,8 @@ public:
     AppType type() const { return m_type; }
     bool supportsVr() const { return m_supportsVr; }
     bool vrOnly() const { return m_vrOnly; }
-    bool hasLinuxBinary() const;
+    bool hasMultiplePlatforms() const;
+    bool noWindowsSupport() const;
 
     virtual Store store() const = 0;
 
@@ -126,7 +128,6 @@ protected:
     QDateTime m_lastPlayed;
     QString m_winePrefix;
     QString m_wineBinary;
-    Engine m_engine = Engine::Unknown;
     AppType m_type = AppType::Other;
     bool m_supportsVr{false};
     bool m_vrOnly{false};
@@ -142,7 +143,7 @@ protected:
 
     struct LaunchOption
     {
-        enum Platform
+        enum class Platform
         {
             Windows,
             Linux,
@@ -161,6 +162,9 @@ protected:
 
     // Set this to true at the very end of your Game constructor
     bool m_valid = false;
+
+private:
+    Engine m_engine = Engine::Unknown;
 };
 Q_DECLARE_METATYPE(Game)
 
