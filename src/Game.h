@@ -67,6 +67,7 @@ public:
         Steam = 1,
         Itch = 1 << 1,
         Heroic = 1 << 2,
+        Custom = 1 << 3,
     };
     Q_ENUM(Store)
     Q_DECLARE_FLAGS(Stores, Store)

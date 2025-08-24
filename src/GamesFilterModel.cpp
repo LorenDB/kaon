@@ -3,6 +3,7 @@
 #include <QSettings>
 
 #include "Aptabase.h"
+#include "CustomGames.h"
 #include "Heroic.h"
 #include "Itch.h"
 #include "Steam.h"
@@ -16,6 +17,7 @@ GamesFilterModel::GamesFilterModel(QObject *parent)
     m_models->addSourceModel(Steam::instance());
     m_models->addSourceModel(Itch::instance());
     m_models->addSourceModel(Heroic::instance());
+    m_models->addSourceModel(CustomGames::instance());
     setSourceModel(m_models);
 
     m_engineFilter.setFlag(Game::Engine::Unreal);
@@ -26,6 +28,7 @@ GamesFilterModel::GamesFilterModel(QObject *parent)
     m_storeFilter.setFlag(Game::Store::Steam);
     m_storeFilter.setFlag(Game::Store::Itch);
     m_storeFilter.setFlag(Game::Store::Heroic);
+    m_storeFilter.setFlag(Game::Store::Custom);
 
     connect(this, &GamesFilterModel::engineFilterChanged, this, &GamesFilterModel::invalidateFilter);
     connect(this, &GamesFilterModel::typeFilterChanged, this, &GamesFilterModel::invalidateFilter);

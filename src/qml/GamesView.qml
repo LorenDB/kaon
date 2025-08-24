@@ -91,6 +91,16 @@ RowLayout {
                 ToolSeparator {}
 
                 ToolButton {
+                    icon.name: "list-add"
+                    icon.source: Qt.resolvedUrl("icons/list-add.svg")
+                    icon.color: palette.buttonText
+                    text: "Add game..."
+                    onClicked: {
+                        theStack.push(newGameComponent)
+                    }
+                }
+
+                ToolButton {
                     icon.name: "view-refresh"
                     icon.source: Qt.resolvedUrl("icons/view-refresh.svg")
                     icon.color: palette.buttonText
@@ -314,6 +324,7 @@ RowLayout {
                         steamCb.checked = true;
                         itchCb.checked = true;
                         heroicCb.checked = true;
+                        customCb.checked = true;
                     }
                 }
 
@@ -323,6 +334,7 @@ RowLayout {
                         steamCb.checked = false;
                         itchCb.checked = false;
                         heroicCb.checked = false;
+                        customCb.checked = false;
                     }
                 }
             }
@@ -354,7 +366,22 @@ RowLayout {
                 onCheckedChanged: GamesFilterModel.setStoreFilter(Game.Itch, checked)
             }
 
+            CheckBox {
+                id: customCb
+
+                text: "Custom"
+                visible: gridRoot.shouldFilterStores && CustomGames.count > 0
+                Component.onCompleted: checked = GamesFilterModel.isStoreFilterSet(Game.Custom)
+                onCheckedChanged: GamesFilterModel.setStoreFilter(Game.Custom, checked)
+            }
+
             Item { Layout.fillHeight: true }
         }
+    }
+
+    Component {
+        id: newGameComponent
+
+        AddCustomGame {}
     }
 }

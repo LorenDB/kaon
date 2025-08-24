@@ -9,6 +9,7 @@ qt_add_qml_module(kaon
     VERSION 1.0
 
     QML_FILES
+        qml/AddCustomGame.qml
         qml/Dialogs.qml
         qml/GameDetails.qml
         qml/GamesView.qml
@@ -39,6 +40,8 @@ qt_add_qml_module(kaon
         Wine.cpp
         Wine.h
 
+        stores/CustomGames.cpp
+        stores/CustomGames.h
         stores/Heroic.cpp
         stores/Heroic.h
         stores/Itch.cpp
@@ -54,6 +57,7 @@ qt_add_qml_module(kaon
         qml/icons/draw-arrow-back.svg
         qml/icons/folder.svg
         qml/icons/kaon.svg
+        qml/icons/list-add.svg
         qml/icons/media-playback-start.svg
         qml/icons/settings-configure.svg
         qml/icons/view-refresh.svg

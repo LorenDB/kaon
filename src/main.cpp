@@ -59,8 +59,10 @@ int main(int argc, char *argv[])
     QCoreApplication::setOrganizationDomain("lorendb.dev"_L1);
     QApplication app(argc, argv);
 
-    // This needs to exist
-    QDir{}.mkpath(QStandardPaths::writableLocation(QStandardPaths::CacheLocation));
+    // These needs to exist
+    QDir dirMaker;
+    dirMaker.mkpath(QStandardPaths::writableLocation(QStandardPaths::CacheLocation));
+    dirMaker.mkpath(QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation));
 
     QCommandLineParser p;
     p.setApplicationDescription("VR mod manager"_L1);
