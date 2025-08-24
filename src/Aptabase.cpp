@@ -1,10 +1,12 @@
 #include "Aptabase.h"
 
 #include <QCoreApplication>
+#include <QEventLoop>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonValue>
 #include <QNetworkAccessManager>
+#include <QNetworkReply>
 #include <QRandomGenerator64>
 #include <QSettings>
 
@@ -52,7 +54,7 @@ void Aptabase::setEnabled(bool state)
     settings.setValue("enabled"_L1, m_enabled);
 }
 
-void Aptabase::track(const QString &event, const QJsonObject &properties) const
+void Aptabase::track(const QString &event, const QJsonObject &properties, bool blocking) const
 {
     if (!m_enabled)
         return;
@@ -89,5 +91,12 @@ void Aptabase::track(const QString &event, const QJsonObject &properties) const
     body["systemProps"_L1] = systemProperties;
     body["props"_L1] = properties;
 
-    net.post(req, QJsonDocument{QJsonArray{body}}.toJson(QJsonDocument::Compact));
+    auto rep = net.post(req, QJsonDocument{QJsonArray{body}}.toJson(QJsonDocument::Compact));
+
+    if (blocking)
+    {
+        auto loop = new QEventLoop;
+        connect(rep, &QNetworkReply::finished, loop, &QEventLoop::quit);
+        loop->exec();
+    }
 }

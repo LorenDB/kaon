@@ -21,7 +21,7 @@ public:
 
     void setEnabled(bool state);
 
-    void track(const QString &event, const QJsonObject &properties = {}) const;
+    void track(const QString &event, const QJsonObject &properties = {}, bool blocking = false) const;
 
 signals:
     void enabledChanged(bool state);

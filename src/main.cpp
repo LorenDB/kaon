@@ -78,7 +78,7 @@ int main(int argc, char *argv[])
 
     QObject::connect(&app, &QApplication::aboutToQuit, &app, [] {
         qInfo() << "Shutting down";
-        Aptabase::instance()->track("shutdown"_L1);
+        Aptabase::instance()->track("shutdown"_L1, {}, true);
     });
 
     Aptabase::init("aptabase.lorendb.dev"_L1, "A-SH-5394792661"_L1);
