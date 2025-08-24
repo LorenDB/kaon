@@ -10,6 +10,7 @@
 
 #include "Aptabase.h"
 #include "DownloadManager.h"
+#include "Wine.h"
 
 using namespace Qt::Literals;
 
@@ -60,12 +61,8 @@ public:
         m_heroImage = m_cardImage;
         m_icon = m_cardImage;
 
-        QProcess whichWineProc;
-        whichWineProc.start("which"_L1, {"wine"_L1});
-        whichWineProc.waitForFinished();
-        if (whichWineProc.exitCode() == 0)
-            m_wineBinary = whichWineProc.readAllStandardOutput().trimmed();
-        m_winePrefix = qEnvironmentVariable("WINEPREFIX", QDir::homePath() + "/.wine"_L1);
+        m_wineBinary = Wine::instance()->whichWine();
+        m_winePrefix = Wine::instance()->defaultWinePrefix();
 
         if (const auto type = game["classification"_L1]; type == "game"_L1)
             m_type = Game::AppType::Game;

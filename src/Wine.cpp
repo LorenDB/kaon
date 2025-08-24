@@ -1,5 +1,6 @@
 #include "Wine.h"
 
+#include <QDir>
 #include <QLoggingCategory>
 #include <QProcess>
 
@@ -90,4 +91,20 @@ void Wine::runInWine(const QString &prettyName,
     connect(process, &QProcess::finished, process, &QObject::deleteLater);
 
     process->start(wineRoot->wineBinary(), QStringList{command} + args);
+}
+
+QString Wine::whichWine() const
+{
+    QProcess whichWineProc;
+    whichWineProc.start("which"_L1, {"wine"_L1});
+    whichWineProc.waitForFinished();
+    if (whichWineProc.exitCode() == 0)
+        return whichWineProc.readAllStandardOutput().trimmed();
+    else
+        return {};
+}
+
+QString Wine::defaultWinePrefix() const
+{
+    return qEnvironmentVariable("WINEPREFIX", QDir::homePath() + "/.wine"_L1);
 }

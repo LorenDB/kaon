@@ -23,6 +23,9 @@ public:
             std::function<void()> successCallback = [] {},
             std::function<void()> failureCallback = [] {});
 
+    QString whichWine() const;
+    QString defaultWinePrefix() const;
+
 signals:
     void processFailed(const QString &prettyName);
 
