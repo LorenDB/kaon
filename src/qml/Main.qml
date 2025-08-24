@@ -58,7 +58,7 @@ ApplicationWindow {
                     function onShowNightliesChanged(state)
                     {
                         uevrCombo.currentIndex = Math.max(0, UEVRFilter.indexFromRelease(UEVR.currentUevr))
-                        if (uevrCombo.currentValue !== UEVR.currentUevr.id)
+                        if (!UEVR.currentUevr || uevrCombo.currentValue !== UEVR.currentUevr.id)
                         {
                             uevrCombo.currentIndex = 0;
                             if (uevrCombo.currentValue !== undefined)
