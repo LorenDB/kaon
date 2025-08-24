@@ -2,10 +2,10 @@
 
 #include <QDir>
 #include <QDirIterator>
+#include <QLoggingCategory>
 #include <QProcess>
 #include <QStandardPaths>
 #include <QTemporaryDir>
-#include <QLoggingCategory>
 
 #include "Aptabase.h"
 #include "DownloadManager.h"
@@ -74,7 +74,8 @@ public:
         auto entries = QDir{installPath}.entryInfoList(QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot);
         entries.removeIf([](const QFileInfo &fi) { return fi.baseName() == ".itch"_L1; });
         if (entries.size() == 1)
-            entries = QDir{entries.first().absoluteFilePath()}.entryInfoList(QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot);
+            entries =
+                QDir{entries.first().absoluteFilePath()}.entryInfoList(QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot);
 
         // TODO: better binary detection algorithm than this!
         for (const auto &entry : std::as_const(entries))
@@ -178,30 +179,30 @@ public:
         else
         {
             DownloadManager::instance()->download(
-                        QNetworkRequest{url},
-                        "Itch image",
-                        false,
-                        [this, file](const QByteArray &data) {
-                m_image = QImage::fromData(data);
-                if (file->open(QIODevice::WriteOnly))
-                {
-                    file->write(data);
-                    file->close();
-                }
-                else
-                    qCDebug(ItchLog) << "Could not cache image:" << file->fileName();
-            },
-            [this, file](const QNetworkReply::NetworkError, const QString &) {
-                // fall back to cache if possible
-                if (file->exists())
-                {
-                    file->open(QIODevice::ReadOnly);
-                    m_image = QImage::fromData(file->readAll());
-                }
-                else
-                    m_error = "Could not download or find in cache";
-            },
-            [this] { emit finished(); });
+                QNetworkRequest{url},
+                "Itch image",
+                false,
+                [this, file](const QByteArray &data) {
+                    m_image = QImage::fromData(data);
+                    if (file->open(QIODevice::WriteOnly))
+                    {
+                        file->write(data);
+                        file->close();
+                    }
+                    else
+                        qCDebug(ItchLog) << "Could not cache image:" << file->fileName();
+                },
+                [this, file](const QNetworkReply::NetworkError, const QString &) {
+                    // fall back to cache if possible
+                    if (file->exists())
+                    {
+                        file->open(QIODevice::ReadOnly);
+                        m_image = QImage::fromData(file->readAll());
+                    }
+                    else
+                        m_error = "Could not download or find in cache";
+                },
+                [this] { emit finished(); });
         }
 
         connect(this, &ItchImageFetcher::finished, file, &QFile::deleteLater);

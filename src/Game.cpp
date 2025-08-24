@@ -10,8 +10,7 @@ using namespace Qt::Literals;
 
 Game::Game(QObject *parent)
     : QObject{parent}
-{
-}
+{}
 
 bool Game::winePrefixExists() const
 {
@@ -112,7 +111,7 @@ void Game::detectGameEngine()
     {
         gameDirIterator.next();
         if (gameDirIterator.fileName() == "UnityCrashHandler64.exe"_L1 ||
-                gameDirIterator.fileName() == "UnityCrashHandler32.exe"_L1)
+            gameDirIterator.fileName() == "UnityCrashHandler32.exe"_L1)
         {
             m_engine = Engine::Unity;
             return;

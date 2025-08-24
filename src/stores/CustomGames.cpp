@@ -147,8 +147,7 @@ bool CustomGames::addGame(const QString &name, const QString &executable)
 
 CustomGames::CustomGames(QObject *parent)
     : Store{parent}
-{
-}
+{}
 
 void CustomGames::scanStore()
 {

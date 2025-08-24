@@ -19,12 +19,12 @@ public:
     static DownloadManager *create(QQmlEngine *qml, QJSEngine *js) { return instance(); }
 
     void download(
-            const QNetworkRequest &request,
-            const QString &prettyName,
-            bool notifyOnFailure,
-            std::function<void(QByteArray)> successCallback,
-            std::function<void(QNetworkReply::NetworkError, QString)> failureCallback,
-            std::function<void()> finallyCallback = [] {});
+        const QNetworkRequest &request,
+        const QString &prettyName,
+        bool notifyOnFailure,
+        std::function<void(QByteArray)> successCallback,
+        std::function<void(QNetworkReply::NetworkError, QString)> failureCallback,
+        std::function<void()> finallyCallback = [] {});
 
     bool downloading() const { return m_downloading; }
     QString currentDownloadName() const { return m_currentDownloadName; }

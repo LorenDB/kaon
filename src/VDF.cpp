@@ -42,7 +42,7 @@ using namespace Qt::Literals;
 
 namespace
 {
-constexpr uint32_t LAST_STEAM_APP = 0;
+    constexpr uint32_t LAST_STEAM_APP = 0;
 }
 
 AppInfoVDF *AppInfoVDF::s_instance{nullptr};
@@ -102,7 +102,8 @@ AppInfoVDF::AppInfoVDF()
 
 void AppInfoVDF::dumpAppInfo()
 {
-    qCInfo(VDFLog) << "Dumping app info to" << QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + "/appinfo/"_L1;
+    qCInfo(VDFLog) << "Dumping app info to"
+                   << QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + "/appinfo/"_L1;
 
     AppInfoVDF::AppInfo *info = root;
     while (info && info->appid != LAST_STEAM_APP)
@@ -110,7 +111,7 @@ void AppInfoVDF::dumpAppInfo()
         QDir{QStandardPaths::writableLocation(QStandardPaths::CacheLocation)}.mkdir("appinfo"_L1);
 
         QFile f{QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + "/appinfo/"_L1 +
-                    QString::number(info->appid)};
+                QString::number(info->appid)};
         f.open(QIODevice::WriteOnly | QIODevice::Truncate);
         QTextStream s{&f};
 
@@ -124,9 +125,10 @@ void AppInfoVDF::dumpAppInfo()
         for (auto &finished_section : section.finished_sections)
         {
             s << finished_section.name << '\n';
-            for (const auto &[key, value]: std::as_const(finished_section.keys))
+            for (const auto &[key, value] : std::as_const(finished_section.keys))
             {
-                switch (value.first) {
+                switch (value.first)
+                {
                 case AppInfo::Section::Int32:
                     s << "\ti32: "_L1 << key << " = "_L1 << *static_cast<int32_t *>(value.second);
                     break;

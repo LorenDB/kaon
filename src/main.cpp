@@ -8,21 +8,21 @@
 #include <QStandardPaths>
 
 #include "Aptabase.h"
-#include "Itch.h"
 #include "Heroic.h"
+#include "Itch.h"
 
 using namespace Qt::Literals;
 
 namespace
 {
-QtMessageHandler ORIGINAL_HANDLER = nullptr;
+    QtMessageHandler ORIGINAL_HANDLER = nullptr;
 
 #if defined(_DEBUG) || !defined(NDEBUG)
-bool DEBUG_TO_STDOUT = true;
+    bool DEBUG_TO_STDOUT = true;
 #else
-bool DEBUG_TO_STDOUT = false;
+    bool DEBUG_TO_STDOUT = false;
 #endif
-}
+} // namespace
 
 // adapted from https://doc.qt.io/qt-6/qtlogging.html#qInstallMessageHandler
 void logToFile(QtMsgType type, const QMessageLogContext &context, const QString &msg)
@@ -86,11 +86,11 @@ int main(int argc, char *argv[])
 
     QQmlApplicationEngine engine;
     QObject::connect(
-                &engine,
-                &QQmlApplicationEngine::objectCreationFailed,
-                &app,
-                []() { QCoreApplication::exit(-1); },
-    Qt::QueuedConnection);
+        &engine,
+        &QQmlApplicationEngine::objectCreationFailed,
+        &app,
+        []() { QCoreApplication::exit(-1); },
+        Qt::QueuedConnection);
     engine.addImageProvider("itch-image"_L1, new ItchImageCache);
     engine.addImageProvider("heroic-image"_L1, new HeroicImageCache);
     engine.loadFromModule("dev.lorendb.kaon"_L1, "Main"_L1);

@@ -1,8 +1,8 @@
 #include "DownloadManager.h"
 
+#include <QLoggingCategory>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
-#include <QLoggingCategory>
 
 Q_LOGGING_CATEGORY(DownloadLog, "download")
 

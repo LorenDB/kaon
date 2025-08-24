@@ -44,16 +44,15 @@ void Dotnet::downloadDotnetDesktopRuntime(Game *game)
 {
     if (game)
     {
-        // Uh, clang-format, you feeling OK?
         connect(
-                    this,
-                    &Dotnet::hasDotnetCachedChanged,
-                    this,
-                    [this, game](bool isCached) {
-            if (isCached)
-                installDotnetDesktopRuntime(game);
-        },
-        Qt::SingleShotConnection);
+            this,
+            &Dotnet::hasDotnetCachedChanged,
+            this,
+            [this, game](bool isCached) {
+                if (isCached)
+                    installDotnetDesktopRuntime(game);
+            },
+            Qt::SingleShotConnection);
     }
 
     QUrl url{
@@ -62,28 +61,28 @@ void Dotnet::downloadDotnetDesktopRuntime(Game *game)
     m_dotnetDownloadInProgress = true;
     emit dotnetDownloadInProgressChanged(true);
     DownloadManager::instance()->download(
-                QNetworkRequest{url},
-                ".NET Desktop Runtime 6.0.36"_L1,
-                true,
-                [this](const QByteArray &data) {
-        QFile file{m_dotnetInstallerCache};
-        if (file.open(QIODevice::WriteOnly))
-        {
-            file.write(data);
-            file.close();
-        }
-        else
-            qCWarning(DotNetLog) << "Failed to save downloaded .NET desktop runtime";
-    },
-    [this](const QNetworkReply::NetworkError error, const QString &errorMessage) {
-        qCWarning(DotNetLog) << ".NET desktop runtime download failed:" << errorMessage;
-        emit dotnetDownloadFailed();
-    },
-    [this] {
-        m_dotnetDownloadInProgress = false;
-        emit dotnetDownloadInProgressChanged(false);
-        emit hasDotnetCachedChanged(hasDotnetCached());
-    });
+        QNetworkRequest{url},
+        ".NET Desktop Runtime 6.0.36"_L1,
+        true,
+        [this](const QByteArray &data) {
+            QFile file{m_dotnetInstallerCache};
+            if (file.open(QIODevice::WriteOnly))
+            {
+                file.write(data);
+                file.close();
+            }
+            else
+                qCWarning(DotNetLog) << "Failed to save downloaded .NET desktop runtime";
+        },
+        [this](const QNetworkReply::NetworkError error, const QString &errorMessage) {
+            qCWarning(DotNetLog) << ".NET desktop runtime download failed:" << errorMessage;
+            emit dotnetDownloadFailed();
+        },
+        [this] {
+            m_dotnetDownloadInProgress = false;
+            emit dotnetDownloadInProgressChanged(false);
+            emit hasDotnetCachedChanged(hasDotnetCached());
+        });
 }
 
 bool Dotnet::isDotnetInstalled(const Game *game)

@@ -20,7 +20,7 @@ Aptabase::Aptabase(const QString &host, const QString &key, QObject *parent)
       m_key{key}
 {
     m_sessionId = QString::number(QDateTime::currentDateTime().currentSecsSinceEpoch()) +
-            QString::number(QRandomGenerator64::global()->generate64());
+                  QString::number(QRandomGenerator64::global()->generate64());
 
     QSettings settings;
     settings.beginGroup("Aptabase"_L1);

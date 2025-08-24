@@ -25,4 +25,3 @@ private:
     void scanStore() final;
     void writeConfig();
 };
-

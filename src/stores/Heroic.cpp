@@ -18,7 +18,7 @@ Heroic *Heroic::s_instance = nullptr;
 
 namespace
 {
-QJsonArray amazonLibraryCache;
+    QJsonArray amazonLibraryCache;
 }
 
 class HeroicGame : public Game
@@ -58,8 +58,8 @@ public:
             m_executables[m_executables.size()] = lo;
 
             if (QFile metadataFile{Heroic::instance()->storeRoot() +
-                    "/legendaryConfig/legendary/metadata/%1.json"_L1.arg(m_id)};
-                    metadataFile.open(QIODevice::ReadOnly))
+                                   "/legendaryConfig/legendary/metadata/%1.json"_L1.arg(m_id)};
+                metadataFile.open(QIODevice::ReadOnly))
             {
                 const auto metadata = QJsonDocument::fromJson(metadataFile.readAll());
 
@@ -107,22 +107,22 @@ public:
             }
 
             if (QFile storeCacheFile{Heroic::instance()->storeRoot() + "/store_cache/gog_api_info.json"};
-                    storeCacheFile.open(QIODevice::ReadOnly))
+                storeCacheFile.open(QIODevice::ReadOnly))
             {
                 auto storeCache = QJsonDocument::fromJson(storeCacheFile.readAll())["gog_%1"_L1.arg(m_id)];
 
                 m_cardImage = "image://heroic-image/"_L1 + storeCache["game"_L1]["vertical_cover"_L1]["url_format"_L1]
-                        .toString()
-                        .replace("{formatter}"_L1, ""_L1)
-                        .replace("{ext}"_L1, "jpg"_L1);
+                                                               .toString()
+                                                               .replace("{formatter}"_L1, ""_L1)
+                                                               .replace("{ext}"_L1, "jpg"_L1);
                 m_heroImage = "image://heroic-image/"_L1 + storeCache["game"_L1]["logo"_L1]["url_format"_L1]
-                        .toString()
-                        .replace("{formatter}"_L1, ""_L1)
-                        .replace("{ext}"_L1, "jpg"_L1);
+                                                               .toString()
+                                                               .replace("{formatter}"_L1, ""_L1)
+                                                               .replace("{ext}"_L1, "jpg"_L1);
                 m_icon = "image://heroic-image/"_L1 + storeCache["game"_L1]["square_icon"_L1]["url_format"_L1]
-                        .toString()
-                        .replace("{formatter}"_L1, ""_L1)
-                        .replace("{ext}"_L1, "jpg"_L1);
+                                                          .toString()
+                                                          .replace("{formatter}"_L1, ""_L1)
+                                                          .replace("{ext}"_L1, "jpg"_L1);
             }
         }
         else if (store == SubStore::Amazon)
@@ -135,7 +135,7 @@ public:
                     std::find_if(amazonLibraryCache.cbegin(),
                                  amazonLibraryCache.cend(),
                                  [this](const QJsonValueConstRef v) { return v["product"_L1]["id"_L1] == m_id; });
-                    it != amazonLibraryCache.cend())
+                it != amazonLibraryCache.cend())
             {
                 const auto info = it->toObject();
                 const auto &product = info["product"_L1];
@@ -144,7 +144,7 @@ public:
 
                 m_cardImage = "image://heroic-image/"_L1 + product["productDetail"_L1]["iconUrl"_L1].toString();
                 m_heroImage =
-                        "image://heroic-image/"_L1 + product["productDetail"_L1]["details"_L1]["backgroundUrl2"_L1].toString();
+                    "image://heroic-image/"_L1 + product["productDetail"_L1]["details"_L1]["backgroundUrl2"_L1].toString();
             }
 
             if (QFile fuelJson{m_installDir + "/fuel.json"_L1}; fuelJson.open(QIODevice::ReadOnly))
@@ -163,7 +163,7 @@ public:
 
         // Common to all substores
         if (QFile gamesConfig{Heroic::instance()->storeRoot() + "/GamesConfig/%1.json"_L1.arg(m_id)};
-                gamesConfig.open(QIODevice::ReadOnly))
+            gamesConfig.open(QIODevice::ReadOnly))
         {
             const auto installationInfo = QJsonDocument::fromJson(gamesConfig.readAll())[m_id];
 
@@ -257,7 +257,7 @@ void Heroic::scanStore()
     // Here begins a three-part journey.
     // Part the first: Epic
     if (QFile epicInstalled{m_heroicRoot + "/legendaryConfig/legendary/installed.json"_L1};
-            epicInstalled.open(QIODevice::ReadOnly))
+        epicInstalled.open(QIODevice::ReadOnly))
     {
         qCDebug(HeroicLog) << "Found Epic:" << epicInstalled.fileName();
         const auto epicJson = QJsonDocument::fromJson(epicInstalled.readAll()).object();
@@ -289,7 +289,7 @@ void Heroic::scanStore()
     {
         amazonLibraryCache = QJsonDocument::fromJson(amazonLibrary.readAll()).array();
         if (QFile amazonInstalled{m_heroicRoot + "/nile_config/nile/installed.json"_L1};
-                amazonInstalled.open(QIODevice::ReadOnly))
+            amazonInstalled.open(QIODevice::ReadOnly))
         {
             qCDebug(HeroicLog) << "Found Amazon:" << amazonInstalled.fileName();
             const auto amazonJson = QJsonDocument::fromJson(amazonInstalled.readAll()).array();
@@ -343,30 +343,30 @@ public:
         else
         {
             DownloadManager::instance()->download(
-                        QNetworkRequest{url},
-                        "Heroic image",
-                        false,
-                        [this, file](const QByteArray &data) {
-                m_image = QImage::fromData(data);
-                if (file->open(QIODevice::WriteOnly))
-                {
-                    file->write(data);
-                    file->close();
-                }
-                else
-                    qCDebug(HeroicLog) << "Could not cache image:" << file->fileName();
-            },
-            [this, file](const QNetworkReply::NetworkError, const QString &) {
-                // fall back to cache if possible
-                if (file->exists())
-                {
-                    file->open(QIODevice::ReadOnly);
-                    m_image = QImage::fromData(file->readAll());
-                }
-                else
-                    m_error = "Could not download or find in cache";
-            },
-            [this] { emit finished(); });
+                QNetworkRequest{url},
+                "Heroic image",
+                false,
+                [this, file](const QByteArray &data) {
+                    m_image = QImage::fromData(data);
+                    if (file->open(QIODevice::WriteOnly))
+                    {
+                        file->write(data);
+                        file->close();
+                    }
+                    else
+                        qCDebug(HeroicLog) << "Could not cache image:" << file->fileName();
+                },
+                [this, file](const QNetworkReply::NetworkError, const QString &) {
+                    // fall back to cache if possible
+                    if (file->exists())
+                    {
+                        file->open(QIODevice::ReadOnly);
+                        m_image = QImage::fromData(file->readAll());
+                    }
+                    else
+                        m_error = "Could not download or find in cache";
+                },
+                [this] { emit finished(); });
         }
 
         connect(this, &HeroicImageFetcher::finished, file, &QFile::deleteLater);

@@ -129,9 +129,9 @@ QVariant UEVR::data(const QModelIndex &index, int role) const
 QHash<int, QByteArray> UEVR::roleNames() const
 {
     return {{Roles::Id, "id"_ba},
-        {Roles::Name, "name"_ba},
-        {Roles::Timestamp, "timestamp"_ba},
-        {Roles::Installed, "installed"_ba}};
+            {Roles::Name, "name"_ba},
+            {Roles::Timestamp, "timestamp"_ba},
+            {Roles::Installed, "installed"_ba}};
 }
 
 UEVRRelease *UEVR::releaseFromId(const int id) const
@@ -155,7 +155,7 @@ UEVRRelease *UEVR::currentUevr() const
 void UEVR::setCurrentUevr(const int id)
 {
     auto newVersion =
-            std::find_if(m_releases.constBegin(), m_releases.constEnd(), [id](const auto &r) { return r->id() == id; });
+        std::find_if(m_releases.constBegin(), m_releases.constEnd(), [id](const auto &r) { return r->id() == id; });
     if (newVersion == m_releases.constEnd())
     {
         qCWarning(UEVRLog) << "Attempted to activate nonexistent UEVR";
@@ -203,42 +203,42 @@ void UEVR::downloadUEVR(UEVRRelease *release)
     const QString zipPath = tempDir->path() + "/uevr_" + QString::number(release->id()) + ".zip";
 
     DownloadManager::instance()->download(
-                QNetworkRequest{url},
-                release->name(),
-                true,
-                [this, zipPath, release](const QByteArray &data) {
-        QFile file(zipPath);
-        if (file.open(QIODevice::WriteOnly))
-        {
-            file.write(data);
-            file.close();
-
-            QString targetDir = path(Paths::UEVRBasePath) + '/' + QString::number(release->id());
-            if (!QFileInfo::exists(targetDir))
-                QDir().mkpath(targetDir);
-
-            QProcess process;
-            process.setWorkingDirectory(targetDir);
-            QStringList args;
-            args << "-o" << zipPath;
-            process.start("unzip", args);
-            process.waitForFinished();
-
-            if (process.exitCode() != 0)
+        QNetworkRequest{url},
+        release->name(),
+        true,
+        [this, zipPath, release](const QByteArray &data) {
+            QFile file(zipPath);
+            if (file.open(QIODevice::WriteOnly))
             {
-                qCWarning(UEVRLog) << "Unzip UEVR failed:" << process.errorString();
-                qCWarning(UEVRLog) << process.readAllStandardError();
+                file.write(data);
+                file.close();
+
+                QString targetDir = path(Paths::UEVRBasePath) + '/' + QString::number(release->id());
+                if (!QFileInfo::exists(targetDir))
+                    QDir().mkpath(targetDir);
+
+                QProcess process;
+                process.setWorkingDirectory(targetDir);
+                QStringList args;
+                args << "-o" << zipPath;
+                process.start("unzip", args);
+                process.waitForFinished();
+
+                if (process.exitCode() != 0)
+                {
+                    qCWarning(UEVRLog) << "Unzip UEVR failed:" << process.errorString();
+                    qCWarning(UEVRLog) << process.readAllStandardError();
+                }
+                else
+                    release->setInstalled(true);
             }
             else
-                release->setInstalled(true);
-        }
-        else
-            qCWarning(UEVRLog) << "Failed to save UEVR";
-    },
-    [](const QNetworkReply::NetworkError error, const QString &errorMessage) {
-        qCWarning(UEVRLog) << "Download UEVR failed:" << errorMessage;
-    },
-    [tempDir] { delete tempDir; });
+                qCWarning(UEVRLog) << "Failed to save UEVR";
+        },
+        [](const QNetworkReply::NetworkError error, const QString &errorMessage) {
+            qCWarning(UEVRLog) << "Download UEVR failed:" << errorMessage;
+        },
+        [tempDir] { delete tempDir; });
 }
 
 void UEVR::deleteUEVR(UEVRRelease *uevr)
@@ -257,10 +257,10 @@ QString UEVR::path(const Paths path) const
     {
     case Paths::CurrentUEVR:
         return QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/uevr/"_L1 +
-                QString::number(m_currentUevr->id());
+               QString::number(m_currentUevr->id());
     case Paths::CurrentUEVRInjector:
         return QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/uevr/"_L1 +
-                QString::number(m_currentUevr->id()) + "/UEVRInjector.exe"_L1;
+               QString::number(m_currentUevr->id()) + "/UEVRInjector.exe"_L1;
     case Paths::UEVRBasePath:
         return QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/uevr"_L1;
     case Paths::CachedReleasesJSON:
@@ -285,28 +285,28 @@ void UEVR::updateAvailableReleases()
         req.setRawHeader("X-GitHub-Api-Version"_ba, "2022-11-28"_ba);
 
         DownloadManager::instance()->download(
-                    req,
-                    "UEVR release information"_L1,
-                    true,
-                    [this, cachePath, semaphore](const QByteArray &data) {
-            QFile cache{cachePath};
-            if (cache.open(QFile::WriteOnly))
-            {
-                cache.write(data);
-                cache.close();
-            }
+            req,
+            "UEVR release information"_L1,
+            true,
+            [this, cachePath, semaphore](const QByteArray &data) {
+                QFile cache{cachePath};
+                if (cache.open(QFile::WriteOnly))
+                {
+                    cache.write(data);
+                    cache.close();
+                }
 
-            semaphore->release();
-            if (semaphore->available() == 2)
-            {
-                parseReleaseInfoJson();
-                delete semaphore;
-            }
-        },
-        [](const QNetworkReply::NetworkError error, const QString &errorMessage) {
-            qCInfo(UEVRLog) << "Error while fetching releases:" << errorMessage;
-            return;
-        });
+                semaphore->release();
+                if (semaphore->available() == 2)
+                {
+                    parseReleaseInfoJson();
+                    delete semaphore;
+                }
+            },
+            [](const QNetworkReply::NetworkError error, const QString &errorMessage) {
+                qCInfo(UEVRLog) << "Error while fetching releases:" << errorMessage;
+                return;
+            });
     };
 
     impl({"https://api.github.com/repos/praydog/UEVR/releases"_L1}, path(Paths::CachedReleasesJSON));
@@ -393,7 +393,7 @@ bool UEVRFilter::filterAcceptsRow(int row, const QModelIndex &parent) const
     if (!m_showNightlies)
     {
         const auto release = UEVR::instance()->releaseFromId(
-                    sourceModel()->data(sourceModel()->index(row, 0, parent), UEVR::Roles::Id).toInt());
+            sourceModel()->data(sourceModel()->index(row, 0, parent), UEVR::Roles::Id).toInt());
         if (!release || release->nightly())
             return false;
     }

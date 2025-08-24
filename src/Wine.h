@@ -16,12 +16,12 @@ public:
     static Wine *create(QQmlEngine *, QJSEngine *);
 
     void runInWine(
-            const QString &prettyName,
-            const Game *wineRoot,
-            const QString &command,
-            const QStringList &args = {},
-            std::function<void()> successCallback = [] {},
-            std::function<void()> failureCallback = [] {});
+        const QString &prettyName,
+        const Game *wineRoot,
+        const QString &command,
+        const QStringList &args = {},
+        std::function<void()> successCallback = [] {},
+        std::function<void()> failureCallback = [] {});
 
     QString whichWine() const;
     QString defaultWinePrefix() const;
@@ -33,4 +33,3 @@ private:
     explicit Wine(QObject *parent = nullptr);
     static Wine *s_instance;
 };
-

@@ -7,8 +7,8 @@
 #include <QSettings>
 
 #include "Aptabase.h"
-#include "vdf_parser.hpp"
 #include "VDF.h"
+#include "vdf_parser.hpp"
 
 using namespace Qt::Literals;
 
@@ -54,7 +54,7 @@ public:
         {
             images.next();
             if ((images.fileName() == "library_600x900.jpg"_L1 || images.fileName() == "library_capsule.jpg"_L1) &&
-                    m_cardImage.isEmpty())
+                m_cardImage.isEmpty())
                 m_cardImage = "file://"_L1 + images.filePath();
             else if (images.fileName() == "library_hero.jpg"_L1 && m_heroImage.isEmpty())
                 m_heroImage = "file://"_L1 + images.filePath();
@@ -150,8 +150,8 @@ public:
             }
 
             // This is in theory a great way to detect Source games. Unfortunately it seems to pick up some non-Source games
-            // (e.g. Sonic Racing Transformed for some reason). Therefore, I'm disabling this check for now unless and until I
-            // can figure out why Sonic Racing Transformed is marked as using Source.
+            // (e.g. Sonic Racing Transformed for some reason). Therefore, I'm disabling this check for now unless and until
+            // I can figure out why Sonic Racing Transformed is marked as using Source.
             //
             // else if (section.name == "appinfo.extended"_L1)
             // {
@@ -216,9 +216,9 @@ public:
                     else if (key == "icon"_L1)
                     {
                         const QString logoId{static_cast<const char *>(value.second)};
-                        if (QFileInfo fi{u"%1/appcache/librarycache/%2/%3.jpg"_s.arg(
-                                    Steam::instance()->storeRoot(), m_id, logoId)};
-                                fi.exists())
+                        if (QFileInfo fi{
+                                u"%1/appcache/librarycache/%2/%3.jpg"_s.arg(Steam::instance()->storeRoot(), m_id, logoId)};
+                            fi.exists())
                             m_icon = "file://"_L1 + fi.absoluteFilePath();
                         // TODO: could also extract clienticon key to find icons in $steamroot/steam/games
                     }
@@ -321,9 +321,9 @@ void Steam::scanStore()
                 for (const auto &[appId, _] : folder->childs["apps"]->attribs)
                 {
                     if (auto g = new SteamGame{QString::fromStdString(appId),
-                            QString::fromStdString(folder->attribs["path"]),
-                            this};
-                            g->isValid())
+                                               QString::fromStdString(folder->attribs["path"]),
+                                               this};
+                        g->isValid())
                     {
                         m_games.push_back(g);
                         if (g->id() == "250820"_L1)

@@ -44,10 +44,10 @@ void Wine::runInWine(const QString &prettyName,
     else if (wineRoot->wineBinary().isEmpty())
     {
         Aptabase::instance()->track(
-                    "empty-wine-binary-bug"_L1,
-                    {{"command"_L1, command},
-                     {"game"_L1, wineRoot->id()},
-                     {"store"_L1, QMetaEnum::fromType<Game::Store>().valueToKey(static_cast<quint64>(wineRoot->store()))}});
+            "empty-wine-binary-bug"_L1,
+            {{"command"_L1, command},
+             {"game"_L1, wineRoot->id()},
+             {"store"_L1, QMetaEnum::fromType<Game::Store>().valueToKey(static_cast<quint64>(wineRoot->store()))}});
         emit processFailed(prettyName);
         return;
     }
