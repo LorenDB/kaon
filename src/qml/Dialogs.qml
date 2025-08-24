@@ -9,10 +9,11 @@ Item {
 
         property Game game: null
 
-        title: "Download .NET desktop runtime"
-        modal: true
         closePolicy: Popup.CloseOnEscape
+        modal: true
         standardButtons: Dialog.Ok | Dialog.Cancel
+        title: "Download .NET desktop runtime"
+
         onAccepted: {
             Dotnet.downloadDotnetDesktopRuntime(game);
             game = null;
@@ -29,15 +30,17 @@ Item {
 
         property string whatWasBeingDownloaded: "<null>"
 
-        title: "Download failed"
-        modal: true
         closePolicy: Popup.CloseOnEscape
+        modal: true
         standardButtons: Dialog.Ok
+        title: "Download failed"
+
         onAccepted: whatWasBeingDownloaded = "<null>"
 
         Label {
             anchors.fill: parent
-            text: "Downloading " + downloadFailedDialog.whatWasBeingDownloaded + " failed. Please check your network connection."
+            text: "Downloading " + downloadFailedDialog.whatWasBeingDownloaded
+                  + " failed. Please check your network connection."
             wrapMode: Text.WordWrap
         }
     }
@@ -45,10 +48,11 @@ Item {
     Dialog {
         id: deleteUevrDialog
 
-        title: "Confirm deletion"
-        modal: true
         closePolicy: Popup.CloseOnEscape
+        modal: true
         standardButtons: Dialog.Ok | Dialog.Cancel
+        title: "Confirm deletion"
+
         onAccepted: UEVR.deleteUEVR(UEVR.currentUevr)
 
         Label {
@@ -61,20 +65,22 @@ Item {
     Dialog {
         id: updateAvailableDialog
 
-        property string updateVersion
         property string updateUrl
+        property string updateVersion
 
-        title: "Update available"
-        modal: true
         closePolicy: Popup.CloseOnEscape
+        modal: true
         standardButtons: Dialog.Ok
+        title: "Update available"
 
         Label {
             anchors.fill: parent
-            text: "Kaon " + updateAvailableDialog.updateVersion + " is now available. Find out more and download the update at <a href=\""
+            text: "Kaon " + updateAvailableDialog.updateVersion
+                  + " is now available. Find out more and download the update at <a href=\""
                   + updateAvailableDialog.updateUrl + "\">the release page</a>."
             wrapMode: Text.WordWrap
-            onLinkActivated: (link) => Qt.openUrlExternally(link)
+
+            onLinkActivated: link => Qt.openUrlExternally(link)
         }
     }
 
@@ -83,10 +89,10 @@ Item {
 
         property string prettyName
 
-        title: prettyName === "" ? "Failure during process execution" : prettyName
-        modal: true
         closePolicy: Popup.CloseOnEscape
+        modal: true
         standardButtons: Dialog.Ok
+        title: prettyName === "" ? "Failure during process execution" : prettyName
 
         Label {
             anchors.fill: parent
@@ -96,13 +102,13 @@ Item {
     }
 
     Connections {
+        function onDotnetDownloadFailed() {
+            downloadFailedDialog.open();
+        }
+
         function onPromptDotnetDownload(game: Game) {
             dotnetDownloadDialog.game = game;
             dotnetDownloadDialog.open();
-        }
-
-        function onDotnetDownloadFailed() {
-            downloadFailedDialog.open();
         }
 
         target: Dotnet
@@ -110,8 +116,8 @@ Item {
 
     Connections {
         function onDownloadFailed(whatWasBeingDownloaded: string) {
-            downloadFailedDialog.whatWasBeingDownloaded = whatWasBeingDownloaded
-            downloadFailedDialog.open()
+            downloadFailedDialog.whatWasBeingDownloaded = whatWasBeingDownloaded;
+            downloadFailedDialog.open();
         }
 
         target: DownloadManager
@@ -119,15 +125,14 @@ Item {
 
     UpdateChecker {
         onUpdateAvailable: (version, url) => {
-            updateAvailableDialog.updateVersion = version;
-            updateAvailableDialog.updateUrl = url;
-            updateAvailableDialog.open();
-        }
+                               updateAvailableDialog.updateVersion = version;
+                               updateAvailableDialog.updateUrl = url;
+                               updateAvailableDialog.open();
+                           }
     }
 
     Connections {
-        function onProcessFailed(prettyName: string)
-        {
+        function onProcessFailed(prettyName: string) {
             wineFailedDialog.prettyName = prettyName;
             wineFailedDialog.open();
         }

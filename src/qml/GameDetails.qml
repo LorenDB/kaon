@@ -9,7 +9,10 @@ Pane {
 
     required property Game game
 
-    FontInfo { id: fontInfo }
+    FontInfo {
+        id: fontInfo
+
+    }
 
     ColumnLayout {
         anchors.fill: parent
@@ -20,22 +23,21 @@ Pane {
 
             Layout.fillWidth: true
             Layout.preferredHeight: width / 1920 * 620
-            source: gameDetailsRoot.game.heroImage
             fillMode: Image.PreserveAspectCrop
+            source: gameDetailsRoot.game.heroImage
 
             // This is not perfect, but it gives a decent result. It's kinda pointless to spend
             // too much time getting pixel perfect, so I'm leaving it as is.
             Image {
                 anchors.margins: 10
-                source: gameDetailsRoot.game.logoImage
                 fillMode: Image.PreserveAspectFit
-                horizontalAlignment: Image.Left
-                width: 640 * (gameDetailsRoot.game.logoWidth / 100)
                 height: hero.height * (gameDetailsRoot.game.logoHeight / 100)
+                horizontalAlignment: Image.Left
+                source: gameDetailsRoot.game.logoImage
+                width: 640 * (gameDetailsRoot.game.logoWidth / 100)
 
                 Component.onCompleted: {
-                    switch (gameDetailsRoot.game.logoVPosition)
-                    {
+                    switch (gameDetailsRoot.game.logoVPosition) {
                     case Game.Center:
                         anchors.verticalCenter = hero.verticalCenter;
                         break;
@@ -47,8 +49,7 @@ Pane {
                         break;
                     }
 
-                    switch (gameDetailsRoot.game.logoHPosition)
-                    {
+                    switch (gameDetailsRoot.game.logoHPosition) {
                     case Game.Center:
                         anchors.horizontalCenter = hero.horizontalCenter;
                         break;
@@ -66,79 +67,84 @@ Pane {
             Rectangle {
                 id: textFallback
 
-                visible: hero.status !== Image.Ready
                 anchors.fill: hero
-                radius: 5
                 color: "#4f4f4f"
+                radius: 5
+                visible: hero.status !== Image.Ready
 
                 Label {
                     anchors.centerIn: textFallback
                     anchors.margins: 5
-                    wrapMode: Label.WordWrap
                     text: gameDetailsRoot.game.name
+                    wrapMode: Label.WordWrap
                 }
             }
 
             RowLayout {
-                anchors.top: hero.top
                 anchors.left: hero.left
                 anchors.margins: 10
+                anchors.top: hero.top
                 spacing: 3
 
-                Item { Layout.fillHeight: true }
+                Item {
+                    Layout.fillHeight: true
+                }
 
                 Tag {
-                    text: "VR"
                     color: "#ffac26"
+                    text: "VR"
                     visible: gameDetailsRoot.game.supportsVr
                 }
 
                 Tag {
-                    text: "Demo"
                     color: "#5d9e00"
+                    text: "Demo"
                     visible: gameDetailsRoot.game.type === Game.Demo
                 }
             }
 
             RowLayout {
-                anchors.top: hero.top
-                anchors.right: hero.right
                 anchors.margins: 10
+                anchors.right: hero.right
+                anchors.top: hero.top
                 spacing: 10
 
                 Button {
+                    ToolTip.delay: 1000
+                    ToolTip.text: "Open game install folder"
+                    ToolTip.visible: hovered
+                    hoverEnabled: true
+                    icon.color: palette.buttonText
                     icon.name: "folder"
                     icon.source: Qt.resolvedUrl("icons/folder.svg")
-                    icon.color: palette.buttonText
-                    hoverEnabled: true
-                    ToolTip.text: "Open game install folder"
-                    ToolTip.delay: 1000
-                    ToolTip.visible: hovered
+
                     onClicked: Qt.openUrlExternally("file://" + gameDetailsRoot.game.installDir)
                 }
 
                 Button {
+                    ToolTip.delay: 1000
+                    ToolTip.text: "Change Steam game settings"
+                    ToolTip.visible: hovered
+                    hoverEnabled: true
+                    icon.color: palette.buttonText
                     icon.name: "settings-configure"
                     icon.source: Qt.resolvedUrl("icons/settings-configure.svg")
-                    icon.color: palette.buttonText
-                    hoverEnabled: true
-                    ToolTip.text: "Change Steam game settings"
-                    ToolTip.delay: 1000
-                    ToolTip.visible: hovered
                     visible: gameDetailsRoot.game.canOpenSettings
+
                     // TODO: make this work with other stores if possible
                     onClicked: Qt.openUrlExternally("steam://gameproperties/" + gameDetailsRoot.game.id)
                 }
 
                 Button {
+                    ToolTip.delay: 1000
+                    ToolTip.text: "Launch game in Steam"
+                    ToolTip.visible: hovered
+                    hoverEnabled: true
+                    icon.color: palette.buttonText
                     icon.name: "media-playback-start"
                     icon.source: Qt.resolvedUrl("icons/media-playback-start.svg")
-                    icon.color: palette.buttonText
-                    hoverEnabled: true
-                    ToolTip.text: "Launch game in Steam"
-                    ToolTip.delay: 1000
-                    ToolTip.visible: hovered
                     visible: gameDetailsRoot.game.canLaunch
+
                     onClicked: gameDetailsRoot.game.launch()
                 }
             }
@@ -147,9 +153,9 @@ Pane {
         Label {
             id: nameLabel
 
-            text: gameDetailsRoot.game.name
-            font.pointSize: fontInfo.pointSize * 1.5
             font.bold: true
+            font.pointSize: fontInfo.pointSize * 1.5
+            text: gameDetailsRoot.game.name
         }
 
         MenuSeparator {
@@ -158,28 +164,29 @@ Pane {
         }
 
         Label {
+            Layout.maximumWidth: parent.width
+            text: "⚠️ " + gameDetailsRoot.game.name
+                  + " has multiple launch options available. Make sure you are launching this game using Wine or Proton, or else UEVR will not work."
             visible: gameDetailsRoot.game.hasMultiplePlatforms && !gameDetailsRoot.game.noWindowsSupport
-            Layout.maximumWidth: parent.width
-            text: "⚠️ " + gameDetailsRoot.game.name + " has multiple launch options available. Make sure you are launching this game using Wine or Proton, or else UEVR will not work."
             wrapMode: Label.WordWrap
         }
 
         Label {
+            Layout.maximumWidth: parent.width
+            text: "⚠️ " + gameDetailsRoot.game.name
+                  + " does not have a Windows executable, so it can't be launched via Wine or Proton. UEVR will not work."
             visible: gameDetailsRoot.game.noWindowsSupport
-            Layout.maximumWidth: parent.width
-            text: "⚠️ " + gameDetailsRoot.game.name + " does not have a Windows executable, so it can't be launched via Wine or Proton. UEVR will not work."
             wrapMode: Label.WordWrap
         }
 
         Label {
-            visible: gameDetailsRoot.game.supportsVr
             Layout.maximumWidth: parent.width
             text: "⚠️ This game already supports VR, so you probably should use its native VR support instead!"
+            visible: gameDetailsRoot.game.supportsVr
             wrapMode: Label.WordWrap
         }
 
         Button {
-            text: gameDetailsRoot.game.dotnetInstalled ? "Repair or uninstall .NET" : "Install .NET desktop runtime"
             enabled: {
                 if (gameDetailsRoot.game.noWindowsSupport)
                     return false;
@@ -188,6 +195,8 @@ Pane {
                 else
                     return true;
             }
+            text: gameDetailsRoot.game.dotnetInstalled ? "Repair or uninstall .NET" : "Install .NET desktop runtime"
+
             onClicked: Dotnet.installDotnetDesktopRuntime(gameDetailsRoot.game)
         }
 
@@ -195,8 +204,10 @@ Pane {
             spacing: 10
 
             Button {
+                enabled: UEVR.currentUevr.installed && gameDetailsRoot.game.dotnetInstalled
+                         && gameDetailsRoot.game.winePrefixExists && !gameDetailsRoot.game.noWindowsSupport
                 text: "Launch UEVR injector"
-                enabled: UEVR.currentUevr.installed && gameDetailsRoot.game.dotnetInstalled && gameDetailsRoot.game.winePrefixExists && !gameDetailsRoot.game.noWindowsSupport
+
                 onClicked: UEVR.launchUEVR(gameDetailsRoot.game)
             }
 
@@ -209,10 +220,13 @@ Pane {
                     else
                         return "";
                 }
-                visible: !gameDetailsRoot.game.dotnetInstalled || (UEVR.currentUevr !== undefined && !UEVR.currentUevr.installed)
+                visible: !gameDetailsRoot.game.dotnetInstalled || (UEVR.currentUevr !== undefined &&
+                                                                   !UEVR.currentUevr.installed)
             }
         }
 
-        Item { Layout.fillHeight: true }
+        Item {
+            Layout.fillHeight: true
+        }
     }
 }

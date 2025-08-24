@@ -1,10 +1,9 @@
+pragma ComponentBehavior: Bound
 import QtCore
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Dialogs
-
-pragma ComponentBehavior: Bound
 
 import dev.lorendb.kaon
 
@@ -33,10 +32,11 @@ Pane {
             }
 
             Button {
-                text: "Browse..."
+                icon.color: palette.buttonText
                 icon.name: "folder"
                 icon.source: Qt.resolvedUrl("icons/folder.svg")
-                icon.color: palette.buttonText
+                text: "Browse..."
+
                 onClicked: exePicker.open()
             }
         }
@@ -45,20 +45,21 @@ Pane {
     DialogButtonBox {
         anchors.bottom: parent.bottom
         anchors.right: parent.right
+
         onAccepted: {
             CustomGames.addGame(newGameName.text, newGameExe.text);
             theStack.popCurrentItem();
         }
 
         Button {
-            text: qsTr("OK")
-            enabled: newGameName.text !== "" && newGameExe.text !== ""
             DialogButtonBox.buttonRole: DialogButtonBox.AcceptRole
+            enabled: newGameName.text !== "" && newGameExe.text !== ""
+            text: qsTr("OK")
         }
 
         Button {
-            text: qsTr("Cancel")
             DialogButtonBox.buttonRole: DialogButtonBox.DestructiveRole
+            text: qsTr("Cancel")
         }
     }
 
@@ -66,6 +67,7 @@ Pane {
         id: exePicker
 
         currentFolder: StandardPaths.standardLocations(StandardPaths.HomeLocation)[0]
+
         onAccepted: newGameExe.text = selectedFile.toString().replace(/^file:\/\/?/, '')
     }
 }

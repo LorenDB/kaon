@@ -10,10 +10,13 @@ ListView {
 
     signal gameClicked(Game game)
 
-    model: GamesFilterModel
     clip: true
+    model: GamesFilterModel
 
-    ScrollBar.vertical: ScrollBar { id: sb }
+    ScrollBar.vertical: ScrollBar {
+        id: sb
+
+    }
     delegate: ItemDelegate {
         id: delegate
 
@@ -25,47 +28,47 @@ ListView {
         Image {
             id: iconImage
 
-            source: delegate.game.icon
-            fillMode: Image.PreserveAspectFit
             Layout.preferredHeight: 32
             Layout.preferredWidth: 32
+            fillMode: Image.PreserveAspectFit
+            source: delegate.game.icon
             visible: false
         }
 
         RowLayout {
             id: content
 
+            anchors.left: delegate.left
+            anchors.margins: 10
+            anchors.verticalCenter: delegate.verticalCenter
             spacing: 10
             width: delegate.width - 20
-            anchors.left: delegate.left
-            anchors.verticalCenter: delegate.verticalCenter
-            anchors.margins: 10
 
             MultiEffect {
-                source: iconImage
                 Layout.preferredHeight: 32
                 Layout.preferredWidth: 32
                 maskEnabled: true
                 maskSource: textFallback
-                visible: iconImage.status === Image.Ready
+                maskSpreadAtMin: 1.0
 
                 // needed for smooth corners
                 // https://forum.qt.io/post/815710
                 maskThresholdMin: 0.5
-                maskSpreadAtMin: 1.0
+                source: iconImage
+                visible: iconImage.status === Image.Ready
             }
 
             // fallback for no image
             Rectangle {
                 id: textFallback
 
-                visible: iconImage.status !== Image.Ready
                 Layout.preferredHeight: 32
                 Layout.preferredWidth: 32
-                radius: 3
                 color: "#4f4f4f"
                 layer.enabled: true
                 layer.smooth: true
+                radius: 3
+                visible: iconImage.status !== Image.Ready
             }
 
             Label {
@@ -73,26 +76,29 @@ ListView {
             }
 
             Tag {
-                text: "VR"
                 color: "#ffac26"
+                text: "VR"
                 visible: delegate.game.supportsVr
             }
 
             Tag {
-                text: "Demo"
                 color: "#5d9e00"
+                text: "Demo"
                 visible: delegate.game.type === Game.Demo
             }
 
-            Item { Layout.fillWidth: true }
+            Item {
+                Layout.fillWidth: true
+            }
         }
 
         MouseArea {
             id: ma
 
             anchors.fill: delegate
-            hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
+            hoverEnabled: true
+
             onClicked: list.gameClicked(delegate.game)
         }
     }
