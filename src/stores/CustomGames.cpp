@@ -89,6 +89,7 @@ public:
     void launch() const override
     {
         const auto lo = m_executables.first();
+        qCInfo(CustomGameLog) << "Launching" << lo.executable;
 
         if (lo.platform == LaunchOption::Platform::Windows)
             Wine::instance()->runInWine(m_name, this, lo.executable);
