@@ -32,6 +32,6 @@ private:
 
     QString m_host;
     QString m_key;
-    int m_sessionId{0};
+    QString m_sessionId;
     bool m_enabled{true};
 };

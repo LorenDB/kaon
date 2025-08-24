@@ -17,7 +17,8 @@ Aptabase::Aptabase(const QString &host, const QString &key, QObject *parent)
       m_host{host},
       m_key{key}
 {
-    m_sessionId = QDateTime::currentDateTime().currentSecsSinceEpoch() + QRandomGenerator64::global()->generate64();
+    m_sessionId = QString::number(QDateTime::currentDateTime().currentSecsSinceEpoch()) +
+            QString::number(QRandomGenerator64::global()->generate64());
 
     QSettings settings;
     settings.beginGroup("Aptabase"_L1);
@@ -65,7 +66,7 @@ void Aptabase::track(const QString &event, const QJsonObject &properties) const
 
     QJsonObject body;
     body["timestamp"_L1] = QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs);
-    body["sessionId"_L1] = QString::number(m_sessionId);
+    body["sessionId"_L1] = m_sessionId;
     body["eventName"_L1] = event;
 
     QJsonObject systemProperties;
