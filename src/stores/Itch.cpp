@@ -4,6 +4,8 @@
 #include <QDirIterator>
 #include <QLoggingCategory>
 #include <QProcess>
+#include <QSqlDatabase>
+#include <QSqlQuery>
 #include <QStandardPaths>
 #include <QTemporaryDir>
 
@@ -137,21 +139,43 @@ void Itch::scanStore()
     qCDebug(ItchLog) << "Scanning Itch library";
     beginResetModel();
 
+    QStringList installLocations;
+
+    const auto dbPath = m_itchRoot + "/db/butler.db"_L1;
+    if (QFileInfo::exists(dbPath))
+    {
+        auto db = QSqlDatabase::addDatabase("QSQLITE"_L1);
+        db.setDatabaseName(dbPath);
+        if (db.open())
+            if (QSqlQuery q; q.exec("SELECT path FROM install_locations"_L1))
+                while (q.next())
+                    installLocations.push_back(q.value(0).toString());
+    }
+
+    if (installLocations.isEmpty())
+    {
+        qCDebug(ItchLog) << "Could not open butler.db, falling back to scanning %1/apps"_L1.arg(m_itchRoot);
+        installLocations.append(m_itchRoot + "/apps"_L1);
+    }
+
     for (const auto game : std::as_const(m_games))
         game->deleteLater();
     m_games.clear();
 
-    QDirIterator apps{m_itchRoot + "/apps"_L1};
-    while (apps.hasNext())
+    for (const auto &location : installLocations)
     {
-        apps.next();
-        if (apps.fileName() == "downloads"_L1 || apps.fileName() == "."_L1 || apps.fileName() == ".."_L1)
-            continue;
+        QDirIterator apps{location};
+        while (apps.hasNext())
+        {
+            apps.next();
+            if (apps.fileName() == "downloads"_L1 || apps.fileName() == "."_L1 || apps.fileName() == ".."_L1)
+                continue;
 
-        if (auto g = new ItchGame{apps.filePath(), this}; g->isValid())
-            m_games.push_back(g);
-        else
-            g->deleteLater();
+            if (auto g = new ItchGame{apps.filePath(), this}; g->isValid())
+                m_games.push_back(g);
+            else
+                g->deleteLater();
+        }
     }
 
     endResetModel();
