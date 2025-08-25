@@ -145,6 +145,17 @@ bool CustomGames::addGame(const QString &name, const QString &executable)
     return false;
 }
 
+void CustomGames::deleteGame(Game *game)
+{
+    if (!m_games.contains(game))
+        return;
+
+    const auto idx = m_games.indexOf(game);
+    beginRemoveRows({}, idx, idx);
+    m_games.removeAt(idx);
+    endRemoveRows();
+}
+
 CustomGames::CustomGames(QObject *parent)
     : Store{parent}
 {}

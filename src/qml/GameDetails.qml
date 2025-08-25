@@ -137,6 +137,22 @@ Pane {
 
                 Button {
                     ToolTip.delay: 1000
+                    ToolTip.text: "Remove from Kaon"
+                    ToolTip.visible: hovered
+                    hoverEnabled: true
+                    icon.color: "#da4453"
+                    icon.name: "delete"
+                    icon.source: Qt.resolvedUrl("delete")
+                    visible: gameDetailsRoot.game.store === Game.Custom
+
+                    onClicked: {
+                        CustomGames.deleteGame(gameDetailsRoot.game);
+                        theStack.popCurrentItem();
+                    }
+                }
+
+                Button {
+                    ToolTip.delay: 1000
                     ToolTip.text: "Launch game in Steam"
                     ToolTip.visible: hovered
                     hoverEnabled: true
