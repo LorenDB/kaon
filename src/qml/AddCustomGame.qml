@@ -14,6 +14,13 @@ Pane {
         anchors.centerIn: parent
         spacing: 10
 
+        Label {
+            Layout.maximumWidth: parent.width
+            text: "⚠️ Couldn't find a systemwide Wine installation. Windows games will not work unless you install Wine."
+            visible: Wine.whichWine() === ""
+            wrapMode: Label.WordWrap
+        }
+
         TextField {
             id: newGameName
 
