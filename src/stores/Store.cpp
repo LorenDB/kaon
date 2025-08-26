@@ -1,5 +1,6 @@
 #include "Store.h"
 
+#include <QSettings>
 #include <QTimer>
 
 using namespace Qt::Literals;
@@ -14,7 +15,11 @@ Store::Store(QObject *parent)
     // We need to finish creating this object before scanning the store. Otherwise the Game constructor may call instance()
     // on the subclass, but since we haven't finished creating this object, s_instance won't have been set, which leads to a
     // brief loop of Store objects being created.
-    QTimer::singleShot(0, this, [this] { scanStore(); });
+    QTimer::singleShot(0, this, [this] {
+        QSettings settings;
+        if (settings.value("autoscan"_L1, true).toBool())
+            scanStore();
+    });
 }
 
 int Store::rowCount(const QModelIndex &parent) const
