@@ -151,3 +151,42 @@ void Game::detectGameEngine()
         return;
     }
 }
+
+void Game::detectAnticheat()
+{
+    // Rules from https://github.com/SteamDatabase/FileDetectionRuleSets/blob/1e4ec6197ab40fcd3706e09166acaccc96f7e5d7/rules.ini#L238
+    static const QList<QRegularExpression> anticheats = {
+        QRegularExpression{R"((?:^|/)AntiCheatExpert/)"_L1},
+        QRegularExpression{R"((?:^|/)AceAntibotClient/)"_L1},
+        QRegularExpression{R"((?:^|/)anybrainSDK\.dll$)"_L1},
+        QRegularExpression{R"((?:^|/)BEService(?:_x64)?\.exe$)"_L1},
+        QRegularExpression{R"((?:^|/)BlackCall(?:64)?\.aes$)"_L1},
+        QRegularExpression{R"((?:^|/)BlackCat64\.sys$)"_L1},
+        QRegularExpression{R"((?:^|/)EasyAntiCheat_(?:EOS_)?Setup\.exe$)"_L1},
+        QRegularExpression{R"((?:^|/)(?:EasyAntiCheat(?:_x64)?|eac_server64)\.dll$)"_L1},
+        QRegularExpression{R"((?:^|/)EAAntiCheat\.Installer\.exe$)"_L1},
+        QRegularExpression{R"((?:^|/)equ8_conf\.json$)"_L1},
+        QRegularExpression{R"((?:^|/)FredaikisAntiCheat/)"_L1},
+        QRegularExpression{R"((?:^|/)HShield/HSInst\.dll$)"_L1},
+        QRegularExpression{R"((?:^|/)gameguard\.des$)"_L1},
+        QRegularExpression{R"((?:^|/)(?:PnkBstrA|pbsvc)\.exe$)"_L1},
+        QRegularExpression{R"((?:^|/)pbsv\.dll$)"_L1},
+        QRegularExpression{R"((?:^|/)Punkbuster(?:$|/))"_L1},
+        QRegularExpression{R"((?:^|/)Randgrid\.sys$)"_L1},
+        QRegularExpression{R"((?:^|/)TP3Helper\.exe$)"_L1},
+        QRegularExpression{R"(\.xem$)"_L1},
+    };
+
+    for (QDirIterator gameDirIterator{m_installDir, QDirIterator::Subdirectories}; gameDirIterator.hasNext();)
+    {
+        auto localName = gameDirIterator.next().remove(m_installDir);
+        for (const auto &anticheat : anticheats)
+        {
+            if (localName.contains(anticheat))
+            {
+                m_hasAnticheat = true;
+                return;
+            }
+        }
+    }
+}

@@ -182,6 +182,14 @@ Pane {
         Label {
             Layout.maximumWidth: parent.width
             text: "⚠️ " + gameDetailsRoot.game.name
+                  + " appears to use anticheat. Using UEVR or other mods could potentially result in an in-game ban."
+            visible: gameDetailsRoot.game.hasAnticheat
+            wrapMode: Label.WordWrap
+        }
+
+        Label {
+            Layout.maximumWidth: parent.width
+            text: "⚠️ " + gameDetailsRoot.game.name
                   + " has multiple launch options available. Make sure you are launching this game using Wine or Proton, or else UEVR will not work."
             visible: gameDetailsRoot.game.hasMultiplePlatforms && !gameDetailsRoot.game.noWindowsSupport
             wrapMode: Label.WordWrap

@@ -234,6 +234,7 @@ public:
         }
 
         detectGameEngine();
+        detectAnticheat();
 
         m_valid = true;
     }

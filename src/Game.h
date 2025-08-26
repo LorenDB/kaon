@@ -22,6 +22,7 @@ class Game : public QObject
     Q_PROPERTY(bool vrOnly READ vrOnly CONSTANT FINAL)
     Q_PROPERTY(bool hasMultiplePlatforms READ hasMultiplePlatforms CONSTANT FINAL)
     Q_PROPERTY(bool noWindowsSupport READ noWindowsSupport CONSTANT FINAL)
+    Q_PROPERTY(bool hasAnticheat READ hasAnticheat CONSTANT FINAL)
 
     Q_PROPERTY(QString cardImage READ cardImage CONSTANT)
     Q_PROPERTY(QString heroImage READ heroImage CONSTANT)
@@ -85,6 +86,7 @@ public:
     bool vrOnly() const { return m_vrOnly; }
     bool hasMultiplePlatforms() const;
     bool noWindowsSupport() const;
+    bool hasAnticheat() const { return m_hasAnticheat; }
 
     virtual Store store() const = 0;
 
@@ -124,6 +126,7 @@ protected:
     explicit Game(QObject *parent = nullptr);
 
     void detectGameEngine();
+    void detectAnticheat();
 
     QString m_id;
     QString m_name;
@@ -134,6 +137,7 @@ protected:
     AppType m_type = AppType::Other;
     bool m_supportsVr{false};
     bool m_vrOnly{false};
+    bool m_hasAnticheat{false};
 
     QString m_cardImage;
     QString m_heroImage;
