@@ -15,13 +15,6 @@ ApplicationWindow {
     visible: true
     width: 950
 
-    Settings {
-        id: settings
-
-        property alias windowWidth: root.width
-        property alias windowHeight: root.height
-    }
-
     footer: Pane {
         visible: DownloadManager.downloading
 
@@ -135,6 +128,13 @@ ApplicationWindow {
                 onClicked: theStack.push(settingsPage)
             }
         }
+    }
+
+    Settings {
+        id: settings
+
+        property alias windowHeight: root.height
+        property alias windowWidth: root.width
     }
 
     SystemPalette {

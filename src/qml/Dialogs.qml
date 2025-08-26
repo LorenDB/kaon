@@ -72,18 +72,6 @@ Item {
         modal: true
         title: "Update available"
 
-        onRejected: UpdateChecker.ignore = updateVersion
-
-        Label {
-            anchors.fill: parent
-            text: "Kaon " + updateAvailableDialog.updateVersion
-                  + " is now available. Find out more and download the update at <a href=\""
-                  + updateAvailableDialog.updateUrl + "\">the release page</a>."
-            wrapMode: Text.WordWrap
-
-            onLinkActivated: link => Qt.openUrlExternally(link)
-        }
-
         footer: DialogButtonBox {
             Button {
                 DialogButtonBox.buttonRole: DialogButtonBox.AcceptRole
@@ -94,6 +82,18 @@ Item {
                 DialogButtonBox.buttonRole: DialogButtonBox.RejectRole
                 text: qsTr("Ignore this release")
             }
+        }
+
+        onRejected: UpdateChecker.ignore = updateVersion
+
+        Label {
+            anchors.fill: parent
+            text: "Kaon " + updateAvailableDialog.updateVersion
+                  + " is now available. Find out more and download the update at <a href=\""
+                  + updateAvailableDialog.updateUrl + "\">the release page</a>."
+            wrapMode: Text.WordWrap
+
+            onLinkActivated: link => Qt.openUrlExternally(link)
         }
     }
 

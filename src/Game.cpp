@@ -154,7 +154,8 @@ void Game::detectGameEngine()
 
 void Game::detectAnticheat()
 {
-    // Rules from https://github.com/SteamDatabase/FileDetectionRuleSets/blob/1e4ec6197ab40fcd3706e09166acaccc96f7e5d7/rules.ini#L238
+    // Rules from
+    // https://github.com/SteamDatabase/FileDetectionRuleSets/blob/1e4ec6197ab40fcd3706e09166acaccc96f7e5d7/rules.ini#L238
     static const QList<QRegularExpression> anticheats = {
         QRegularExpression{R"((?:^|/)AntiCheatExpert/)"_L1},
         QRegularExpression{R"((?:^|/)AceAntibotClient/)"_L1},

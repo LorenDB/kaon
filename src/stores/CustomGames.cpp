@@ -65,7 +65,7 @@ public:
     {}
 
     CustomGame(
-            const QString &name, const QString &executable, const QString &wine, const QString &winePrefix, QObject *parent)
+        const QString &name, const QString &executable, const QString &wine, const QString &winePrefix, QObject *parent)
         : Game{parent}
     {
         m_id = QUuid::createUuid().toString(QUuid::WithoutBraces);

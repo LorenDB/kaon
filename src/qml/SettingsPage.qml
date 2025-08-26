@@ -38,6 +38,7 @@ Pane {
 
                 Button {
                     text: "Check now"
+
                     onClicked: UpdateChecker.checkUpdates()
                 }
             }
