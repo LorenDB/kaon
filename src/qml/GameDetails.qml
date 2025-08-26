@@ -153,7 +153,7 @@ Pane {
 
                 Button {
                     ToolTip.delay: 1000
-                    ToolTip.text: "Launch game in Steam"
+                    ToolTip.text: "Launch game"
                     ToolTip.visible: hovered
                     hoverEnabled: true
                     icon.color: palette.buttonText
