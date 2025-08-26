@@ -32,8 +32,8 @@ public:
         m_id = json["id"_L1].toString();
         m_name = json["name"_L1].toString();
         m_installDir = json["installDir"_L1].toString();
-        m_winePrefix = json["winePrefix"_L1].toString();
-        m_wineBinary = json["wineBinary"_L1].toString();
+        m_winePrefix = json["winePrefix"_L1].toString(Wine::instance()->defaultWinePrefix());
+        m_wineBinary = json["wineBinary"_L1].toString(Wine::instance()->whichWine());
         m_cardImage = json["cardImage"_L1].toString();
         m_heroImage = json["heroImage"_L1].toString();
         m_logoImage = json["logoImage"_L1].toString();
@@ -60,6 +60,11 @@ public:
     }
 
     CustomGame(const QString &name, const QString &executable, QObject *parent)
+        : CustomGame{name, executable, Wine::instance()->whichWine(), Wine::instance()->defaultWinePrefix(), parent}
+    {}
+
+    CustomGame(
+            const QString &name, const QString &executable, const QString &wine, const QString &winePrefix, QObject *parent)
         : Game{parent}
     {
         m_id = QUuid::createUuid().toString(QUuid::WithoutBraces);
@@ -70,6 +75,8 @@ public:
         m_installDir = fi.path();
         m_type = AppType::Game;
         m_canLaunch = true;
+        m_wineBinary = wine;
+        m_winePrefix = winePrefix;
 
         LaunchOption lo;
         lo.executable = executable;
@@ -126,11 +133,11 @@ CustomGames *CustomGames::create(QQmlEngine *qml, QJSEngine *js)
     return s_instance;
 }
 
-bool CustomGames::addGame(const QString &name, const QString &executable)
+bool CustomGames::addGame(const QString &name, const QString &executable, const QString &wine, const QString &winePrefix)
 {
     if (QFileInfo fi{executable}; fi.exists() && fi.isFile())
     {
-        if (auto g = new CustomGame{name, executable, this}; g->isValid())
+        if (auto g = new CustomGame{name, executable, wine, winePrefix, this}; g->isValid())
         {
             beginInsertRows({}, m_games.size(), m_games.size());
             m_games.push_back(g);
@@ -203,7 +210,7 @@ void CustomGames::writeConfig()
     }
 
     QJsonArray arr;
-    for (const auto game : m_games)
+    for (const auto game : std::as_const(m_games))
     {
         QJsonObject json;
         json["id"_L1] = game->id();

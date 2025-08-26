@@ -24,7 +24,7 @@ public:
         std::function<void()> failureCallback = [] {});
 
     Q_INVOKABLE QString whichWine() const;
-    QString defaultWinePrefix() const;
+    Q_INVOKABLE QString defaultWinePrefix() const;
 
 signals:
     void processFailed(const QString &prettyName);

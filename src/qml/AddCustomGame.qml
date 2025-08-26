@@ -17,7 +17,7 @@ Pane {
         Label {
             Layout.maximumWidth: parent.width
             text: "⚠️ Couldn't find a systemwide Wine installation. Windows games will not work unless you install Wine."
-            visible: Wine.whichWine() === ""
+            visible: wineBinary.text === "" && Wine.whichWine() === ""
             wrapMode: Label.WordWrap
         }
 
@@ -47,6 +47,54 @@ Pane {
                 onClicked: exePicker.open()
             }
         }
+
+        CheckBox {
+            id: showAdvanced
+
+            text: "Show advanced settings"
+        }
+
+        RowLayout {
+            spacing: 10
+            visible: showAdvanced.checked
+
+            TextField {
+                id: wineBinary
+
+                Layout.minimumWidth: 400
+                text: Wine.whichWine()
+            }
+
+            Button {
+                icon.color: palette.buttonText
+                icon.name: "folder"
+                icon.source: Qt.resolvedUrl("icons/folder.svg")
+                text: "Browse..."
+
+                onClicked: winePicker.open()
+            }
+        }
+
+        RowLayout {
+            spacing: 10
+            visible: showAdvanced.checked
+
+            TextField {
+                id: winePrefix
+
+                Layout.minimumWidth: 400
+                text: Wine.defaultWinePrefix()
+            }
+
+            Button {
+                icon.color: palette.buttonText
+                icon.name: "folder"
+                icon.source: Qt.resolvedUrl("icons/folder.svg")
+                text: "Browse..."
+
+                onClicked: winePrefixPicker.open()
+            }
+        }
     }
 
     DialogButtonBox {
@@ -54,9 +102,10 @@ Pane {
         anchors.right: parent.right
 
         onAccepted: {
-            CustomGames.addGame(newGameName.text, newGameExe.text);
+            CustomGames.addGame(newGameName.text, newGameExe.text, wineBinary.text, winePrefix.text);
             theStack.popCurrentItem();
         }
+        onRejected: theStack.popCurrentItem()
 
         Button {
             DialogButtonBox.buttonRole: DialogButtonBox.AcceptRole
@@ -76,5 +125,22 @@ Pane {
         currentFolder: StandardPaths.standardLocations(StandardPaths.HomeLocation)[0]
 
         onAccepted: newGameExe.text = selectedFile.toString().replace(/^file:\/\/?/, '')
+    }
+
+    FileDialog {
+        id: winePicker
+
+        currentFolder: "file:///usr/bin"
+        nameFilters: "Wine (wine)"
+
+        onAccepted: wineBinary.text = selectedFile.toString().replace(/^file:\/\/?/, '')
+    }
+
+    FolderDialog {
+        id: winePrefixPicker
+
+        currentFolder: StandardPaths.standardLocations(StandardPaths.HomeLocation)[0]
+
+        onAccepted: winePrefix.text = selectedFolder.toString().replace(/^file:\/\/?/, '')
     }
 }
