@@ -1,3 +1,4 @@
+import QtCore
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -7,12 +8,19 @@ import dev.lorendb.kaon
 ApplicationWindow {
     id: root
 
-    height: 600
+    height: 720
     minimumHeight: 480
     minimumWidth: 640
     title: qsTr("Kaon")
     visible: true
-    width: 900
+    width: 950
+
+    Settings {
+        id: settings
+
+        property alias windowWidth: root.width
+        property alias windowHeight: root.height
+    }
 
     footer: Pane {
         visible: DownloadManager.downloading
