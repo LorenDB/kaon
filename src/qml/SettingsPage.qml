@@ -26,11 +26,20 @@ Pane {
                 text: "Updates"
             }
 
-            CheckBox {
-                text: "Notify when an update is available"
+            RowLayout {
+                spacing: 10
 
-                Component.onCompleted: checked = UpdateChecker.enabled
-                onCheckedChanged: UpdateChecker.enabled = checked
+                CheckBox {
+                    text: "Notify when an update is available"
+
+                    Component.onCompleted: checked = UpdateChecker.enabled
+                    onCheckedChanged: UpdateChecker.enabled = checked
+                }
+
+                Button {
+                    text: "Check now"
+                    onClicked: UpdateChecker.checkUpdates()
+                }
             }
 
             MenuSeparator {
