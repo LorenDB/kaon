@@ -10,6 +10,7 @@
 #include "Aptabase.h"
 #include "Heroic.h"
 #include "Itch.h"
+#include "UpdateChecker.h"
 
 using namespace Qt::Literals;
 
@@ -83,6 +84,8 @@ int main(int argc, char *argv[])
 
     Aptabase::init("aptabase.lorendb.dev"_L1, "A-SH-5394792661"_L1);
     Aptabase::instance()->track("startup"_L1);
+
+    UpdateChecker::instance();
 
     QQmlApplicationEngine engine;
     QObject::connect(

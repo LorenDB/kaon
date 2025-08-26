@@ -70,8 +70,9 @@ Item {
 
         closePolicy: Popup.CloseOnEscape
         modal: true
-        standardButtons: Dialog.Ok
         title: "Update available"
+
+        onRejected: UpdateChecker.ignore = updateVersion
 
         Label {
             anchors.fill: parent
@@ -81,6 +82,18 @@ Item {
             wrapMode: Text.WordWrap
 
             onLinkActivated: link => Qt.openUrlExternally(link)
+        }
+
+        footer: DialogButtonBox {
+            Button {
+                DialogButtonBox.buttonRole: DialogButtonBox.AcceptRole
+                text: qsTr("OK")
+            }
+
+            Button {
+                DialogButtonBox.buttonRole: DialogButtonBox.RejectRole
+                text: qsTr("Ignore this release")
+            }
         }
     }
 
@@ -123,12 +136,14 @@ Item {
         target: DownloadManager
     }
 
-    UpdateChecker {
-        onUpdateAvailable: (version, url) => {
-                               updateAvailableDialog.updateVersion = version;
-                               updateAvailableDialog.updateUrl = url;
-                               updateAvailableDialog.open();
-                           }
+    Connections {
+        function onUpdateAvailable(version: string, url: string) {
+            updateAvailableDialog.updateVersion = version;
+            updateAvailableDialog.updateUrl = url;
+            updateAvailableDialog.open();
+        }
+
+        target: UpdateChecker
     }
 
     Connections {

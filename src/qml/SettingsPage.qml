@@ -23,6 +23,22 @@ Pane {
             Label {
                 font.bold: true
                 font.pointSize: fontInfo.pointSize * 1.4
+                text: "Updates"
+            }
+
+            CheckBox {
+                text: "Notify when an update is available"
+
+                Component.onCompleted: checked = UpdateChecker.enabled
+                onCheckedChanged: UpdateChecker.enabled = checked
+            }
+
+            MenuSeparator {
+            }
+
+            Label {
+                font.bold: true
+                font.pointSize: fontInfo.pointSize * 1.4
                 text: "Privacy"
             }
 
