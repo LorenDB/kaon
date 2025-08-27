@@ -44,9 +44,8 @@ public:
         }
         catch (const std::length_error &e)
         {
-            qCWarning(SteamLog) << "Failure while parsing " << acfPath << ":" << e.what();
-            auto parts = acfPath.split('/');
-            Aptabase::instance()->track("failure-parsing-game-libraryfolders-bug"_L1, {{"game"_L1, m_id}});
+            qCWarning(SteamLog) << "Failure while parsing " << acfPath << "from .acf:" << e.what();
+            return;
         }
 
         const auto imageDir = Steam::instance()->storeRoot() + "/appcache/librarycache/"_L1 + m_id;
