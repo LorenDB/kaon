@@ -2,6 +2,7 @@
 
 #include <QDir>
 #include <QDirIterator>
+#include <QJsonArray>
 #include <QLoggingCategory>
 #include <QProcess>
 #include <QSqlDatabase>
@@ -18,6 +19,11 @@ using namespace Qt::Literals;
 Q_LOGGING_CATEGORY(ItchLog, "itch")
 
 Itch *Itch::s_instance = nullptr;
+
+namespace
+{
+QSqlDatabase ITCH_DB;
+}
 
 class ItchGame : public Game
 {
@@ -73,21 +79,55 @@ public:
         else if (type == "soundtrack"_L1)
             m_type = Game::AppType::Music;
 
-        auto entries = QDir{installPath}.entryInfoList(QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot);
-        entries.removeIf([](const QFileInfo &fi) { return fi.baseName() == ".itch"_L1; });
-        if (entries.size() == 1)
-            entries =
-                QDir{entries.first().absoluteFilePath()}.entryInfoList(QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot);
-
-        // TODO: better binary detection algorithm than this!
-        for (const auto &entry : std::as_const(entries))
+        if (ITCH_DB.isValid())
         {
-            if (entry.suffix() == "exe"_L1)
+            if (QSqlQuery q; q.exec("SELECT last_touched_at, verdict FROM caves WHERE game_id='%1'"_L1.arg(m_id)))
             {
-                LaunchOption lo;
-                lo.executable = entry.absoluteFilePath();
-                lo.platform |= LaunchOption::Platform::Windows;
-                m_executables[0] = lo;
+                q.first();
+                m_lastPlayed = QDateTime::fromString(q.value(0).toString(), Qt::ISODateWithMs);
+
+                const auto verdict = QJsonDocument::fromJson(q.value(1).toByteArray()).object();
+                const auto &candidates = verdict["candidates"_L1].toArray();
+                for (const auto &candidate : candidates)
+                {
+                    LaunchOption lo;
+                    lo.executable = m_installDir + '/' + candidate["path"_L1].toString();
+                    if (const auto flavor = candidate["flavor"_L1].toString(); flavor == "linux"_L1)
+                        lo.platform = LaunchOption::Platform::Linux;
+                    else if (flavor == "html"_L1)
+                        continue; // skip these as executables
+                    m_executables[0] = lo;
+                }
+                for (const auto &e : m_executables)
+                    qCCritical(ItchLog) << e.executable;
+            }
+        }
+
+        // Fall back to scanning for binaries
+        if (m_executables.isEmpty())
+        {
+            auto entries = QDir{installPath}.entryInfoList(QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot);
+            entries.removeIf([](const QFileInfo &fi) { return fi.baseName() == ".itch"_L1; });
+            if (entries.size() == 1)
+                entries =
+                    QDir{entries.first().absoluteFilePath()}.entryInfoList(QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot);
+
+            for (const auto &entry : std::as_const(entries))
+            {
+                if (entry.suffix() == "exe"_L1)
+                {
+                    LaunchOption lo;
+                    lo.executable = entry.absoluteFilePath();
+                    lo.platform |= LaunchOption::Platform::Windows;
+                    m_executables[0] = lo;
+                }
+                else if (entry.suffix() == "x86"_L1 || entry.suffix() == "x86_64"_L1)
+                {
+                    LaunchOption lo;
+                    lo.executable = entry.absoluteFilePath();
+                    lo.platform |= LaunchOption::Platform::Linux;
+                    m_executables[0] = lo;
+                }
             }
         }
 
@@ -143,11 +183,11 @@ void Itch::scanStore()
     QStringList installLocations;
 
     const auto dbPath = m_itchRoot + "/db/butler.db"_L1;
-    if (QFileInfo::exists(dbPath))
+    if (!ITCH_DB.isValid() && QFileInfo::exists(dbPath))
     {
-        auto db = QSqlDatabase::addDatabase("QSQLITE"_L1);
-        db.setDatabaseName(dbPath);
-        if (db.open())
+        ITCH_DB = QSqlDatabase::addDatabase("QSQLITE"_L1);
+        ITCH_DB.setDatabaseName(dbPath);
+        if (ITCH_DB.open())
             if (QSqlQuery q; q.exec("SELECT path FROM install_locations"_L1))
                 while (q.next())
                     installLocations.push_back(q.value(0).toString());
