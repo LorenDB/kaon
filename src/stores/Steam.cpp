@@ -37,7 +37,8 @@ public:
             auto app = tyti::vdf::read(acfFile);
 
             m_name = QString::fromStdString(app.attribs["name"]);
-            m_installDir = steamDrive + "/steamapps/common/"_L1 + QString::fromStdString(app.attribs["installdir"]);
+            if (const auto installDir = QString::fromStdString(app.attribs["installdir"]); !installDir.isEmpty())
+                m_installDir = steamDrive + "/steamapps/common/"_L1 + installDir;
             if (app.attribs.contains("LastPlayed"))
                 m_lastPlayed = QDateTime::fromSecsSinceEpoch(std::stoi(app.attribs["LastPlayed"]));
         }
