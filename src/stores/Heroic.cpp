@@ -314,6 +314,15 @@ class HeroicImageFetcher : public QQuickImageResponse
 public:
     HeroicImageFetcher(const QString &url, const QSize &)
     {
+        QFile heroicCache{Heroic::instance()->storeRoot() + "/images-cache/"_L1 +
+                    QCryptographicHash::hash(url.toLatin1(), QCryptographicHash::Sha256).toHex()};
+        if (heroicCache.exists() && heroicCache.open(QIODevice::ReadOnly))
+        {
+            m_image = QImage::fromData(heroicCache.readAll());
+            emit finished();
+            return;
+        }
+
         QDir cache{QStandardPaths::writableLocation(QStandardPaths::CacheLocation)};
         cache.mkdir("heroic_cache"_L1);
         cache.cd("heroic_cache"_L1);
