@@ -205,6 +205,18 @@ Pane {
 
         Label {
             Layout.maximumWidth: parent.width
+            text: {
+                let retval = "⚠️ Invalid Wine/Proton settings detected";
+                if (gameDetailsRoot.game.store === Game.Steam)
+                    retval += ". You may need to override compatibility settings in Steam, launch the game once, and restart Kaon.";
+                return retval;
+            }
+            visible: !gameDetailsRoot.game.hasValidWine() && !gameDetailsRoot.game.noWindowsSupport
+            wrapMode: Label.WordWrap
+        }
+
+        Label {
+            Layout.maximumWidth: parent.width
             text: "⚠️ This game already supports VR, so you probably should use its native VR support instead!"
             visible: gameDetailsRoot.game.supportsVr
             wrapMode: Label.WordWrap
@@ -212,7 +224,7 @@ Pane {
 
         Button {
             enabled: {
-                if (gameDetailsRoot.game.noWindowsSupport)
+                if (gameDetailsRoot.game.noWindowsSupport || !gameDetailsRoot.game.hasValidWine())
                     return false;
                 else if (!gameDetailsRoot.game.dotnetInstalled)
                     return !Dotnet.dotnetDownloadInProgress;
@@ -228,8 +240,8 @@ Pane {
             spacing: 10
 
             Button {
-                enabled: UEVR.currentUevr.installed && gameDetailsRoot.game.dotnetInstalled
-                         && gameDetailsRoot.game.winePrefixExists && !gameDetailsRoot.game.noWindowsSupport
+                enabled: UEVR.currentUevr && UEVR.currentUevr.installed && gameDetailsRoot.game.dotnetInstalled
+                         && gameDetailsRoot.game.hasValidWine() && !gameDetailsRoot.game.noWindowsSupport
                 text: "Launch UEVR injector"
 
                 onClicked: UEVR.launchUEVR(gameDetailsRoot.game)
@@ -237,9 +249,11 @@ Pane {
 
             Label {
                 text: {
-                    if (!gameDetailsRoot.game.dotnetInstalled)
+                    if (gameDetailsRoot.game.noWindowsSupport)
+                        return "";
+                    else if (!gameDetailsRoot.game.dotnetInstalled)
                         return ".NET is not installed!";
-                    else if (UEVR.currentUevr)
+                    else if (UEVR.currentUevr && !UEVR.currentUevr.installed)
                         return UEVR.currentUevr.name + " is not installed!";
                     else
                         return "";

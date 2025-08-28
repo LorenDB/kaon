@@ -41,7 +41,7 @@ void Wine::runInWine(const QString &prettyName,
         emit processFailed(prettyName);
         return;
     }
-    else if (wineRoot->wineBinary().isEmpty())
+    else if (!wineRoot->hasValidWine())
     {
         Aptabase::instance()->track(
             "empty-wine-binary-bug"_L1,
@@ -62,11 +62,8 @@ void Wine::runInWine(const QString &prettyName,
 
     auto process = new QProcess;
     QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
-    if (wineRoot->winePrefixExists())
-    {
-        env.insert("WINEPREFIX"_L1, wineRoot->winePrefix());
-        env.insert("STEAM_COMPAT_DATA_PATH"_L1, wineRoot->winePrefix());
-    }
+    env.insert("WINEPREFIX"_L1, wineRoot->winePrefix());
+    env.insert("STEAM_COMPAT_DATA_PATH"_L1, wineRoot->winePrefix());
     env.insert("WINEFSYNC"_L1, "1"_L1);
     process->setProcessEnvironment(env);
 

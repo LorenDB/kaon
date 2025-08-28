@@ -12,9 +12,16 @@ Game::Game(QObject *parent)
     : QObject{parent}
 {}
 
-bool Game::winePrefixExists() const
+bool Game::hasValidWine() const
 {
-    return QFileInfo::exists(m_winePrefix);
+    if (m_wineBinary.isEmpty() || m_winePrefix.isEmpty())
+        return false;
+    if (QFileInfo wb{m_wineBinary}; !wb.exists() || !wb.isFile())
+        return false;
+    if (QFileInfo wp{m_winePrefix}; !wp.exists() || !wp.isFile())
+        return false;
+
+    return true;
 }
 
 bool Game::hasMultiplePlatforms() const

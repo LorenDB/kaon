@@ -14,7 +14,6 @@ class Game : public QObject
     Q_PROPERTY(QString installDir READ installDir CONSTANT)
     Q_PROPERTY(QDateTime lastPlayed READ lastPlayed CONSTANT)
     Q_PROPERTY(QString winePrefix READ winePrefix CONSTANT)
-    Q_PROPERTY(bool winePrefixExists READ winePrefixExists NOTIFY winePrefixExistsChanged FINAL)
     Q_PROPERTY(QString wineBinary READ wineBinary NOTIFY wineBinaryChanged FINAL)
     Q_PROPERTY(AppType type READ type CONSTANT)
     Q_PROPERTY(Store store READ store CONSTANT FINAL)
@@ -78,7 +77,6 @@ public:
     QString installDir() const { return m_installDir; }
     QDateTime lastPlayed() const { return m_lastPlayed; }
     QString winePrefix() const { return m_winePrefix; }
-    bool winePrefixExists() const;
     QString wineBinary() const { return m_wineBinary; }
     Engine engine() const { return m_engine; }
     AppType type() const { return m_type; }
@@ -113,6 +111,8 @@ public:
 
     // This is used to detect if a game has fully loaded or if there were errors parsing it.
     bool isValid() const { return m_valid; }
+
+    Q_INVOKABLE bool hasValidWine() const;
 
     Q_INVOKABLE virtual void launch() const = 0;
 
