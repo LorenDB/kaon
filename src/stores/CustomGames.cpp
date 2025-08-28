@@ -27,9 +27,9 @@ public:
     CustomGame(const QJsonObject &json, QObject *parent)
         : Game{parent}
     {
-        qCDebug(CustomGameLog) << "Creating game:" << json["id"_L1];
-
         m_id = json["id"_L1].toString();
+        qCDebug(CustomGameLog) << "Creating game:" << m_id;
+
         m_name = json["name"_L1].toString();
         m_installDir = json["installDir"_L1].toString();
         m_winePrefix = json["winePrefix"_L1].toString(Wine::instance()->defaultWinePrefix());
