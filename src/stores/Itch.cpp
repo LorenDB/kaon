@@ -98,8 +98,6 @@ public:
                         continue; // skip these as executables
                     m_executables[0] = lo;
                 }
-                for (const auto &e : m_executables)
-                    qCCritical(ItchLog) << e.executable;
             }
         }
 
