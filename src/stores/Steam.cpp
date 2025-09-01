@@ -202,7 +202,7 @@ public:
                     {
                         QString type{static_cast<const char *>(value.second)};
                         type = type.toLower();
-                        if (type == "game"_L1)
+                        if (type == "game"_L1 || type == "Beta"_L1)
                             m_type = AppType::Game;
                         else if (type == "application"_L1)
                             m_type = AppType::App;
