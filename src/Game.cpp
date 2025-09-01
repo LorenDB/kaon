@@ -18,7 +18,7 @@ bool Game::hasValidWine() const
         return false;
     if (QFileInfo wb{m_wineBinary}; !wb.exists() || !wb.isFile())
         return false;
-    if (QFileInfo wp{m_winePrefix}; !wp.exists() || !wp.isFile())
+    if (QFileInfo wp{m_winePrefix}; !wp.exists() || !wp.isDir())
         return false;
 
     return true;
