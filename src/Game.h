@@ -72,6 +72,16 @@ public:
     Q_ENUM(Store)
     Q_DECLARE_FLAGS(Stores, Store)
 
+    enum class Feature
+    {
+        Flatscreen = 1,
+        VR = 1 << 1,
+        // Anticheat is more of an antifeature for VR modding but it fits here, I guess
+        Anticheat = 1 << 2,
+    };
+    Q_ENUM(Feature)
+    Q_DECLARE_FLAGS(Features, Feature)
+
     QString id() const { return m_id; }
     QString name() const { return m_name; }
     QString installDir() const { return m_installDir; }
@@ -80,11 +90,12 @@ public:
     QString wineBinary() const { return m_wineBinary; }
     Engine engine() const { return m_engine; }
     AppType type() const { return m_type; }
-    bool supportsVr() const { return m_supportsVr; }
-    bool vrOnly() const { return m_vrOnly; }
+    Features features() const { return m_features; }
+    bool supportsVr() const { return m_features.testFlag(Feature::VR); }
+    bool vrOnly() const { return supportsVr() && !m_features.testFlag(Feature::Flatscreen); }
     bool hasMultiplePlatforms() const;
     bool noWindowsSupport() const;
-    bool hasAnticheat() const { return m_hasAnticheat; }
+    bool hasAnticheat() const { return m_features.testFlag(Feature::Anticheat); }
 
     virtual Store store() const = 0;
 
@@ -135,9 +146,7 @@ protected:
     QString m_winePrefix;
     QString m_wineBinary;
     AppType m_type = AppType::Other;
-    bool m_supportsVr{false};
-    bool m_vrOnly{false};
-    bool m_hasAnticheat{false};
+    Features m_features = Feature::Flatscreen;
 
     QString m_cardImage;
     QString m_heroImage;

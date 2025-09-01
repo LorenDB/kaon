@@ -134,7 +134,7 @@ public:
                     else if (key == "type"_L1)
                     {
                         if (QString type{static_cast<const char *>(value.second)}; type == "vr" || type == "openxr")
-                            m_supportsVr = true;
+                            m_features.setFlag(Feature::VR);
                     }
                     else if (key == "oslist"_L1)
                     {
@@ -222,12 +222,15 @@ public:
                             m_icon = "file://"_L1 + fi.absoluteFilePath();
                         // TODO: could also extract clienticon key to find icons in $steamroot/steam/games
                     }
-                    else if (key == "openvrsupport"_L1 || key == "openxrsupport"_L1)
-                        m_supportsVr |= parseInt(value.first, value.second);
-                    else if (key == "onlyvrsupport"_L1)
+                    else if ((key == "openvrsupport"_L1 || key == "openxrsupport"_L1) && !m_features.testFlag(Feature::VR))
+                        m_features.setFlag(Feature::VR, parseInt(value.first, value.second));
+                    else if (key == "onlyvrsupport"_L1 && !m_features.testFlag(Feature::VR))
                     {
-                        m_vrOnly = parseInt(value.first, value.second);
-                        m_supportsVr |= m_vrOnly;
+                        if (bool vrOnly = parseInt(value.first, value.second); vrOnly)
+                        {
+                            m_features.setFlag(Feature::VR);
+                            m_features.setFlag(Feature::Flatscreen, false);
+                        }
                     }
                 }
             }

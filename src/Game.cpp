@@ -192,7 +192,7 @@ void Game::detectAnticheat()
         {
             if (localName.contains(anticheat))
             {
-                m_hasAnticheat = true;
+                m_features.setFlag(Feature::Anticheat);
                 return;
             }
         }

@@ -25,6 +25,10 @@ GamesFilterModel::GamesFilterModel(QObject *parent)
     m_typeFilter.setFlag(Game::AppType::Game);
     m_typeFilter.setFlag(Game::AppType::Demo);
 
+    m_featureFilter.setFlag(Game::Feature::Flatscreen);
+    m_featureFilter.setFlag(Game::Feature::VR);
+    m_featureFilter.setFlag(Game::Feature::Anticheat);
+
     m_storeFilter.setFlag(Game::Store::Steam);
     m_storeFilter.setFlag(Game::Store::Itch);
     m_storeFilter.setFlag(Game::Store::Heroic);
@@ -32,9 +36,12 @@ GamesFilterModel::GamesFilterModel(QObject *parent)
 
     connect(this, &GamesFilterModel::engineFilterChanged, this, &GamesFilterModel::invalidateFilter);
     connect(this, &GamesFilterModel::typeFilterChanged, this, &GamesFilterModel::invalidateFilter);
+    connect(this, &GamesFilterModel::featureFilterChanged, this, &GamesFilterModel::invalidateFilter);
     connect(this, &GamesFilterModel::storeFilterChanged, this, &GamesFilterModel::invalidateFilter);
     connect(this, &GamesFilterModel::searchChanged, this, &GamesFilterModel::invalidateFilter);
+
     connect(this, &GamesFilterModel::sortTypeChanged, this, &GamesFilterModel::invalidate);
+    connect(this, &GamesFilterModel::featureFilterTypeChanged, this, &GamesFilterModel::invalidateFilter);
 
     setDynamicSortFilter(true);
     sort(0);
@@ -77,6 +84,12 @@ void GamesFilterModel::setSortType(SortType sortType)
     settings.setValue("sortType"_L1, m_sortType);
 }
 
+void GamesFilterModel::setFeatureFilterType(FilterType type)
+{
+    m_featureFilterType = type;
+    emit featureFilterTypeChanged(type);
+}
+
 bool GamesFilterModel::isEngineFilterSet(Game::Engine engine)
 {
     return m_engineFilter.testFlag(engine);
@@ -85,6 +98,11 @@ bool GamesFilterModel::isEngineFilterSet(Game::Engine engine)
 bool GamesFilterModel::isTypeFilterSet(Game::AppType type)
 {
     return m_typeFilter.testFlag(type);
+}
+
+bool GamesFilterModel::isFeatureFilterSet(Game::Feature feature)
+{
+    return m_featureFilter.testFlag(feature);
 }
 
 bool GamesFilterModel::isStoreFilterSet(Game::Store store)
@@ -104,6 +122,12 @@ void GamesFilterModel::setTypeFilter(Game::AppType type, bool state)
     emit typeFilterChanged();
 }
 
+void GamesFilterModel::setFeatureFilter(Game::Feature feature, bool state)
+{
+    m_featureFilter.setFlag(feature, state);
+    emit featureFilterChanged();
+}
+
 void GamesFilterModel::setStoreFilter(Game::Store store, bool state)
 {
     m_storeFilter.setFlag(store, state);
@@ -119,6 +143,18 @@ bool GamesFilterModel::filterAcceptsRow(int row, const QModelIndex &parent) cons
         return false;
     if (!m_typeFilter.testFlag(g->type()))
         return false;
+
+    if (m_featureFilterType == FilterType::HasAllFilters)
+    {
+        if (!g->features().testFlags(m_featureFilter))
+            return false;
+    }
+    else if (m_featureFilterType == FilterType::HasAnyFilter)
+    {
+        if (!g->features().testAnyFlags(m_featureFilter))
+            return false;
+    }
+
     if (!m_storeFilter.testFlag(g->store()))
         return false;
     if (!m_search.isEmpty() && !g->name().contains(m_search, Qt::CaseInsensitive))

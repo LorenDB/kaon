@@ -181,6 +181,10 @@ RowLayout {
 
             spacing: 10
 
+            /////////////////////////////////////
+            // Game engine filter
+            /////////////////////////////////////
+
             Label {
                 font.bold: true
                 text: "Filter by game engine"
@@ -264,6 +268,10 @@ RowLayout {
                 onCheckedChanged: GamesFilterModel.setEngineFilter(Game.Unknown, checked)
             }
 
+            /////////////////////////////////////
+            // Game type filter
+            /////////////////////////////////////
+
             MenuSeparator {
             }
 
@@ -344,6 +352,95 @@ RowLayout {
                 Component.onCompleted: checked = GamesFilterModel.isTypeFilterSet(Game.Music)
                 onCheckedChanged: GamesFilterModel.setTypeFilter(Game.Music, checked)
             }
+
+            /////////////////////////////////////
+            // Features filter
+            /////////////////////////////////////
+
+            MenuSeparator {
+            }
+
+            Label {
+                font.bold: true
+                text: "Filter by features"
+            }
+
+            RowLayout {
+                spacing: 10
+
+                Button {
+                    text: "All"
+
+                    onClicked: {
+                        flatscreenCb.checked = true;
+                        vrCb.checked = true;
+                        anticheatCb.checked = true;
+                    }
+                }
+
+                Button {
+                    text: "None"
+
+                    onClicked: {
+                        flatscreenCb.checked = false;
+                        vrCb.checked = false;
+                        anticheatCb.checked = false;
+                    }
+                }
+            }
+
+            RowLayout {
+                spacing: 10
+
+                Label {
+                    text: "Matching:"
+                }
+
+                RadioButton {
+                    text: "Any"
+
+                    Component.onCompleted: checked = GamesFilterModel.featureFilterType === GamesFilterModel.HasAnyFilter
+                    onClicked: GamesFilterModel.featureFilterType = GamesFilterModel.HasAnyFilter
+                }
+
+                RadioButton {
+                    text: "All"
+
+                    Component.onCompleted: checked = GamesFilterModel.featureFilterType === GamesFilterModel.HasAllFilters
+                    onClicked: GamesFilterModel.featureFilterType = GamesFilterModel.HasAllFilters
+                }
+            }
+
+            CheckBox {
+                id: flatscreenCb
+
+                text: "Supports flatscreen"
+
+                Component.onCompleted: checked = GamesFilterModel.isFeatureFilterSet(Game.Flatscreen)
+                onCheckedChanged: GamesFilterModel.setFeatureFilter(Game.Flatscreen, checked)
+            }
+
+            CheckBox {
+                id: vrCb
+
+                text: "Supports VR"
+
+                Component.onCompleted: checked = GamesFilterModel.isFeatureFilterSet(Game.VR)
+                onCheckedChanged: GamesFilterModel.setFeatureFilter(Game.VR, checked)
+            }
+
+            CheckBox {
+                id: anticheatCb
+
+                text: "Has anticheat"
+
+                Component.onCompleted: checked = GamesFilterModel.isFeatureFilterSet(Game.Anticheat)
+                onCheckedChanged: GamesFilterModel.setFeatureFilter(Game.Anticheat, checked)
+            }
+
+            /////////////////////////////////////
+            // Store filter
+            /////////////////////////////////////
 
             MenuSeparator {
                 visible: gridRoot.shouldFilterStores
