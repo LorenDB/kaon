@@ -315,7 +315,7 @@ public:
     HeroicImageFetcher(const QString &url, const QSize &)
     {
         QFile heroicCache{Heroic::instance()->storeRoot() + "/images-cache/"_L1 +
-                    QCryptographicHash::hash(url.toLatin1(), QCryptographicHash::Sha256).toHex()};
+                          QCryptographicHash::hash(url.toLatin1(), QCryptographicHash::Sha256).toHex()};
         if (heroicCache.exists() && heroicCache.open(QIODevice::ReadOnly))
         {
             m_image = QImage::fromData(heroicCache.readAll());

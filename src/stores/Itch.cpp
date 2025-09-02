@@ -22,7 +22,7 @@ Itch *Itch::s_instance = nullptr;
 
 namespace
 {
-QSqlDatabase ITCH_DB;
+    QSqlDatabase ITCH_DB;
 }
 
 class ItchGame : public Game

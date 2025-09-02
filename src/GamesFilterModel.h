@@ -21,7 +21,7 @@ class GamesFilterModel : public QSortFilterProxyModel
     Q_PROPERTY(ViewType viewType READ viewType WRITE setViewType NOTIFY viewTypeChanged FINAL)
     Q_PROPERTY(SortType sortType READ sortType WRITE setSortType NOTIFY sortTypeChanged FINAL)
     Q_PROPERTY(
-            FilterType featureFilterType READ featureFilterType WRITE setFeatureFilterType NOTIFY featureFilterTypeChanged FINAL)
+        FilterType featureFilterType READ featureFilterType WRITE setFeatureFilterType NOTIFY featureFilterTypeChanged FINAL)
 
 public:
     explicit GamesFilterModel(QObject *parent = nullptr);
