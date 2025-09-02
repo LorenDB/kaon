@@ -240,6 +240,8 @@ Pane {
             spacing: 10
 
             Button {
+                id: launchUEVR
+
                 enabled: UEVR.currentUevr && UEVR.currentUevr.installed && gameDetailsRoot.game.dotnetInstalled
                          && gameDetailsRoot.game.hasValidWine() && !gameDetailsRoot.game.noWindowsSupport
                 text: "Launch UEVR injector"
@@ -260,6 +262,24 @@ Pane {
                 }
                 visible: !gameDetailsRoot.game.dotnetInstalled || (UEVR.currentUevr !== undefined &&
                                                                    !UEVR.currentUevr.installed)
+            }
+        }
+
+        Button {
+            visible: gameDetailsRoot.game.canLaunch
+            enabled: gameDetailsRoot.game.canLaunch && launchUEVR.enabled
+            text: "Launch game, wait 30s, launch UEVR injector"
+
+            onClicked: {
+                gameDetailsRoot.game.launch();
+                launchInThirty.start();
+            }
+
+            Timer {
+                id: launchInThirty
+
+                onTriggered: UEVR.launchUEVR(gameDetailsRoot.game)
+                interval: 30000
             }
         }
 
