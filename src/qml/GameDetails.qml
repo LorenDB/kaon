@@ -1,3 +1,4 @@
+import QtCore
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -12,6 +13,14 @@ Pane {
     FontInfo {
         id: fontInfo
 
+    }
+
+    Settings {
+        id: uevrSettings
+
+        property int launchDelay: 30
+
+        category: "uevr"
     }
 
     ColumnLayout {
@@ -268,7 +277,7 @@ Pane {
         Button {
             visible: gameDetailsRoot.game.canLaunch
             enabled: gameDetailsRoot.game.canLaunch && launchUEVR.enabled
-            text: "Launch game, wait 30s, launch UEVR injector"
+            text: "Launch game, wait " + uevrSettings.launchDelay + " seconds, launch UEVR injector"
 
             onClicked: {
                 gameDetailsRoot.game.launch();
