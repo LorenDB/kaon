@@ -102,7 +102,7 @@ ApplicationWindow {
                 icon.source: Qt.resolvedUrl("icons/delete.svg")
                 visible: UEVR.currentUevr && UEVR.currentUevr.installed
 
-                onClicked: deleteUevrDialog.open()
+                onClicked: dialogs.deleteUevrDialog.open()
             }
 
             CheckBox {
@@ -192,5 +192,6 @@ ApplicationWindow {
     }
 
     Dialogs {
+        id: dialogs
     }
 }

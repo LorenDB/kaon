@@ -4,6 +4,8 @@ import QtQuick.Controls
 import dev.lorendb.kaon
 
 Item {
+    property alias deleteUevrDialog: deleteUevrDialog
+
     Dialog {
         id: dotnetDownloadDialog
 
