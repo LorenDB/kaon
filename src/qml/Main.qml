@@ -116,6 +116,20 @@ ApplicationWindow {
             }
 
             ToolButton {
+                icon.color: palette.buttonText
+                icon.name: "media-playback-start"
+                icon.source: Qt.resolvedUrl("icons/media-playback-start.svg")
+                text: "Launch SteamVR"
+                visible: Steam.hasSteamVR
+
+                onClicked: Steam.launchSteamVR()
+            }
+
+            ToolSeparator {
+                visible: Steam.hasSteamVR
+            }
+
+            ToolButton {
                 ToolTip.delay: 1000
                 ToolTip.text: "Settings"
                 ToolTip.visible: hovered
