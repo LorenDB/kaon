@@ -21,6 +21,8 @@ public:
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const final;
     QHash<int, QByteArray> roleNames() const final;
 
+    QList<Game *> games() const { return m_games; }
+
     virtual QString storeRoot() const = 0;
     Q_INVOKABLE virtual void scanStore() = 0;
     int count() const;
