@@ -31,14 +31,17 @@ qt_add_qml_module(kaon
         Game.h
         GamesFilterModel.cpp
         GamesFilterModel.h
-        UEVR.cpp
-        UEVR.h
         UpdateChecker.cpp
         UpdateChecker.h
         VDF.cpp
         VDF.h
         Wine.cpp
         Wine.h
+
+        mods/Mod.cpp
+        mods/Mod.h
+        mods/UEVR.cpp
+        mods/UEVR.h
 
         stores/CustomGames.cpp
         stores/CustomGames.h
@@ -64,7 +67,10 @@ qt_add_qml_module(kaon
 )
 
 # needed to make the QML module compilation find headers that aren't directly in src
-target_include_directories(kaon PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/stores>)
+target_include_directories(kaon PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/mods>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/stores>
+)
 
 target_link_libraries(kaon
     PRIVATE

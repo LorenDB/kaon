@@ -20,52 +20,8 @@ Q_LOGGING_CATEGORY(UEVRLog, "uevr")
 
 UEVR *UEVR::s_instance = nullptr;
 
-UEVRRelease::UEVRRelease(const QJsonValue &json, bool nightly, QObject *parent)
-    : QObject{parent},
-      m_nightly{nightly}
-{
-    m_name = json["name"_L1].toString();
-
-    // Shorten the git hash in nightly release names for display purposes
-    static const QRegularExpression rx(R"(^UEVR Nightly \d+ \([0-9a-f]{40}\)$)"_L1,
-                                       QRegularExpression::CaseInsensitiveOption);
-
-    if (rx.match(m_name).hasMatch())
-    {
-        // We want to end up with a 7-character git hash. Therefore, after finding the " (", we increment 2 to get to the
-        // git hash and then 7 more to get to the end of the short hash.
-        int parenStart = m_name.lastIndexOf(" ("_L1) + 9;
-        if (parenStart != -1)
-            m_name = m_name.left(parenStart) + ')';
-    }
-
-    m_id = json["id"_L1].toInt();
-    m_timestamp = QDateTime::fromString(json["published_at"_L1].toString(), Qt::ISODate);
-    m_installed = QFileInfo::exists(UEVR::instance()->path(UEVR::Paths::UEVRBasePath) + '/' + QString::number(m_id) +
-                                    "/UEVRInjector.exe"_L1);
-    for (const auto &asset : json["assets"_L1].toArray())
-    {
-        UEVRRelease::Asset a;
-        a.id = asset["id"_L1].toInt();
-        a.name = asset["name"_L1].toString();
-        a.url = asset["browser_download_url"_L1].toString();
-        m_assets.push_back(a);
-    }
-}
-
-const QList<UEVRRelease::Asset> &UEVRRelease::assets() const
-{
-    return m_assets;
-}
-
-void UEVRRelease::setInstalled(bool state)
-{
-    m_installed = state;
-    emit installedChanged(state);
-}
-
 UEVR::UEVR(QObject *parent)
-    : QAbstractListModel{parent}
+    : Mod{parent}
 {
     // Execute downloads on the first event tick to give time for the download
     // manager to initialize
@@ -100,54 +56,12 @@ UEVR *UEVR::create(QQmlEngine *, QJSEngine *)
     return instance();
 }
 
-int UEVR::rowCount(const QModelIndex &parent) const
-{
-    return m_releases.count();
-}
-
-QVariant UEVR::data(const QModelIndex &index, int role) const
-{
-    if (!index.isValid() || index.row() < 0 || index.row() >= m_releases.size())
-        return {};
-    const auto &item = m_releases.at(index.row());
-    switch (role)
-    {
-    case Roles::Id:
-        return item->id();
-    case Qt::DisplayRole:
-    case Roles::Name:
-        return item->name();
-    case Roles::Timestamp:
-        return item->timestamp();
-    case Roles::Installed:
-        return item->installed();
-    }
-
-    return {};
-}
-
-QHash<int, QByteArray> UEVR::roleNames() const
-{
-    return {{Roles::Id, "id"_ba},
-            {Roles::Name, "name"_ba},
-            {Roles::Timestamp, "timestamp"_ba},
-            {Roles::Installed, "installed"_ba}};
-}
-
-UEVRRelease *UEVR::releaseFromId(const int id) const
-{
-    for (const auto release : m_releases)
-        if (release->id() == id)
-            return release;
-    return nullptr;
-}
-
 const QString UEVR::uevrPath() const
 {
     return path(Paths::CurrentUEVR);
 }
 
-UEVRRelease *UEVR::currentUevr() const
+ModRelease *UEVR::currentUevr() const
 {
     return m_currentUevr;
 }
@@ -177,20 +91,11 @@ void UEVR::launchUEVR(const Game *game)
     Wine::instance()->runInWine(m_currentUevr->name(), game, path(Paths::CurrentUEVRInjector));
 }
 
-void UEVR::downloadUEVR(UEVRRelease *release)
+void UEVR::downloadUEVR(ModRelease *release)
 {
     Aptabase::instance()->track("download-uevr"_L1, {{"version"_L1, release->name()}});
 
-    QUrl url;
-    for (const auto &asset : release->assets())
-    {
-        if (asset.name.toLower() == "uevr.zip"_L1)
-        {
-            url = asset.url;
-            break;
-        }
-    }
-    if (url.isEmpty())
+    if (release->downloadUrl().isEmpty())
         return;
 
     auto tempDir = new QTemporaryDir;
@@ -203,7 +108,7 @@ void UEVR::downloadUEVR(UEVRRelease *release)
     const QString zipPath = tempDir->path() + "/uevr_" + QString::number(release->id()) + ".zip";
 
     DownloadManager::instance()->download(
-        QNetworkRequest{url},
+        QNetworkRequest{release->downloadUrl()},
         release->name(),
         true,
         [this, zipPath, release](const QByteArray &data) {
@@ -241,7 +146,7 @@ void UEVR::downloadUEVR(UEVRRelease *release)
         [tempDir] { delete tempDir; });
 }
 
-void UEVR::deleteUEVR(UEVRRelease *uevr)
+void UEVR::deleteUEVR(ModRelease *uevr)
 {
     if (!uevr->installed())
         return;
@@ -334,10 +239,44 @@ void UEVR::parseReleaseInfoJson()
         release->deleteLater();
     m_releases.clear();
 
+    auto parseRelease = [this](const QJsonValue &json, bool nightly) {
+        auto name = json["name"_L1].toString();
+
+        // Shorten the git hash in nightly release names for display purposes
+        static const QRegularExpression rx(R"(^UEVR Nightly \d+ \([0-9a-f]{40}\)$)"_L1,
+                                           QRegularExpression::CaseInsensitiveOption);
+
+        if (rx.match(name).hasMatch())
+        {
+            // We want to end up with a 7-character git hash. Therefore, after finding the " (", we increment 2 to get to the
+            // git hash and then 7 more to get to the end of the short hash.
+            int parenStart = name.lastIndexOf(" ("_L1) + 9;
+            if (parenStart != -1)
+                name = name.left(parenStart) + ')';
+        }
+
+        const auto id = json["id"_L1].toInt();
+        const auto timestamp = QDateTime::fromString(json["published_at"_L1].toString(), Qt::ISODate);
+        const auto installed = QFileInfo::exists(UEVR::instance()->path(UEVR::Paths::UEVRBasePath) + '/' +
+                                                 QString::number(id) + "/UEVRInjector.exe"_L1);
+
+        QUrl downloadUrl;
+        for (const auto &asset : json["assets"_L1].toArray())
+        {
+            if (asset["name"_L1].toString().toLower() == "uevr.zip"_L1)
+            {
+                downloadUrl = asset["browser_download_url"_L1].toString();
+                break;
+            }
+        }
+
+        return new ModRelease{id, name, timestamp, nightly, installed, downloadUrl, this};
+    };
+
     for (const auto &release : releases.array())
-        m_releases.push_back(new UEVRRelease{release, false, this});
+        m_releases.push_back(parseRelease(release, false));
     for (const auto &nightly : nightlies.array())
-        m_releases.push_back(new UEVRRelease{nightly, true, this});
+        m_releases.push_back(parseRelease(nightly, true));
 
     endResetModel();
 
@@ -357,7 +296,7 @@ UEVRFilter::UEVRFilter(QObject *parent)
     m_showNightlies = settings.value("showNightlies"_L1, false).toBool();
 }
 
-int UEVRFilter::indexFromRelease(UEVRRelease *release) const
+int UEVRFilter::indexFromRelease(ModRelease *release) const
 {
     if (!release)
         return -1;
