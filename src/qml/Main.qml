@@ -193,5 +193,6 @@ ApplicationWindow {
 
     Dialogs {
         id: dialogs
+
     }
 }

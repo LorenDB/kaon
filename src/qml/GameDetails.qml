@@ -275,9 +275,9 @@ Pane {
         }
 
         Button {
-            visible: gameDetailsRoot.game.canLaunch
             enabled: gameDetailsRoot.game.canLaunch && launchUEVR.enabled
             text: "Launch game, wait " + uevrSettings.launchDelay + " seconds, launch UEVR injector"
+            visible: gameDetailsRoot.game.canLaunch
 
             onClicked: {
                 gameDetailsRoot.game.launch();
@@ -287,8 +287,9 @@ Pane {
             Timer {
                 id: launchInThirty
 
-                onTriggered: UEVR.launchUEVR(gameDetailsRoot.game)
                 interval: 30000
+
+                onTriggered: UEVR.launchUEVR(gameDetailsRoot.game)
             }
         }
 

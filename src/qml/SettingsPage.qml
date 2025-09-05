@@ -48,13 +48,13 @@ Pane {
                     property string prefix: ""
                     property string suffix: " seconds"
 
-                    value: 30
-                    textFromValue: function(value, locale) {
-                        return prefix + Number(value).toLocaleString(locale, 'f', 0) + suffix
+                    textFromValue: function (value, locale) {
+                        return prefix + Number(value).toLocaleString(locale, 'f', 0) + suffix;
                     }
-                    valueFromText: function(text, locale) {
-                        let re = /\D*(-?\d*\.?\d*)\D*/
-                        return Number.fromLocaleString(locale, re.exec(text)[1])
+                    value: 30
+                    valueFromText: function (text, locale) {
+                        let re = /\D*(-?\d*\.?\d*)\D*/;
+                        return Number.fromLocaleString(locale, re.exec(text)[1]);
                     }
                 }
             }

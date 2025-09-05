@@ -5,8 +5,8 @@
 #include <QProcess>
 
 #include "Aptabase.h"
-#include "Steam.h"
 #include "Heroic.h"
+#include "Steam.h"
 
 using namespace Qt::Literals;
 
@@ -104,7 +104,7 @@ QString Wine::whichWine() const
 
     // If we can't find a system Wine, we might be able to piggyback off Proton installs from Steam or Heroic
     if (result.isEmpty())
-        for (const auto g :  Heroic::instance()->games() + Steam::instance()->games())
+        for (const auto g : Heroic::instance()->games() + Steam::instance()->games())
             if (!g->wineBinary().isEmpty())
                 result = g->wineBinary();
 
