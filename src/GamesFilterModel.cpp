@@ -134,7 +134,7 @@ void GamesFilterModel::setStoreFilter(Game::Store store, bool state)
 
 bool GamesFilterModel::filterAcceptsRow(int row, const QModelIndex &parent) const
 {
-    const auto g = sourceModel()->data(sourceModel()->index(row, 0, parent), Steam::Roles::GameObject).value<Game *>();
+    const auto g = sourceModel()->data(sourceModel()->index(row, 0, parent), Store::Roles::GameObject).value<Game *>();
     if (!g || !g->isValid())
         return false;
     if (!m_engineFilter.testFlag(g->engine()))
@@ -163,8 +163,8 @@ bool GamesFilterModel::filterAcceptsRow(int row, const QModelIndex &parent) cons
 
 bool GamesFilterModel::lessThan(const QModelIndex &left, const QModelIndex &right) const
 {
-    const auto leftGame = sourceModel()->data(left, Steam::Roles::GameObject).value<Game *>();
-    const auto rightGame = sourceModel()->data(right, Steam::Roles::GameObject).value<Game *>();
+    const auto leftGame = sourceModel()->data(left, Store::Roles::GameObject).value<Game *>();
+    const auto rightGame = sourceModel()->data(right, Store::Roles::GameObject).value<Game *>();
 
     switch (m_sortType)
     {
