@@ -58,7 +58,7 @@ public:
     virtual QList<Mod *> dependencies() const { return {}; }
 
     // By default, just checks against engine compatibility. You may need to override to check for specific games.
-    virtual bool checkGameCompatibility(Game *game);
+    virtual bool checkGameCompatibility(const Game *game) const;
     virtual bool isInstalledForGame(const Game *game) const = 0;
 
     Q_INVOKABLE bool dependenciesSatisfied(const Game *game) const;

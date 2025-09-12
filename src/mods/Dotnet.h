@@ -22,7 +22,7 @@ public:
     // Here's a hacky way to set all flags on a QFlags
     virtual Game::Engines compatibleEngines() const override { return Game::Engines::fromInt(INT_MAX); }
 
-    virtual bool checkGameCompatibility(Game *game) override;
+    virtual bool checkGameCompatibility(const Game *game) const override;
     virtual bool isInstalledForGame(const Game *game) const override;
 
     bool hasDotnetCached() const;

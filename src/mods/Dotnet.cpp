@@ -30,7 +30,7 @@ Dotnet *Dotnet::instance()
     return s_instance;
 }
 
-bool Dotnet::checkGameCompatibility(Game *game)
+bool Dotnet::checkGameCompatibility(const Game *game) const
 {
     if (game->noWindowsSupport())
         return false;

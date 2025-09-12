@@ -72,7 +72,7 @@ QList<Mod *> UEVR::dependencies() const
     return {Dotnet::instance()};
 }
 
-bool UEVR::checkGameCompatibility(Game *game)
+bool UEVR::checkGameCompatibility(const Game *game) const
 {
     if (game->noWindowsSupport())
         return false;

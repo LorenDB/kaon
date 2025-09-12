@@ -22,7 +22,7 @@ Mod::Mod(QObject *parent)
     : QAbstractListModel{parent}
 {}
 
-bool Mod::checkGameCompatibility(Game *game)
+bool Mod::checkGameCompatibility(const Game *game) const
 {
     return compatibleEngines().testFlag(game->engine());
 }
