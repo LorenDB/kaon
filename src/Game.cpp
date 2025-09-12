@@ -48,7 +48,7 @@ bool Game::noWindowsSupport() const
 
 bool Game::dotnetInstalled() const
 {
-    return Dotnet::instance()->isDotnetInstalled(this);
+    return Dotnet::instance()->isInstalledForGame(this);
 }
 
 void Game::detectGameEngine()

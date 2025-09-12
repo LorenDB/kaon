@@ -79,6 +79,11 @@ bool UEVR::checkGameCompatibility(Game *game)
     return Mod::checkGameCompatibility(game);
 }
 
+bool UEVR::isInstalledForGame(const Game *game) const
+{
+    return m_currentUevr->installed();
+}
+
 void UEVR::setCurrentUevr(const int id)
 {
     auto newVersion =

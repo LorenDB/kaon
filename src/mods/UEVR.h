@@ -28,6 +28,7 @@ public:
     Game::Engines compatibleEngines() const override { return Game::Engine::Unreal; }
     virtual QList<Mod *> dependencies() const override;
     virtual bool checkGameCompatibility(Game *game) override;
+    virtual bool isInstalledForGame(const Game *game) const override;
 
     enum class Paths
     {

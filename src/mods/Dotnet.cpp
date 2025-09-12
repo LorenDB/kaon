@@ -37,6 +37,14 @@ bool Dotnet::checkGameCompatibility(Game *game)
     return Mod::checkGameCompatibility(game);
 }
 
+bool Dotnet::isInstalledForGame(const Game *game) const
+{
+    if (!game || !game->hasValidWine())
+        return false;
+    const auto basepath = game->winePrefix() + "/drive_c/Program Files/dotnet"_L1;
+    return QFileInfo::exists(basepath + "/dotnet.exe"_L1) && QFileInfo::exists(basepath + "/host/fxr/6.0.36"_L1);
+}
+
 bool Dotnet::hasDotnetCached() const
 {
     return QFileInfo::exists(m_dotnetInstallerCache);
@@ -90,14 +98,6 @@ void Dotnet::downloadDotnetDesktopRuntime(Game *game)
             emit dotnetDownloadInProgressChanged(false);
             emit hasDotnetCachedChanged(hasDotnetCached());
         });
-}
-
-bool Dotnet::isDotnetInstalled(const Game *game)
-{
-    if (!game || !game->hasValidWine())
-        return false;
-    const auto basepath = game->winePrefix() + "/drive_c/Program Files/dotnet"_L1;
-    return QFileInfo::exists(basepath + "/dotnet.exe"_L1) && QFileInfo::exists(basepath + "/host/fxr/6.0.36"_L1);
 }
 
 QList<ModRelease *> Dotnet::releases() const

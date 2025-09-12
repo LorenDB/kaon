@@ -27,6 +27,16 @@ bool Mod::checkGameCompatibility(Game *game)
     return compatibleEngines().testFlag(game->engine());
 }
 
+bool Mod::dependenciesSatisfied(const Game *game) const
+{
+    for (const auto d : dependencies())
+    {
+        if (!d->isInstalledForGame(game))
+            return false;
+    }
+    return true;
+}
+
 ModRelease *Mod::releaseFromId(const int id) const
 {
     for (const auto release : releases())

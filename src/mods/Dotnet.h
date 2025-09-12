@@ -23,6 +23,7 @@ public:
     virtual Game::Engines compatibleEngines() const override { return Game::Engines::fromInt(INT_MAX); }
 
     virtual bool checkGameCompatibility(Game *game) override;
+    virtual bool isInstalledForGame(const Game *game) const override;
 
     bool hasDotnetCached() const;
     bool dotnetDownloadInProgress() const;
@@ -30,8 +31,6 @@ public:
 public slots:
     void installDotnetDesktopRuntime(Game *game);
     void downloadDotnetDesktopRuntime(Game *game = nullptr);
-
-    bool isDotnetInstalled(const Game *game);
 
 signals:
     void hasDotnetCachedChanged(const bool);
