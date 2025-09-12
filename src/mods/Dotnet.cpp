@@ -8,8 +8,6 @@
 #include "DownloadManager.h"
 #include "Wine.h"
 
-using namespace Qt::Literals;
-
 Q_LOGGING_CATEGORY(DotNetLog, "dotnet")
 
 Dotnet *Dotnet::s_instance = nullptr;

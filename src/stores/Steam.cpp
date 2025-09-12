@@ -10,8 +10,6 @@
 #include "VDF.h"
 #include "vdf_parser.hpp"
 
-using namespace Qt::Literals;
-
 Q_LOGGING_CATEGORY(SteamLog, "steam")
 
 Steam *Steam::s_instance = nullptr;

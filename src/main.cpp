@@ -12,8 +12,6 @@
 #include "Itch.h"
 #include "UpdateChecker.h"
 
-using namespace Qt::Literals;
-
 namespace
 {
     QtMessageHandler ORIGINAL_HANDLER = nullptr;

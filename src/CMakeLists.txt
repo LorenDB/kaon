@@ -71,6 +71,7 @@ target_include_directories(kaon PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/mods>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/stores>
 )
+target_precompile_headers(kaon PUBLIC pch.h)
 
 target_link_libraries(kaon
     PRIVATE

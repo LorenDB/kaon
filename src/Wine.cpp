@@ -8,8 +8,6 @@
 #include "Heroic.h"
 #include "Steam.h"
 
-using namespace Qt::Literals;
-
 Q_LOGGING_CATEGORY(WineLog, "wine")
 
 Wine *Wine::s_instance = nullptr;

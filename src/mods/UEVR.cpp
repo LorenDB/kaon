@@ -15,8 +15,6 @@
 #include "DownloadManager.h"
 #include "Wine.h"
 
-using namespace Qt::Literals;
-
 Q_LOGGING_CATEGORY(UEVRLog, "uevr")
 
 UEVR *UEVR::s_instance = nullptr;

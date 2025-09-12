@@ -13,8 +13,6 @@
 #include "Aptabase.h"
 #include "Wine.h"
 
-using namespace Qt::Literals;
-
 Q_LOGGING_CATEGORY(CustomGameLog, "custom")
 
 CustomGames *CustomGames::s_instance = nullptr;

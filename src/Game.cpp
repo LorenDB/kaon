@@ -6,8 +6,6 @@
 
 #include "Dotnet.h"
 
-using namespace Qt::Literals;
-
 Game::Game(QObject *parent)
     : QObject{parent}
 {}

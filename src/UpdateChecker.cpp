@@ -8,8 +8,6 @@
 
 #include "DownloadManager.h"
 
-using namespace Qt::Literals;
-
 UpdateChecker *UpdateChecker::s_instance = nullptr;
 
 UpdateChecker::UpdateChecker(QObject *parent)

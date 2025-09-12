@@ -38,8 +38,6 @@
 
 Q_LOGGING_CATEGORY(VDFLog, "vdf")
 
-using namespace Qt::Literals;
-
 namespace
 {
     constexpr uint32_t LAST_STEAM_APP = 0;

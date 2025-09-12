@@ -3,8 +3,6 @@
 #include <QSettings>
 #include <QTimer>
 
-using namespace Qt::Literals;
-
 Store::Store(QObject *parent)
     : QAbstractListModel{parent}
 {

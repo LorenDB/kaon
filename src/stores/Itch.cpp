@@ -14,8 +14,6 @@
 #include "DownloadManager.h"
 #include "Wine.h"
 
-using namespace Qt::Literals;
-
 Q_LOGGING_CATEGORY(ItchLog, "itch")
 
 Itch *Itch::s_instance = nullptr;

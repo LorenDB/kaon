@@ -10,8 +10,6 @@
 
 #include "DownloadManager.h"
 
-using namespace Qt::Literals;
-
 Q_LOGGING_CATEGORY(HeroicLog, "heroic")
 
 Heroic *Heroic::s_instance = nullptr;

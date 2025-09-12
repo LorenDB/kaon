@@ -8,8 +8,6 @@
 #include "Itch.h"
 #include "Steam.h"
 
-using namespace Qt::Literals;
-
 GamesFilterModel::GamesFilterModel(QObject *parent)
     : QSortFilterProxyModel{parent},
       m_models{new QConcatenateTablesProxyModel{this}}

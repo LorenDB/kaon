@@ -10,8 +10,6 @@
 #include <QRandomGenerator64>
 #include <QSettings>
 
-using namespace Qt::Literals;
-
 Aptabase *Aptabase::s_instance = nullptr;
 
 Aptabase::Aptabase(const QString &host, const QString &key, QObject *parent)

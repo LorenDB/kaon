@@ -1,7 +1,5 @@
 #include "Mod.h"
 
-using namespace Qt::Literals;
-
 ModRelease::ModRelease(
     int id, QString name, QDateTime timestamp, bool nightly, bool installed, QUrl downloadUrl, QObject *parent)
     : QObject{parent},
