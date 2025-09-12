@@ -338,7 +338,6 @@ public:
         else
             storePart = '.';
 
-        // TODO: also figure out how to check Heroic's image cache
         auto file = new QFile{"%1/%2/%3"_L1.arg(cache.path(), storePart, url.split('/').last())};
         if (file->exists() && file->fileTime(QFileDevice::FileModificationTime).daysTo(QDateTime::currentDateTime()) < 30)
         {
