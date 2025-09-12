@@ -130,7 +130,7 @@ CustomGames *CustomGames::instance()
 
 CustomGames *CustomGames::create(QQmlEngine *qml, QJSEngine *js)
 {
-    return s_instance;
+    return instance();
 }
 
 bool CustomGames::addGame(const QString &name, const QString &executable, const QString &wine, const QString &winePrefix)
