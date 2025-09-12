@@ -191,7 +191,7 @@ Pane {
         Label {
             Layout.maximumWidth: parent.width
             text: "⚠️ " + gameDetailsRoot.game.name
-                  + " appears to use anticheat. Using UEVR or other mods could potentially result in an in-game ban."
+                  + " appears to use anticheat. Using mods could potentially result in an in-game ban."
             visible: gameDetailsRoot.game.hasAnticheat
             wrapMode: Label.WordWrap
         }
@@ -199,7 +199,7 @@ Pane {
         Label {
             Layout.maximumWidth: parent.width
             text: "⚠️ " + gameDetailsRoot.game.name
-                  + " has multiple launch options available. Make sure you are launching this game using Wine or Proton, or else UEVR will not work."
+                  + " has multiple launch options available. Some mods (e.g. UEVR) require you to launch this game using Wine or Proton."
             visible: gameDetailsRoot.game.hasMultiplePlatforms && !gameDetailsRoot.game.noWindowsSupport
             wrapMode: Label.WordWrap
         }
@@ -207,7 +207,7 @@ Pane {
         Label {
             Layout.maximumWidth: parent.width
             text: "⚠️ " + gameDetailsRoot.game.name
-                  + " does not have a Windows executable, so it can't be launched via Wine or Proton. UEVR will not work."
+                  + " does not have a Windows executable, so it can't be launched via Wine or Proton. Some mods (e.g. UEVR) will not work."
             visible: gameDetailsRoot.game.noWindowsSupport
             wrapMode: Label.WordWrap
         }
@@ -226,75 +226,15 @@ Pane {
 
         Label {
             Layout.maximumWidth: parent.width
-            text: "⚠️ This game already supports VR, so you probably should use its native VR support instead!"
+            text: "⚠️ This game already supports VR, so you probably should use its native VR support instead of using mods!"
             visible: gameDetailsRoot.game.supportsVr
             wrapMode: Label.WordWrap
         }
 
-        Button {
-            enabled: {
-                if (gameDetailsRoot.game.noWindowsSupport || !gameDetailsRoot.game.hasValidWine())
-                    return false;
-                else if (!gameDetailsRoot.game.dotnetInstalled)
-                    return !Dotnet.dotnetDownloadInProgress;
-                else
-                    return true;
-            }
-            text: gameDetailsRoot.game.dotnetInstalled ? "Repair or uninstall .NET" : "Install .NET desktop runtime"
-
-            onClicked: Dotnet.installDotnetDesktopRuntime(gameDetailsRoot.game)
-        }
-
-        RowLayout {
-            spacing: 10
-
-            Button {
-                id: launchUEVR
-
-                enabled: UEVR.currentUevr && UEVR.currentUevr.installed && gameDetailsRoot.game.dotnetInstalled
-                         && gameDetailsRoot.game.hasValidWine() && !gameDetailsRoot.game.noWindowsSupport
-                text: "Launch UEVR injector"
-
-                onClicked: UEVR.launchUEVR(gameDetailsRoot.game)
-            }
-
-            Label {
-                text: {
-                    if (gameDetailsRoot.game.noWindowsSupport)
-                        return "";
-                    else if (!gameDetailsRoot.game.dotnetInstalled)
-                        return ".NET is not installed!";
-                    else if (UEVR.currentUevr && !UEVR.currentUevr.installed)
-                        return UEVR.currentUevr.name + " is not installed!";
-                    else
-                        return "";
-                }
-                visible: !gameDetailsRoot.game.dotnetInstalled || (UEVR.currentUevr !== undefined &&
-                                                                   !UEVR.currentUevr.installed)
-            }
-        }
-
-        Button {
-            enabled: gameDetailsRoot.game.canLaunch && launchUEVR.enabled
-            text: "Launch game, wait " + uevrSettings.launchDelay + " seconds, launch UEVR injector"
-            visible: gameDetailsRoot.game.canLaunch
-
-            onClicked: {
-                gameDetailsRoot.game.launch();
-                launchInThirty.start();
-            }
-
-            Timer {
-                id: launchInThirty
-
-                interval: 30000
-
-                onTriggered: UEVR.launchUEVR(gameDetailsRoot.game)
-            }
-        }
-
-        Item {
+        ModsList {
             Layout.fillHeight: true
+            Layout.fillWidth: true
+            game: gameDetailsRoot.game
         }
     }
 }

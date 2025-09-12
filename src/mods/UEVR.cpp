@@ -25,22 +25,9 @@ UEVR::UEVR(QObject *parent)
     // Execute downloads on the first event tick to give time for the download
     // manager to initialize
     QTimer::singleShot(0, this, [this] {
-        QSettings settings;
-        settings.beginGroup("uevr"_L1);
-        int id = settings.value("currentUevr"_L1, 0).toInt();
-
         parseReleaseInfoJson();
         updateAvailableReleases();
-        if (id != 0)
-            setCurrentUevr(id);
     });
-}
-
-UEVR::~UEVR()
-{
-    QSettings settings;
-    settings.beginGroup("uevr"_L1);
-    settings.setValue("currentUevr"_L1, m_currentUevr->id());
 }
 
 UEVR *UEVR::instance()
@@ -53,16 +40,6 @@ UEVR *UEVR::instance()
 UEVR *UEVR::create(QQmlEngine *, QJSEngine *)
 {
     return instance();
-}
-
-const QString UEVR::uevrPath() const
-{
-    return path(Paths::CurrentUEVR);
-}
-
-ModRelease *UEVR::currentUevr() const
-{
-    return m_currentUevr;
 }
 
 QList<Mod *> UEVR::dependencies() const
@@ -79,35 +56,10 @@ bool UEVR::checkGameCompatibility(const Game *game) const
 
 bool UEVR::isInstalledForGame(const Game *game) const
 {
-    return m_currentUevr->installed();
+    return currentRelease()->installed();
 }
 
-void UEVR::setCurrentUevr(const int id)
-{
-    auto newVersion =
-        std::find_if(m_releases.constBegin(), m_releases.constEnd(), [id](const auto &r) { return r->id() == id; });
-    if (newVersion == m_releases.constEnd())
-    {
-        qCWarning(UEVRLog) << "Attempted to activate nonexistent UEVR";
-        Aptabase::instance()->track("nonexistent-uevr-activation-bug");
-        return;
-    }
-
-    m_currentUevr = releaseFromId(id);
-    emit currentUevrChanged(m_currentUevr);
-
-    QSettings settings;
-    settings.beginGroup("uevr"_L1);
-    settings.setValue("currentUevr"_L1, id);
-}
-
-void UEVR::launchUEVR(const Game *game)
-{
-    Aptabase::instance()->track("launch-uevr"_L1, {{"version"_L1, m_currentUevr->name()}});
-    Wine::instance()->runInWine(m_currentUevr->name(), game, path(Paths::CurrentUEVRInjector));
-}
-
-void UEVR::downloadUEVR(ModRelease *release)
+void UEVR::downloadRelease(ModRelease *release)
 {
     Aptabase::instance()->track("download-uevr"_L1, {{"version"_L1, release->name()}});
 
@@ -162,14 +114,20 @@ void UEVR::downloadUEVR(ModRelease *release)
         [tempDir] { delete tempDir; });
 }
 
-void UEVR::deleteUEVR(ModRelease *uevr)
+void UEVR::deleteRelease(ModRelease *release)
 {
-    if (!uevr->installed())
+    if (!release->installed())
         return;
 
-    QDir installDir{path(Paths::UEVRBasePath) + '/' + QString::number(uevr->id())};
+    QDir installDir{path(Paths::UEVRBasePath) + '/' + QString::number(release->id())};
     if (installDir.removeRecursively())
-        uevr->setInstalled(false);
+        release->setInstalled(false);
+}
+
+void UEVR::launchMod(Game *game)
+{
+    Aptabase::instance()->track("launch-uevr"_L1, {{"version"_L1, currentRelease()->name()}});
+    Wine::instance()->runInWine(currentRelease()->name(), game, path(Paths::CurrentUEVRInjector));
 }
 
 QString UEVR::path(const Paths path) const
@@ -178,10 +136,10 @@ QString UEVR::path(const Paths path) const
     {
     case Paths::CurrentUEVR:
         return QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/uevr/"_L1 +
-               QString::number(m_currentUevr->id());
+               QString::number(currentRelease()->id());
     case Paths::CurrentUEVRInjector:
         return QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/uevr/"_L1 +
-               QString::number(m_currentUevr->id()) + "/UEVRInjector.exe"_L1;
+               QString::number(currentRelease()->id()) + "/UEVRInjector.exe"_L1;
     case Paths::UEVRBasePath:
         return QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/uevr"_L1;
     case Paths::CachedReleasesJSON:
@@ -246,7 +204,7 @@ void UEVR::parseReleaseInfoJson()
     const auto releases = QJsonDocument::fromJson(cachedReleases.readAll());
     const auto nightlies = QJsonDocument::fromJson(cachedNightlies.readAll());
 
-    const int currentId = m_currentUevr ? m_currentUevr->id() : 0;
+    const int currentId = currentRelease() ? currentRelease()->id() : m_lastCurrentReleaseId;
 
     for (const auto release : std::as_const(m_releases))
         release->deleteLater();
@@ -293,66 +251,5 @@ void UEVR::parseReleaseInfoJson()
 
     endResetModel();
 
-    setCurrentUevr(currentId == 0 ? m_releases.first()->id() : currentId);
-}
-
-UEVRFilter::UEVRFilter(QObject *parent)
-{
-    setSourceModel(UEVR::instance());
-
-    setSortRole(UEVR::Roles::Timestamp);
-    setDynamicSortFilter(true);
-    sort(0);
-
-    QSettings settings;
-    settings.beginGroup("uevr"_L1);
-    m_showNightlies = settings.value("showNightlies"_L1, false).toBool();
-}
-
-int UEVRFilter::indexFromRelease(ModRelease *release) const
-{
-    if (!release)
-        return -1;
-
-    for (int i = 0; i < sourceModel()->rowCount(); ++i)
-    {
-        auto sourceIndex = sourceModel()->index(i, 0);
-        if (sourceModel()->data(sourceIndex, UEVR::Roles::Id).toInt() == release->id())
-        {
-            QModelIndex proxyIndex = mapFromSource(sourceIndex);
-            if (proxyIndex.isValid())
-                return proxyIndex.row();
-        }
-    }
-
-    return -1;
-}
-
-void UEVRFilter::setShowNightlies(bool state)
-{
-    m_showNightlies = state;
-    invalidateRowsFilter();
-
-    emit showNightliesChanged(state);
-
-    QSettings settings;
-    settings.beginGroup("uevr"_L1);
-    settings.setValue("showNightlies"_L1, m_showNightlies);
-}
-
-bool UEVRFilter::filterAcceptsRow(int row, const QModelIndex &parent) const
-{
-    if (!m_showNightlies)
-    {
-        const auto release = UEVR::instance()->releaseFromId(
-            sourceModel()->data(sourceModel()->index(row, 0, parent), UEVR::Roles::Id).toInt());
-        if (!release || release->nightly())
-            return false;
-    }
-    return QSortFilterProxyModel::filterAcceptsRow(row, parent);
-}
-
-bool UEVRFilter::lessThan(const QModelIndex &left, const QModelIndex &right) const
-{
-    return left.data(UEVR::Roles::Timestamp).toDateTime() > right.data(UEVR::Roles::Timestamp).toDateTime();
+    setCurrentRelease(currentId == 0 ? m_releases.first()->id() : currentId);
 }

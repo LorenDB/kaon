@@ -1,4 +1,3 @@
-import QtCore
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -13,14 +12,6 @@ Pane {
 
     }
 
-    Settings {
-        id: uevrSettings
-
-        property alias launchDelay: launchDelaySpin.value
-
-        category: "uevr"
-    }
-
     ScrollView {
         ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
         anchors.fill: parent
@@ -28,39 +19,6 @@ Pane {
 
         ColumnLayout {
             spacing: 10
-
-            Label {
-                font.bold: true
-                font.pointSize: fontInfo.pointSize * 1.4
-                text: "UEVR"
-            }
-
-            RowLayout {
-                spacing: 10
-
-                Label {
-                    text: "When launching the injector with a game, wait this long for the game to start:"
-                }
-
-                SpinBox {
-                    id: launchDelaySpin
-
-                    property string prefix: ""
-                    property string suffix: " seconds"
-
-                    textFromValue: function (value, locale) {
-                        return prefix + Number(value).toLocaleString(locale, 'f', 0) + suffix;
-                    }
-                    value: 30
-                    valueFromText: function (text, locale) {
-                        let re = /\D*(-?\d*\.?\d*)\D*/;
-                        return Number.fromLocaleString(locale, re.exec(text)[1]);
-                    }
-                }
-            }
-
-            MenuSeparator {
-            }
 
             Label {
                 font.bold: true

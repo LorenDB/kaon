@@ -4,8 +4,6 @@ import QtQuick.Controls
 import dev.lorendb.kaon
 
 Item {
-    property alias deleteUevrDialog: deleteUevrDialog
-
     Dialog {
         id: dotnetDownloadDialog
 
@@ -43,23 +41,6 @@ Item {
             anchors.fill: parent
             text: "Downloading " + downloadFailedDialog.whatWasBeingDownloaded
                   + " failed. Please check your network connection."
-            wrapMode: Text.WordWrap
-        }
-    }
-
-    Dialog {
-        id: deleteUevrDialog
-
-        closePolicy: Popup.CloseOnEscape
-        modal: true
-        standardButtons: Dialog.Ok | Dialog.Cancel
-        title: "Confirm deletion"
-
-        onAccepted: UEVR.deleteUEVR(UEVR.currentUevr)
-
-        Label {
-            anchors.fill: parent
-            text: "Are you sure you want to delete " + (UEVR.currentUevr ? UEVR.currentUevr.name : "<null>") + "?"
             wrapMode: Text.WordWrap
         }
     }
@@ -119,11 +100,6 @@ Item {
     Connections {
         function onDotnetDownloadFailed() {
             downloadFailedDialog.open();
-        }
-
-        function onPromptDotnetDownload(game: Game) {
-            dotnetDownloadDialog.game = game;
-            dotnetDownloadDialog.open();
         }
 
         target: Dotnet

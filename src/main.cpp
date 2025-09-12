@@ -5,12 +5,19 @@
 #include <QIcon>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
+#include <QSettings>
 #include <QStandardPaths>
 
 #include "Aptabase.h"
+#include "CustomGames.h"
+#include "Dotnet.h"
+#include "GamesFilterModel.h"
 #include "Heroic.h"
 #include "Itch.h"
+#include "Steam.h"
+#include "UEVR.h"
 #include "UpdateChecker.h"
+#include "Wine.h"
 
 namespace
 {
@@ -75,15 +82,26 @@ int main(int argc, char *argv[])
 
     qInfo() << "This log only represents the most recent run of Kaon!";
 
+    Aptabase::init("aptabase.lorendb.dev"_L1, "A-SH-5394792661"_L1);
+    Aptabase::instance()->track("startup"_L1);
+
     QObject::connect(&app, &QApplication::aboutToQuit, &app, [] {
         qInfo() << "Shutting down";
         Aptabase::instance()->track("shutdown"_L1, {}, true);
     });
 
-    Aptabase::init("aptabase.lorendb.dev"_L1, "A-SH-5394792661"_L1);
-    Aptabase::instance()->track("startup"_L1);
-
+    // Here we will initialize all the QML singletons, because otherwise we might run into a situation where they don't get
+    // initialized immediately. This is quite annoying, e.g. when a mod doesn't show up in the mod list since it hasn't been
+    // referred to yet.
+    CustomGames::instance();
+    Dotnet::instance();
+    GamesFilterModel::instance();
+    Heroic::instance();
+    Itch::instance();
+    Steam::instance();
+    UEVR::instance();
     UpdateChecker::instance();
+    Wine::instance();
 
     QQmlApplicationEngine engine;
     QObject::connect(

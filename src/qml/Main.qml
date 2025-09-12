@@ -45,71 +45,24 @@ ApplicationWindow {
                                theStack.popCurrentItem()
             }
 
+            TabBar {
+                id: tabBar
+
+                TabButton {
+                    text: "Games"
+                }
+
+                TabButton {
+                    text: "Mods"
+                }
+
+                TabButton {
+                    text: "Settings"
+                }
+            }
+
             Item {
                 Layout.fillWidth: true
-            }
-
-            Label {
-                text: "UEVR version:"
-            }
-
-            ComboBox {
-                id: uevrCombo
-
-                model: UEVRFilter
-                textRole: "name"
-                valueRole: "id"
-
-                Component.onCompleted: currentIndex = Math.max(0, UEVRFilter.indexFromRelease(UEVR.currentUevr))
-                onActivated: UEVR.setCurrentUevr(currentValue)
-
-                Connections {
-                    function onCurrentUevrChanged(i) {
-                        uevrCombo.currentIndex = Math.max(0, UEVRFilter.indexFromRelease(UEVR.currentUevr));
-                    }
-
-                    target: UEVR
-                }
-
-                Connections {
-                    // If the nightlies filter changes, we need to adjust the index to the new position of the current UEVR.
-                    // In some cases, the current UEVR will no longer be available, so we need to change the current UEVR.
-                    function onShowNightliesChanged(state) {
-                        uevrCombo.currentIndex = Math.max(0, UEVRFilter.indexFromRelease(UEVR.currentUevr));
-                        if (!UEVR.currentUevr || uevrCombo.currentValue !== UEVR.currentUevr.id) {
-                            uevrCombo.currentIndex = 0;
-                            if (uevrCombo.currentValue !== undefined)
-                                UEVR.setCurrentUevr(uevrCombo.currentValue);
-                        }
-                    }
-
-                    target: UEVRFilter
-                }
-            }
-
-            ToolButton {
-                icon.color: palette.buttonText
-                icon.name: "download"
-                icon.source: Qt.resolvedUrl("icons/download.svg")
-                visible: UEVR.currentUevr && !UEVR.currentUevr.installed
-
-                onClicked: UEVR.downloadUEVR(UEVR.currentUevr)
-            }
-
-            ToolButton {
-                icon.color: "#da4453"
-                icon.name: "delete"
-                icon.source: Qt.resolvedUrl("icons/delete.svg")
-                visible: UEVR.currentUevr && UEVR.currentUevr.installed
-
-                onClicked: dialogs.deleteUevrDialog.open()
-            }
-
-            CheckBox {
-                text: "Show nightlies"
-
-                Component.onCompleted: checked = UEVRFilter.showNightlies
-                onCheckedChanged: UEVRFilter.showNightlies = checked
             }
 
             ToolSeparator {
@@ -123,23 +76,6 @@ ApplicationWindow {
                 visible: Steam.hasSteamVR
 
                 onClicked: Steam.launchSteamVR()
-            }
-
-            ToolSeparator {
-                visible: Steam.hasSteamVR
-            }
-
-            ToolButton {
-                ToolTip.delay: 1000
-                ToolTip.text: "Settings"
-                ToolTip.visible: hovered
-                enabled: theStack.currentItem ? theStack.currentItem.objectName !== "theOneAndOnlySettingsPage" : true
-                hoverEnabled: true
-                icon.color: enabled ? palette.buttonText : disabledPalette.buttonText
-                icon.name: "settings-configure"
-                icon.source: Qt.resolvedUrl("icons/settings-configure.svg")
-
-                onClicked: theStack.push(settingsPage)
             }
         }
     }
@@ -162,18 +98,26 @@ ApplicationWindow {
         colorGroup: SystemPalette.Disabled
     }
 
-    StackView {
-        id: theStack
-
+    StackLayout {
         anchors.fill: root.contentItem
-        anchors.margins: 10
+        currentIndex: tabBar.currentIndex
 
-        initialItem: GamesView {
-            onGameClicked: game => {
-                               theStack.push(gameDetails, {
-                                                 game: game
-                                             });
-                           }
+        StackView {
+            id: theStack
+
+            initialItem: GamesView {
+                onGameClicked: game => {
+                                   theStack.push(gameDetails, {
+                                                     game: game
+                                                 });
+                               }
+            }
+        }
+
+        ModsList {
+        }
+
+        SettingsPage {
         }
     }
 
@@ -192,7 +136,5 @@ ApplicationWindow {
     }
 
     Dialogs {
-        id: dialogs
-
     }
 }

@@ -14,16 +14,13 @@ class UEVR : public Mod
     QML_ELEMENT
     QML_SINGLETON
 
-    Q_PROPERTY(QString uevrPath READ uevrPath NOTIFY uevrPathChanged FINAL)
-    Q_PROPERTY(ModRelease *currentUevr READ currentUevr NOTIFY currentUevrChanged FINAL)
-
 public:
-    ~UEVR();
     static UEVR *instance();
     static UEVR *create(QQmlEngine *, QJSEngine *);
 
-    const QString uevrPath() const;
-    ModRelease *currentUevr() const;
+    Mod::Type type() const override { return Mod::Type::Launchable; }
+    QString displayName() const final { return "UEVR"_L1; }
+    QString settingsGroup() const final { return "uevr"_L1; }
 
     Game::Engines compatibleEngines() const override { return Game::Engine::Unreal; }
     virtual QList<Mod *> dependencies() const override;
@@ -41,15 +38,10 @@ public:
     QString path(const Paths path) const;
 
 public slots:
-    void launchUEVR(const Game *game);
-    void downloadUEVR(ModRelease *uevr);
-    void deleteUEVR(ModRelease *uevr);
+    void downloadRelease(ModRelease *release) override;
+    void deleteRelease(ModRelease *release) override;
 
-    void setCurrentUevr(const int id);
-
-signals:
-    void uevrPathChanged(const QString &);
-    void currentUevrChanged(ModRelease *);
+    void launchMod(Game *game) override;
 
 private:
     explicit UEVR(QObject *parent = nullptr);
@@ -61,32 +53,4 @@ private:
     void parseReleaseInfoJson();
 
     QList<ModRelease *> m_releases;
-    ModRelease *m_currentUevr{nullptr};
-};
-
-class UEVRFilter : public QSortFilterProxyModel
-{
-    Q_OBJECT
-    QML_ELEMENT
-    QML_SINGLETON
-
-    Q_PROPERTY(bool showNightlies READ showNightlies WRITE setShowNightlies NOTIFY showNightliesChanged FINAL)
-
-public:
-    explicit UEVRFilter(QObject *parent = nullptr);
-
-    bool showNightlies() const { return m_showNightlies; }
-    Q_INVOKABLE int indexFromRelease(ModRelease *release) const;
-
-    void setShowNightlies(bool state);
-
-signals:
-    void showNightliesChanged(bool state);
-
-protected:
-    bool filterAcceptsRow(int row, const QModelIndex &parent) const override;
-    bool lessThan(const QModelIndex &left, const QModelIndex &right) const override;
-
-private:
-    bool m_showNightlies{false};
 };

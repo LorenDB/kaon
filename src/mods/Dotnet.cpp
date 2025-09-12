@@ -17,15 +17,22 @@ Dotnet::Dotnet(QObject *parent)
       m_dotnetInstallerCache{QStandardPaths::writableLocation(QStandardPaths::CacheLocation) +
                              "/windowsdesktop-runtime-6.0.36-win-x64.exe"_L1}
 {
-    if (s_instance != nullptr)
-        throw std::runtime_error{"Attempted to double initialize .NET"};
-    else
-        s_instance = this;
+    setCurrentRelease(42);
+
+    connect(
+        this, &Dotnet::hasDotnetCachedChanged, this, [this](bool isCached) { releases().first()->setInstalled(isCached); });
 }
 
 Dotnet *Dotnet::instance()
 {
+    if (s_instance == nullptr)
+        s_instance = new Dotnet;
     return s_instance;
+}
+
+Dotnet *Dotnet::create(QQmlEngine *, QJSEngine *)
+{
+    return instance();
 }
 
 bool Dotnet::checkGameCompatibility(const Game *game) const
@@ -53,21 +60,8 @@ bool Dotnet::dotnetDownloadInProgress() const
     return m_dotnetDownloadInProgress;
 }
 
-void Dotnet::downloadDotnetDesktopRuntime(Game *game)
+void Dotnet::downloadRelease(ModRelease *)
 {
-    if (game)
-    {
-        connect(
-            this,
-            &Dotnet::hasDotnetCachedChanged,
-            this,
-            [this, game](bool isCached) {
-                if (isCached)
-                    installDotnetDesktopRuntime(game);
-            },
-            Qt::SingleShotConnection);
-    }
-
     QUrl url{
         "https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/6.0.36/windowsdesktop-runtime-6.0.36-win-x64.exe"_L1};
 
@@ -98,18 +92,35 @@ void Dotnet::downloadDotnetDesktopRuntime(Game *game)
         });
 }
 
-QList<ModRelease *> Dotnet::releases() const
+void Dotnet::deleteRelease(ModRelease *release)
 {
-    static ModRelease *m =
-        new ModRelease{0, ".NET Desktop Runtime 6.0.36"_L1, QDateTime{{2024, 11, 12}, {0, 0, 0}}, false, false, {}};
-    return {m};
+    if (!release->installed())
+        return;
+    if (QFile{m_dotnetInstallerCache}.remove())
+        release->setInstalled(false);
 }
 
-void Dotnet::installDotnetDesktopRuntime(Game *game)
+void Dotnet::downloadDotnetDesktopRuntime(Game *game)
+{
+    if (game)
+    {
+        connect(
+            this,
+            &Dotnet::hasDotnetCachedChanged,
+            this,
+            [this, game](bool isCached) {
+                if (isCached)
+                    installMod(game);
+            },
+            Qt::SingleShotConnection);
+    }
+}
+
+void Dotnet::installMod(Game *game)
 {
     if (!hasDotnetCached())
     {
-        emit promptDotnetDownload(game);
+        downloadDotnetDesktopRuntime(game);
         return;
     }
 
@@ -117,4 +128,17 @@ void Dotnet::installDotnetDesktopRuntime(Game *game)
         if (game)
             emit game->dotnetInstalledChanged();
     });
+}
+
+void Dotnet::uninstallMod(Game *game)
+{
+    // Installer and uninstaller are the same
+    installMod(game);
+}
+
+QList<ModRelease *> Dotnet::releases() const
+{
+    static QList<ModRelease *> l = {new ModRelease{
+        42, ".NET Desktop Runtime 6.0.36"_L1, QDateTime{{2024, 11, 12}, {0, 0, 0}}, false, hasDotnetCached(), {}}};
+    return l;
 }

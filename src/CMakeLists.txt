@@ -14,6 +14,7 @@ qt_add_qml_module(kaon
         qml/GameDetails.qml
         qml/GamesView.qml
         qml/Main.qml
+        qml/ModsList.qml
         qml/SettingsPage.qml
 
         qml/components/GameGridDelegate.qml
@@ -40,6 +41,8 @@ qt_add_qml_module(kaon
         mods/Dotnet.h
         mods/Mod.cpp
         mods/Mod.h
+        mods/ModsFilterModel.cpp
+        mods/ModsFilterModel.h
         mods/UEVR.cpp
         mods/UEVR.h
 

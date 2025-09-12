@@ -16,8 +16,12 @@ class Dotnet : public Mod
     Q_PROPERTY(bool dotnetDownloadInProgress READ dotnetDownloadInProgress NOTIFY dotnetDownloadInProgressChanged FINAL)
 
 public:
-    explicit Dotnet(QObject *parent = nullptr);
     static Dotnet *instance();
+    static Dotnet *create(QQmlEngine *, QJSEngine *);
+
+    Mod::Type type() const override { return Mod::Type::Installable; }
+    QString displayName() const final { return ".NET Desktop Runtime"_L1; }
+    QString settingsGroup() const final { return "dotnet"_L1; }
 
     // Here's a hacky way to set all flags on a QFlags
     virtual Game::Engines compatibleEngines() const override { return Game::Engines::fromInt(INT_MAX); }
@@ -29,20 +33,25 @@ public:
     bool dotnetDownloadInProgress() const;
 
 public slots:
-    void installDotnetDesktopRuntime(Game *game);
+    void downloadRelease(ModRelease *) override;
+    void deleteRelease(ModRelease *release) override;
+
+    void installMod(Game *game) override;
+    void uninstallMod(Game *game) override;
     void downloadDotnetDesktopRuntime(Game *game = nullptr);
 
 signals:
     void hasDotnetCachedChanged(const bool);
     void dotnetDownloadInProgressChanged(const bool);
-    void promptDotnetDownload(const Game *game = nullptr);
     void dotnetDownloadFailed();
 
 private:
+    explicit Dotnet(QObject *parent = nullptr);
     static Dotnet *s_instance;
 
     virtual QList<ModRelease *> releases() const override;
 
+    // TODO: remove this flag
     bool m_dotnetDownloadInProgress{false};
     QString m_dotnetInstallerCache;
 };
