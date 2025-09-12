@@ -179,9 +179,6 @@ QString UEVR::path(const Paths path) const
 
 void UEVR::updateAvailableReleases()
 {
-    static QNetworkAccessManager manager;
-    manager.setAutoDeleteReplies(true);
-
     auto semaphore = new QSemaphore{2};
     semaphore->acquire(2);
 
