@@ -23,8 +23,6 @@ qt_add_qml_module(kaon
     SOURCES
         Aptabase.cpp
         Aptabase.h
-        Dotnet.cpp
-        Dotnet.h
         DownloadManager.cpp
         DownloadManager.h
         Game.cpp
@@ -38,6 +36,8 @@ qt_add_qml_module(kaon
         Wine.cpp
         Wine.h
 
+        mods/Dotnet.cpp
+        mods/Dotnet.h
         mods/Mod.cpp
         mods/Mod.h
         mods/UEVR.cpp

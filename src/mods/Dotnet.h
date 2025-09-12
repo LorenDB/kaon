@@ -4,8 +4,9 @@
 #include <QQmlEngine>
 
 #include "Game.h"
+#include "Mod.h"
 
-class Dotnet : public QObject
+class Dotnet : public Mod
 {
     Q_OBJECT
     QML_ELEMENT
@@ -17,6 +18,11 @@ class Dotnet : public QObject
 public:
     explicit Dotnet(QObject *parent = nullptr);
     static Dotnet *instance();
+
+    // Here's a hacky way to set all flags on a QFlags
+    virtual Game::Engines compatibleEngines() const override { return Game::Engines::fromInt(INT_MAX); }
+
+    virtual bool checkGameCompatibility(Game *game) override;
 
     bool hasDotnetCached() const;
     bool dotnetDownloadInProgress() const;
@@ -35,6 +41,8 @@ signals:
 
 private:
     static Dotnet *s_instance;
+
+    virtual QList<ModRelease *> releases() const override;
 
     bool m_dotnetDownloadInProgress{false};
     QString m_dotnetInstallerCache;

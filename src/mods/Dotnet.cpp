@@ -15,7 +15,7 @@ Q_LOGGING_CATEGORY(DotNetLog, "dotnet")
 Dotnet *Dotnet::s_instance = nullptr;
 
 Dotnet::Dotnet(QObject *parent)
-    : QObject{parent},
+    : Mod{parent},
       m_dotnetInstallerCache{QStandardPaths::writableLocation(QStandardPaths::CacheLocation) +
                              "/windowsdesktop-runtime-6.0.36-win-x64.exe"_L1}
 {
@@ -28,6 +28,13 @@ Dotnet::Dotnet(QObject *parent)
 Dotnet *Dotnet::instance()
 {
     return s_instance;
+}
+
+bool Dotnet::checkGameCompatibility(Game *game)
+{
+    if (game->noWindowsSupport())
+        return false;
+    return Mod::checkGameCompatibility(game);
 }
 
 bool Dotnet::hasDotnetCached() const
@@ -90,7 +97,14 @@ bool Dotnet::isDotnetInstalled(const Game *game)
     if (!game || !game->hasValidWine())
         return false;
     const auto basepath = game->winePrefix() + "/drive_c/Program Files/dotnet"_L1;
-    return QFileInfo::exists(basepath + "/dotnet.exe"_L1) && QFileInfo::exists(basepath + "/host/fxr/6.0.36");
+    return QFileInfo::exists(basepath + "/dotnet.exe"_L1) && QFileInfo::exists(basepath + "/host/fxr/6.0.36"_L1);
+}
+
+QList<ModRelease *> Dotnet::releases() const
+{
+    static ModRelease *m =
+            new ModRelease{0, ".NET Desktop Runtime 6.0.36"_L1, QDateTime{{2024, 11, 12}, {0, 0, 0}}, false, false, {}};
+    return {m};
 }
 
 void Dotnet::installDotnetDesktopRuntime(Game *game)
