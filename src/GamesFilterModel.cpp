@@ -3,19 +3,11 @@
 #include <QSettings>
 
 #include "Aptabase.h"
-#include "CustomGames.h"
-#include "Heroic.h"
-#include "Itch.h"
-#include "Steam.h"
 
 GamesFilterModel::GamesFilterModel(QObject *parent)
     : QSortFilterProxyModel{parent},
       m_models{new QConcatenateTablesProxyModel{this}}
 {
-    m_models->addSourceModel(Steam::instance());
-    m_models->addSourceModel(Itch::instance());
-    m_models->addSourceModel(Heroic::instance());
-    m_models->addSourceModel(CustomGames::instance());
     setSourceModel(m_models);
 
     m_engineFilter.setFlag(Game::Engine::Unreal);
@@ -54,6 +46,23 @@ GamesFilterModel::GamesFilterModel(QObject *parent)
 
     m_viewType = settings.value("viewType"_L1, oldSetting).value<ViewType>();
     m_sortType = settings.value("sortType"_L1, SortType::LastPlayed).value<SortType>();
+}
+
+GamesFilterModel *GamesFilterModel::instance()
+{
+    if (!s_instance)
+        s_instance = new GamesFilterModel;
+    return s_instance;
+}
+
+GamesFilterModel *GamesFilterModel::create(QQmlEngine *, QJSEngine *)
+{
+    return instance();
+}
+
+void GamesFilterModel::registerStore(Store *store)
+{
+    m_models->addSourceModel(store);
 }
 
 void GamesFilterModel::setSearch(const QString &search)

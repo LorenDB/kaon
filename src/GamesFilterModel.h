@@ -5,6 +5,7 @@
 #include <QSortFilterProxyModel>
 
 #include "Game.h"
+#include "Store.h"
 
 class GamesFilterModel : public QSortFilterProxyModel
 {
@@ -24,7 +25,10 @@ class GamesFilterModel : public QSortFilterProxyModel
         FilterType featureFilterType READ featureFilterType WRITE setFeatureFilterType NOTIFY featureFilterTypeChanged FINAL)
 
 public:
-    explicit GamesFilterModel(QObject *parent = nullptr);
+    static GamesFilterModel *instance();
+    static GamesFilterModel *create(QQmlEngine *, QJSEngine *);
+
+    void registerStore(Store *store);
 
     enum ViewType
     {
@@ -88,6 +92,9 @@ protected:
     bool lessThan(const QModelIndex &left, const QModelIndex &right) const override;
 
 private:
+    explicit GamesFilterModel(QObject *parent = nullptr);
+    inline static GamesFilterModel *s_instance = nullptr;
+
     QConcatenateTablesProxyModel *m_models;
 
     Game::Engines m_engineFilter;

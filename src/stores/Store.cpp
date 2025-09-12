@@ -3,6 +3,8 @@
 #include <QSettings>
 #include <QTimer>
 
+#include "GamesFilterModel.h"
+
 Store::Store(QObject *parent)
     : QAbstractListModel{parent}
 {
@@ -18,6 +20,8 @@ Store::Store(QObject *parent)
         if (settings.value("autoscan"_L1, true).toBool())
             scanStore();
     });
+
+    GamesFilterModel::instance()->registerStore(this);
 }
 
 int Store::rowCount(const QModelIndex &parent) const
