@@ -37,6 +37,8 @@ qt_add_qml_module(kaon
         Wine.cpp
         Wine.h
 
+        mods/Bepinex.cpp
+        mods/Bepinex.h
         mods/Dotnet.cpp
         mods/Dotnet.h
         mods/Mod.cpp
@@ -45,6 +47,8 @@ qt_add_qml_module(kaon
         mods/ModsFilterModel.h
         mods/UEVR.cpp
         mods/UEVR.h
+        mods/UUVR.cpp
+        mods/UUVR.h
 
         stores/CustomGames.cpp
         stores/CustomGames.h

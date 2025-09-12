@@ -11,6 +11,7 @@ GamesFilterModel::GamesFilterModel(QObject *parent)
     setSourceModel(m_models);
 
     m_engineFilter.setFlag(Game::Engine::Unreal);
+    m_engineFilter.setFlag(Game::Engine::Unity);
 
     m_typeFilter.setFlag(Game::AppType::Game);
     m_typeFilter.setFlag(Game::AppType::Demo);

@@ -9,6 +9,7 @@
 #include <QStandardPaths>
 
 #include "Aptabase.h"
+#include "Bepinex.h"
 #include "CustomGames.h"
 #include "Dotnet.h"
 #include "GamesFilterModel.h"
@@ -16,6 +17,7 @@
 #include "Itch.h"
 #include "Steam.h"
 #include "UEVR.h"
+#include "UUVR.h"
 #include "UpdateChecker.h"
 #include "Wine.h"
 
@@ -93,6 +95,7 @@ int main(int argc, char *argv[])
     // Here we will initialize all the QML singletons, because otherwise we might run into a situation where they don't get
     // initialized immediately. This is quite annoying, e.g. when a mod doesn't show up in the mod list since it hasn't been
     // referred to yet.
+    Bepinex::instance();
     CustomGames::instance();
     Dotnet::instance();
     GamesFilterModel::instance();
@@ -100,6 +103,7 @@ int main(int argc, char *argv[])
     Itch::instance();
     Steam::instance();
     UEVR::instance();
+    UUVR::instance();
     UpdateChecker::instance();
     Wine::instance();
 
