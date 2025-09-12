@@ -103,7 +103,7 @@ void Dotnet::downloadDotnetDesktopRuntime(Game *game)
 QList<ModRelease *> Dotnet::releases() const
 {
     static ModRelease *m =
-            new ModRelease{0, ".NET Desktop Runtime 6.0.36"_L1, QDateTime{{2024, 11, 12}, {0, 0, 0}}, false, false, {}};
+        new ModRelease{0, ".NET Desktop Runtime 6.0.36"_L1, QDateTime{{2024, 11, 12}, {0, 0, 0}}, false, false, {}};
     return {m};
 }
 
