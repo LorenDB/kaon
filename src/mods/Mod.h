@@ -55,6 +55,7 @@ public:
     Mod(QObject *parent = nullptr);
 
     virtual Game::Engines compatibleEngines() const = 0;
+    virtual QList<Mod *> dependencies() const { return {}; }
 
     // By default, just checks against engine compatibility. You may need to override to check for specific games.
     virtual bool checkGameCompatibility(Game *game);

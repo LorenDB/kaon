@@ -11,6 +11,7 @@
 #include <QTimer>
 
 #include "Aptabase.h"
+#include "Dotnet.h"
 #include "DownloadManager.h"
 #include "Wine.h"
 
@@ -64,6 +65,18 @@ const QString UEVR::uevrPath() const
 ModRelease *UEVR::currentUevr() const
 {
     return m_currentUevr;
+}
+
+QList<Mod *> UEVR::dependencies() const
+{
+    return {Dotnet::instance()};
+}
+
+bool UEVR::checkGameCompatibility(Game *game)
+{
+    if (game->noWindowsSupport())
+        return false;
+    return Mod::checkGameCompatibility(game);
 }
 
 void UEVR::setCurrentUevr(const int id)
