@@ -46,6 +46,6 @@ protected:
     virtual QString modInstallDirForGame(Game *game) const = 0;
 
 public slots:
-    void installMod(Game *game) final;
-    void uninstallMod(Game *game) final;
+    void installMod(Game *game) override;
+    void uninstallMod(Game *game) override;
 };
