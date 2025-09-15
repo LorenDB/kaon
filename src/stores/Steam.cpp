@@ -232,6 +232,14 @@ public:
                     }
                 }
             }
+            else if (section.name == "appinfo.extended")
+            {
+                for (const auto &[key, value] : std::as_const(section.keys))
+                {
+                    if (key == "vacmacmodulecache"_L1 || key == "vacmodulecache"_L1 || key == "vacmodulefilename"_L1)
+                        m_features.setFlag(Feature::Anticheat);
+                }
+            }
         }
 
         detectGameEngine();
