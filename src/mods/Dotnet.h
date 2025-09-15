@@ -24,9 +24,8 @@ public:
     QString settingsGroup() const final { return "dotnet"_L1; }
     const QLoggingCategory &logger() const final;
 
-    // Here's a hacky way to set all flags on a QFlags
-    virtual Game::Engines compatibleEngines() const override { return Game::Engines::fromInt(INT_MAX); }
-
+    // .NET is only needed for UEVR, so we'll only show it for Unreal games
+    virtual Game::Engines compatibleEngines() const override { return Game::Engine::Unreal; }
     virtual bool checkGameCompatibility(const Game *game) const override;
     virtual bool isInstalledForGame(const Game *game) const override;
 
