@@ -231,10 +231,30 @@ Pane {
             wrapMode: Label.WordWrap
         }
 
+        RowLayout {
+            spacing: 10
+
+            Label {
+                font.bold: true
+                font.pointSize: fontInfo.pointSize * 1.25
+                text: "Mods"
+            }
+
+            CheckBox {
+                id: showIncompatible
+
+                text: "Show incompatible mods"
+                checked: false
+            }
+        }
+
         ModsList {
+            id: modsList
+
             Layout.fillHeight: true
             Layout.fillWidth: true
             game: gameDetailsRoot.game
+            showIncompatible: showIncompatible.checked
         }
     }
 }

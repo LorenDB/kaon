@@ -62,6 +62,7 @@ ModsFilterModel::ModsFilterModel(QObject *parent)
 {
     connect(this, &ModsFilterModel::gameChanged, this, &ModsFilterModel::invalidateFilter);
     connect(this, &ModsFilterModel::searchChanged, this, &ModsFilterModel::invalidateFilter);
+    connect(this, &ModsFilterModel::showIncompatibleChanged, this, &ModsFilterModel::invalidateFilter);
 
     setSourceModel(ModsModel::instance());
 
@@ -91,13 +92,13 @@ bool ModsFilterModel::filterAcceptsRow(int row, const QModelIndex &parent) const
     const auto mod = sourceModel()->data(sourceModel()->index(row, 0, parent), ModsModel::Roles::ModObject).value<Mod *>();
     if (!mod)
         return false;
-    if (m_game && m_game->isValid())
-    {
-        if (!mod->checkGameCompatibility(m_game))
-            return false;
-    }
     if (!m_search.isEmpty() && !mod->displayName().contains(m_search, Qt::CaseInsensitive))
         return false;
+    if (m_game && m_game->isValid())
+    {
+        if (!m_showIncompatible && !mod->checkGameCompatibility(m_game))
+            return false;
+    }
     return QSortFilterProxyModel::filterAcceptsRow(row, parent);
 }
 

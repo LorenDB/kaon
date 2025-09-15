@@ -11,6 +11,7 @@ ListView {
     id: list
 
     property Game game
+    property alias showIncompatible: mfm.showIncompatible
 
     clip: true
 
@@ -231,6 +232,8 @@ ListView {
         }
     }
     model: ModsFilterModel {
+        id: mfm
+
         game: list.game
     }
 
