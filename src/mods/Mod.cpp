@@ -7,8 +7,6 @@
 #include "Aptabase.h"
 #include "ModsFilterModel.h"
 
-Q_LOGGING_CATEGORY(ModLog, "mod")
-
 ModRelease::ModRelease(
     int id, QString name, QDateTime timestamp, bool nightly, bool installed, QUrl downloadUrl, QObject *parent)
     : QObject{parent},
@@ -123,7 +121,7 @@ void Mod::setCurrentRelease(const int id)
         std::find_if(releases().constBegin(), releases().constEnd(), [id](const auto &r) { return r->id() == id; });
     if (newVersion == releases().constEnd())
     {
-        qCWarning(ModLog) << "Attempted to activate nonexistent %1"_L1.arg(displayName());
+        qCWarning(logger()) << "Attempted to activate nonexistent %1"_L1.arg(displayName());
         Aptabase::instance()->track("nonexistent-mod-activation-bug");
         return;
     }

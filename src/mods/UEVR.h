@@ -21,6 +21,7 @@ public:
     Mod::Type type() const override { return Mod::Type::Launchable; }
     QString displayName() const final { return "UEVR"_L1; }
     QString settingsGroup() const final { return "uevr"_L1; }
+    const QLoggingCategory &logger() const final;
 
     Game::Engines compatibleEngines() const override { return Game::Engine::Unreal; }
     virtual QList<Mod *> dependencies() const override;

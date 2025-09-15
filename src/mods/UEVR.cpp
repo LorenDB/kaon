@@ -42,6 +42,11 @@ UEVR *UEVR::create(QQmlEngine *, QJSEngine *)
     return instance();
 }
 
+const QLoggingCategory &UEVR::logger() const
+{
+    return UEVRLog();
+}
+
 QList<Mod *> UEVR::dependencies() const
 {
     return {Dotnet::instance()};

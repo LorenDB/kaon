@@ -1,9 +1,10 @@
 #pragma once
 
-#include "Mod.h"
 #include <QQmlEngine>
 
-class Bepinex : public Mod
+#include "GitHubMod.h"
+
+class Bepinex : public GitHubZipExtractorMod
 {
     Q_OBJECT
     QML_ELEMENT
@@ -16,35 +17,19 @@ public:
     Mod::Type type() const override { return Mod::Type::Installable; }
     QString displayName() const final { return "BepInEx"_L1; }
     QString settingsGroup() const final { return "bepinex"_L1; }
+    const QLoggingCategory &logger() const final;
 
     virtual Game::Engines compatibleEngines() const override { return Game::Engine::Unity; }
-
     virtual bool checkGameCompatibility(const Game *game) const override;
     virtual bool isInstalledForGame(const Game *game) const override;
 
-    enum class Paths
-    {
-        CurrentRelease,
-        BepinexBasePath,
-        CachedReleasesJSON,
-    };
-    QString path(const Paths p) const;
-
-public slots:
-    void downloadRelease(ModRelease *release) override;
-    void deleteRelease(ModRelease *release) override;
-    void installMod(Game *game) override;
-    void uninstallMod(Game *game) override;
+protected:
+    QUrl githubUrl() const final { return {"https://api.github.com/repos/BepInEx/BepInEx/releases"_L1}; }
+    bool isThisFileTheActualModDownload(const QString &file) const final;
+    QString modInstallDirForGame(Game *game) const final;
 
 private:
     explicit Bepinex(QObject *parent = nullptr);
     ~Bepinex() {}
-
-    virtual QList<ModRelease *> releases() const override { return m_releases; }
-
-    void updateAvailableReleases();
-    void parseReleaseInfoJson();
-
-    QList<ModRelease *> m_releases;
 };
 

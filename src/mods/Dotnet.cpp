@@ -35,6 +35,11 @@ Dotnet *Dotnet::create(QQmlEngine *, QJSEngine *)
     return instance();
 }
 
+const QLoggingCategory &Dotnet::logger() const
+{
+    return DotNetLog();
+}
+
 bool Dotnet::checkGameCompatibility(const Game *game) const
 {
     if (game->noWindowsSupport())

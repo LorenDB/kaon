@@ -22,6 +22,7 @@ public:
     Mod::Type type() const override { return Mod::Type::Installable; }
     QString displayName() const final { return ".NET Desktop Runtime"_L1; }
     QString settingsGroup() const final { return "dotnet"_L1; }
+    const QLoggingCategory &logger() const final;
 
     // Here's a hacky way to set all flags on a QFlags
     virtual Game::Engines compatibleEngines() const override { return Game::Engines::fromInt(INT_MAX); }

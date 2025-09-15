@@ -66,6 +66,7 @@ public:
     virtual QString displayName() const = 0;
     virtual QString settingsGroup() const = 0;
     virtual QString info() const { return {}; }
+    virtual const QLoggingCategory &logger() const = 0;
 
     enum class Type
     {

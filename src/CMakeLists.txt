@@ -41,6 +41,8 @@ qt_add_qml_module(kaon
         mods/Bepinex.h
         mods/Dotnet.cpp
         mods/Dotnet.h
+        mods/GitHubMod.cpp
+        mods/GitHubMod.h
         mods/Mod.cpp
         mods/Mod.h
         mods/ModsFilterModel.cpp
