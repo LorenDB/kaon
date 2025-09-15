@@ -15,6 +15,7 @@
 #include "GamesFilterModel.h"
 #include "Heroic.h"
 #include "Itch.h"
+#include "Portal2VR.h"
 #include "Steam.h"
 #include "UEVR.h"
 #include "UUVR.h"
@@ -101,6 +102,7 @@ int main(int argc, char *argv[])
     GamesFilterModel::instance();
     Heroic::instance();
     Itch::instance();
+    Portal2VR::instance();
     Steam::instance();
     UEVR::instance();
     UUVR::instance();

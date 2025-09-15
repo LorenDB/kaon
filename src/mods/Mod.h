@@ -58,12 +58,14 @@ class Mod : public QAbstractListModel
     Q_PROPERTY(QString settingsGroup READ settingsGroup CONSTANT FINAL)
     Q_PROPERTY(Type type READ type CONSTANT FINAL)
     Q_PROPERTY(ModRelease *currentRelease READ currentRelease NOTIFY currentReleaseChanged FINAL)
+    Q_PROPERTY(QString info READ info CONSTANT FINAL)
 
 public:
     Mod(QObject *parent = nullptr);
 
     virtual QString displayName() const = 0;
     virtual QString settingsGroup() const = 0;
+    virtual QString info() const { return {}; }
 
     enum class Type
     {

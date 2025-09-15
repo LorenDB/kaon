@@ -45,6 +45,8 @@ qt_add_qml_module(kaon
         mods/Mod.h
         mods/ModsFilterModel.cpp
         mods/ModsFilterModel.h
+        mods/Portal2VR.cpp
+        mods/Portal2VR.h
         mods/UEVR.cpp
         mods/UEVR.h
         mods/UUVR.cpp

@@ -47,6 +47,20 @@ ListView {
                 text: delegate.mod.name
             }
 
+            ToolSeparator {
+                visible: infoLabel.visible
+            }
+
+            Label {
+                id: infoLabel
+
+                text: delegate.mod.info
+                visible: delegate.mod.info.length > 0
+                textFormat: Label.MarkdownText
+
+                onLinkActivated: link => Qt.openUrlExternally(link)
+            }
+
             Item {
                 Layout.fillWidth: true
             }
