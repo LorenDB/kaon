@@ -96,12 +96,18 @@ AppInfoVDF::AppInfoVDF()
             }
         }
     }
+
+    dumpAppInfo();
 }
 
 void AppInfoVDF::dumpAppInfo()
 {
     qCInfo(VDFLog) << "Dumping app info to"
                    << QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + "/appinfo/"_L1;
+
+    QDir d{QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + "/appinfo/"_L1};
+    if (d.exists())
+        d.removeRecursively();
 
     AppInfoVDF::AppInfo *info = root;
     while (info && info->appid != LAST_STEAM_APP)
