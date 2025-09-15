@@ -97,7 +97,7 @@ AppInfoVDF::AppInfoVDF()
         }
     }
 
-    dumpAppInfo();
+    QTimer::singleShot(0, [this] { dumpAppInfo(); });
 }
 
 void AppInfoVDF::dumpAppInfo()
