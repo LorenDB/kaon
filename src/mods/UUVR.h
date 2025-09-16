@@ -21,6 +21,7 @@ public:
 
     Game::Engines compatibleEngines() const override { return Game::Engine::Unity; }
     QList<Mod *> dependencies() const override;
+    bool checkGameCompatibility(const Game *game) const override;
     bool isInstalledForGame(const Game *game) const override;
 
 protected:

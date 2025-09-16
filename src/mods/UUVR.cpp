@@ -28,6 +28,16 @@ QList<Mod *> UUVR::dependencies() const
     return {Bepinex::instance()};
 }
 
+bool UUVR::checkGameCompatibility(const Game *game) const
+{
+    // Filter out IL2CPP builds
+    if (QFileInfo::exists(game->installDir() + "/GameAssembly.dll"_L1) ||
+            QFileInfo::exists(game->installDir() + "/GameAssembly.so"_L1))
+        return false;
+
+    return GitHubZipExtractorMod::checkGameCompatibility(game);
+}
+
 bool UUVR::isInstalledForGame(const Game *game) const
 {
     if (!game)
