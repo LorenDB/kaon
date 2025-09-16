@@ -202,13 +202,14 @@ bool ModReleaseFilter::filterAcceptsRow(int row, const QModelIndex &parent) cons
     if (!m_mod)
         return false;
 
-    if (!m_showNightlies)
-    {
-        const auto release =
-            m_mod->releaseFromId(sourceModel()->data(sourceModel()->index(row, 0, parent), Mod::Roles::Id).toInt());
-        if (!release || release->nightly())
-            return false;
-    }
+    const auto release =
+        m_mod->releaseFromId(sourceModel()->data(sourceModel()->index(row, 0, parent), Mod::Roles::Id).toInt());
+
+    if (release->downloadUrl().isEmpty())
+        return false;
+    if (!m_showNightlies && (!release || release->nightly()))
+        return false;
+
     return QSortFilterProxyModel::filterAcceptsRow(row, parent);
 }
 

@@ -109,6 +109,11 @@ void Dotnet::uninstallMod(Game *game)
 QList<ModRelease *> Dotnet::releases() const
 {
     static QList<ModRelease *> l = {new ModRelease{
-        42, ".NET Desktop Runtime 6.0.36"_L1, QDateTime{{2024, 11, 12}, {0, 0, 0}}, false, hasDotnetCached(), {}}};
+        42,
+                                        ".NET Desktop Runtime 6.0.36"_L1,
+                                        QDateTime{{2024, 11, 12}, {0, 0, 0}},
+                                        false,
+                                        hasDotnetCached(),
+                                        {"https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/6.0.36/windowsdesktop-runtime-6.0.36-win-x64.exe"_L1}}};
     return l;
 }
