@@ -37,7 +37,7 @@ bool UUVR::isInstalledForGame(const Game *game) const
 
 bool UUVR::isThisFileTheActualModDownload(const QString &file) const
 {
-    return file.startsWith("uuvr-mono"_L1) && file.endsWith(".zip"_L1);
+    return file.toLower() == "uuvr-mono-modern.zip"_L1;
 }
 
 QString UUVR::modInstallDirForGame(Game *game) const
