@@ -243,8 +243,8 @@ Pane {
             CheckBox {
                 id: showIncompatible
 
-                text: "Show incompatible mods"
                 checked: false
+                text: "Show incompatible mods"
             }
         }
 

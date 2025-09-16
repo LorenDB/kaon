@@ -32,4 +32,3 @@ private:
     explicit UUVR(QObject *parent = nullptr);
     ~UUVR() {}
 };
-

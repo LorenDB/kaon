@@ -32,4 +32,3 @@ private:
     explicit Bepinex(QObject *parent = nullptr);
     ~Bepinex() {}
 };
-

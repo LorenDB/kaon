@@ -56,8 +56,8 @@ ListView {
                 id: infoLabel
 
                 text: delegate.mod.info
-                visible: delegate.mod.info.length > 0
                 textFormat: Label.MarkdownText
+                visible: delegate.mod.info.length > 0
 
                 onLinkActivated: link => Qt.openUrlExternally(link)
             }
@@ -70,38 +70,32 @@ ListView {
                 enabled: delegate.mod.currentRelease.installed
                 text: {
                     if (delegate.mod.type === Mod.Launchable)
-                        return "Launch";
+                    return "Launch";
                     else if (delegate.mod.type === Mod.Installable) {
-                        if (delegate.mod.isInstalledForGame(list.game))
-                        {
+                        if (delegate.mod.isInstalledForGame(list.game)) {
                             if (delegate.mod.hasRepairOption)
-                                return "Repair or uninstall";
+                            return "Repair or uninstall";
                             else
-                                return "Uninstall";
-                        }
-                        else
-                            return "Install";
+                            return "Uninstall";
+                        } else
+                        return "Install";
                     }
                 }
                 visible: list.game
 
                 onClicked: {
-                    if (!delegate.mod.dependenciesSatisfied(list.game))
-                    {
+                    if (!delegate.mod.dependenciesSatisfied(list.game)) {
                         missingDependenciesDialog.mod = delegate.mod;
                         missingDependenciesDialog.game = list.game;
                         missingDependenciesDialog.open();
-                    }
-                    else
-                    {
+                    } else {
                         if (delegate.mod.type === Mod.Launchable)
-                            delegate.mod.launchMod(list.game);
-                        else if (delegate.mod.type === Mod.Installable)
-                        {
+                        delegate.mod.launchMod(list.game);
+                        else if (delegate.mod.type === Mod.Installable) {
                             if (delegate.mod.isInstalledForGame(list.game))
-                                delegate.mod.uninstallMod(list.game);
+                            delegate.mod.uninstallMod(list.game);
                             else
-                                delegate.mod.installMod(list.game);
+                            delegate.mod.installMod(list.game);
                         }
                     }
                 }
@@ -113,19 +107,16 @@ ListView {
                 enabled: delegate.mod.currentRelease.installed && delegate.mod.type === Mod.Launchable
                 text: {
                     if (delegate.mod.type === Mod.Launchable)
-                        return "Launch game, then mod";
+                    return "Launch game, then mod";
                 }
                 visible: list.game && list.game.canLaunch && delegate.mod.type === Mod.Launchable
 
                 onClicked: {
-                    if (!delegate.mod.dependenciesSatisfied(list.game))
-                    {
+                    if (!delegate.mod.dependenciesSatisfied(list.game)) {
                         missingDependenciesDialog.mod = delegate.mod;
                         missingDependenciesDialog.game = list.game;
                         missingDependenciesDialog.open();
-                    }
-                    else
-                    {
+                    } else {
                         list.game.launch();
                         delayedLauncher.start();
                     }
@@ -161,7 +152,6 @@ ListView {
                 }
                 visible: launchWithDelay.visible
             }
-
 
             Label {
                 text: "Version:"
@@ -267,8 +257,8 @@ ListView {
     Dialog {
         id: missingDependenciesDialog
 
-        property Mod mod
         property Game game
+        property Mod mod
 
         closePolicy: Popup.CloseOnEscape
         modal: true
@@ -279,13 +269,13 @@ ListView {
             anchors.fill: parent
             text: {
                 if (!missingDependenciesDialog.mod || !missingDependenciesDialog.game)
-                    return "Missing dependencies (unknown error)";
+                return "Missing dependencies (unknown error)";
                 else
-                    return missingDependenciesDialog.mod.name + " requires these mods to be installed first:\n\n"
-                           + missingDependenciesDialog.mod.missingDependencies(missingDependenciesDialog.game);
+                return missingDependenciesDialog.mod.name + " requires these mods to be installed first:\n\n"
+                + missingDependenciesDialog.mod.missingDependencies(missingDependenciesDialog.game);
             }
-            wrapMode: Text.WordWrap
             textFormat: Text.MarkdownText
+            wrapMode: Text.WordWrap
         }
     }
 }
