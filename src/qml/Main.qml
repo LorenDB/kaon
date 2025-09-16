@@ -35,16 +35,6 @@ ApplicationWindow {
             anchors.fill: parent
             spacing: 10
 
-            ToolButton {
-                icon.color: palette.buttonText
-                icon.name: "draw-arrow-back"
-                icon.source: Qt.resolvedUrl("icons/draw-arrow-back.svg")
-                visible: theStack.depth > 1
-
-                onClicked: if (theStack.depth > 1)
-                               theStack.popCurrentItem()
-            }
-
             TabBar {
                 id: tabBar
 
@@ -63,19 +53,6 @@ ApplicationWindow {
 
             Item {
                 Layout.fillWidth: true
-            }
-
-            ToolSeparator {
-            }
-
-            ToolButton {
-                icon.color: palette.buttonText
-                icon.name: "media-playback-start"
-                icon.source: Qt.resolvedUrl("icons/media-playback-start.svg")
-                text: "Launch SteamVR"
-                visible: Steam.hasSteamVR
-
-                onClicked: Steam.launchSteamVR()
             }
         }
     }
@@ -102,15 +79,50 @@ ApplicationWindow {
         anchors.fill: root.contentItem
         currentIndex: tabBar.currentIndex
 
-        StackView {
-            id: theStack
+        ColumnLayout {
+            spacing: 10
 
-            initialItem: GamesView {
-                onGameClicked: game => {
-                                   theStack.push(gameDetails, {
-                                                     game: game
-                                                 });
-                               }
+            RowLayout {
+                spacing: 10
+
+                ToolButton {
+                    icon.color: palette.buttonText
+                    icon.name: "draw-arrow-back"
+                    icon.source: Qt.resolvedUrl("icons/draw-arrow-back.svg")
+                    visible: theStack.depth > 1
+
+                    onClicked: if (theStack.depth > 1)
+                                   theStack.popCurrentItem()
+                }
+
+                Item {
+                    Layout.fillWidth: true
+                }
+
+                ToolButton {
+                    icon.color: palette.buttonText
+                    icon.name: "media-playback-start"
+                    icon.source: Qt.resolvedUrl("icons/media-playback-start.svg")
+                    text: "Launch SteamVR"
+                    visible: Steam.hasSteamVR
+
+                    onClicked: Steam.launchSteamVR()
+                }
+            }
+
+            StackView {
+                id: theStack
+
+                Layout.fillHeight: true
+                Layout.fillWidth: true
+
+                initialItem: GamesView {
+                    onGameClicked: game => {
+                                       theStack.push(gameDetails, {
+                                                         game: game
+                                                     });
+                                   }
+                }
             }
         }
 
