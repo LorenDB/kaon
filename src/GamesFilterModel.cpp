@@ -39,13 +39,7 @@ GamesFilterModel::GamesFilterModel(QObject *parent)
 
     QSettings settings;
     settings.beginGroup("GamesFilterModel"_L1);
-
-    // TODO: remove me after a while
-    QSettings migration;
-    migration.beginGroup("Steam"_L1);
-    const auto oldSetting = migration.value("viewType"_L1, ViewType::Grid).value<ViewType>();
-
-    m_viewType = settings.value("viewType"_L1, oldSetting).value<ViewType>();
+    m_viewType = settings.value("viewType"_L1, ViewType::Grid).value<ViewType>();
     m_sortType = settings.value("sortType"_L1, SortType::LastPlayed).value<SortType>();
 }
 
