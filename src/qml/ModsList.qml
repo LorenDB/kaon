@@ -67,8 +67,13 @@ ListView {
             }
 
             Button {
+                id: installToGameButton
+
+                property int forceUpdate: 0
+
                 enabled: delegate.mod.currentRelease.installed
                 text: {
+                    forceUpdate;
                     if (delegate.mod.type === Mod.Launchable)
                     return "Launch";
                     else if (delegate.mod.type === Mod.Installable) {
@@ -84,6 +89,7 @@ ListView {
                 visible: list.game
 
                 onClicked: {
+                    forceUpdate;
                     if (!delegate.mod.dependenciesSatisfied(list.game)) {
                         missingDependenciesDialog.mod = delegate.mod;
                         missingDependenciesDialog.game = list.game;
@@ -98,6 +104,14 @@ ListView {
                             delegate.mod.installMod(list.game);
                         }
                     }
+                }
+
+                Connections {
+                    function onInstalledInGameChanged(game: Game) {
+                        ++installToGameButton.forceUpdate;
+                    }
+
+                    target: delegate.mod
                 }
             }
 

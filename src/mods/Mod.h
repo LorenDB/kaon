@@ -110,13 +110,14 @@ public slots:
     virtual void deleteRelease(ModRelease *release) = 0;
 
     virtual void launchMod(Game *game) {}
-    virtual void installMod(Game *game) {}
-    virtual void uninstallMod(Game *game) {}
+    virtual void installMod(Game *game) { emit installedInGameChanged(game); }
+    virtual void uninstallMod(Game *game) { emit installedInGameChanged(game); }
 
     void setCurrentRelease(const int id);
 
 signals:
     void currentReleaseChanged(ModRelease *);
+    void installedInGameChanged(Game *game);
 
 protected:
     // Use this if you need to have whatever the settings had at startup, e.g. if you need to download release information

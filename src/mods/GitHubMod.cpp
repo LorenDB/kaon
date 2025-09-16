@@ -185,6 +185,8 @@ void GitHubZipExtractorMod::installMod(Game *game)
         const auto listing = QString{process.readAllStandardOutput()}.split('\n');
         settings.setValue("installedFiles"_L1, listing);
     }
+
+    emit installedInGameChanged(game);
 }
 
 void GitHubZipExtractorMod::uninstallMod(Game *game)
@@ -212,4 +214,5 @@ void GitHubZipExtractorMod::uninstallMod(Game *game)
             d.removeRecursively();
 
     settings.remove("installedFiles"_L1);
+    emit installedInGameChanged(game);
 }

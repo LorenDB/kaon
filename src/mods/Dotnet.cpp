@@ -95,7 +95,9 @@ void Dotnet::installMod(Game *game)
     if (!hasDotnetCached())
         return;
 
-    Wine::instance()->runInWine(".NET Desktop Runtime installer"_L1, game, m_dotnetInstallerCache);
+    Wine::instance()->runInWine(".NET Desktop Runtime installer"_L1, game, m_dotnetInstallerCache, {}, [this, game] {
+        emit installedInGameChanged(game);
+    });
 }
 
 void Dotnet::uninstallMod(Game *game)
