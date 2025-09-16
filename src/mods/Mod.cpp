@@ -81,6 +81,17 @@ ModRelease *Mod::releaseFromId(const int id) const
     return nullptr;
 }
 
+ModRelease *Mod::releaseInstalledForGame(const Game *game)
+{
+    if (!game)
+        return nullptr;
+
+    QSettings settings;
+    settings.beginGroup(settingsGroup());
+    settings.beginGroup(game->id());
+    return releaseFromId(settings.value("installedVersion"_L1).toInt());
+}
+
 int Mod::rowCount(const QModelIndex &parent) const
 {
     return releases().count();
@@ -204,4 +215,22 @@ bool ModReleaseFilter::filterAcceptsRow(int row, const QModelIndex &parent) cons
 bool ModReleaseFilter::lessThan(const QModelIndex &left, const QModelIndex &right) const
 {
     return left.data(Mod::Roles::Timestamp).toDateTime() > right.data(Mod::Roles::Timestamp).toDateTime();
+}
+void Mod::installMod(Game *game)
+{
+    QSettings settings;
+    settings.beginGroup(settingsGroup());
+    settings.beginGroup(game->id());
+    settings.setValue("installedVersion"_L1, m_currentRelease->id());
+
+    emit installedInGameChanged(game);
+}
+void Mod::uninstallMod(Game *game)
+{
+    QSettings settings;
+    settings.beginGroup(settingsGroup());
+    settings.beginGroup(game->id());
+    settings.remove("installedVersion"_L1);
+
+    emit installedInGameChanged(game);
 }

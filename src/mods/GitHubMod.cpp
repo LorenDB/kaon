@@ -186,7 +186,7 @@ void GitHubZipExtractorMod::installMod(Game *game)
         settings.setValue("installedFiles"_L1, listing);
     }
 
-    emit installedInGameChanged(game);
+    Mod::installMod(game);
 }
 
 void GitHubZipExtractorMod::uninstallMod(Game *game)
@@ -214,5 +214,5 @@ void GitHubZipExtractorMod::uninstallMod(Game *game)
             d.removeRecursively();
 
     settings.remove("installedFiles"_L1);
-    emit installedInGameChanged(game);
+    Mod::uninstallMod(game);
 }

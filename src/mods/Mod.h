@@ -92,6 +92,7 @@ public:
 
     ModRelease *currentRelease() const;
     ModRelease *releaseFromId(const int id) const;
+    Q_INVOKABLE ModRelease *releaseInstalledForGame(const Game *game);
 
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
@@ -110,8 +111,8 @@ public slots:
     virtual void deleteRelease(ModRelease *release) = 0;
 
     virtual void launchMod(Game *game) {}
-    virtual void installMod(Game *game) { emit installedInGameChanged(game); }
-    virtual void uninstallMod(Game *game) { emit installedInGameChanged(game); }
+    virtual void installMod(Game *game);
+    virtual void uninstallMod(Game *game);
 
     void setCurrentRelease(const int id);
 

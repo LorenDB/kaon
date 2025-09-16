@@ -10,8 +10,15 @@ import dev.lorendb.kaon
 ListView {
     id: list
 
+    enum DisplayMode
+    {
+        GlobalModsManager,
+        ManageGameInstalledMods
+    }
+
     property Game game
     property alias showIncompatible: mfm.showIncompatible
+    readonly property int displayMode: game ? ModsList.ManageGameInstalledMods : ModsList.GlobalModsManager
 
     clip: true
 
@@ -86,7 +93,7 @@ ListView {
                         return "Install";
                     }
                 }
-                visible: list.game
+                visible: list.displayMode === ModsList.ManageGameInstalledMods
 
                 onClicked: {
                     forceUpdate;
@@ -105,14 +112,6 @@ ListView {
                         }
                     }
                 }
-
-                Connections {
-                    function onInstalledInGameChanged(game: Game) {
-                        ++installToGameButton.forceUpdate;
-                    }
-
-                    target: delegate.mod
-                }
             }
 
             Button {
@@ -123,7 +122,7 @@ ListView {
                     if (delegate.mod.type === Mod.Launchable)
                     return "Launch game, then mod";
                 }
-                visible: list.game && list.game.canLaunch && delegate.mod.type === Mod.Launchable
+                visible: list.displayMode === ModsList.ManageGameInstalledMods && list.game.canLaunch && delegate.mod.type === Mod.Launchable
 
                 onClicked: {
                     if (!delegate.mod.dependenciesSatisfied(list.game)) {
@@ -174,6 +173,9 @@ ListView {
             ComboBox {
                 id: versionCombo
 
+                property int forceUpdate: 0
+
+                enabled: forceUpdate, !delegate.mod.releaseInstalledForGame(list.game)
                 textRole: "name"
                 valueRole: "id"
 
@@ -183,8 +185,16 @@ ListView {
                     mod: delegate.mod
                 }
 
-                Component.onCompleted: currentIndex = Math.max(0, releaseFilter.indexFromRelease(
-                                                                   delegate.mod.currentRelease))
+                Component.onCompleted: {
+                    if (list.displayMode === ModsList.GlobalModsManager)
+                        currentIndex = Math.max(0, releaseFilter.indexFromRelease(delegate.mod.currentRelease));
+                    else
+                    {
+                        currentIndex = Math.max(0, releaseFilter.indexFromRelease(delegate.mod.releaseInstalledForGame(list.game)));
+                        if (currentIndex === -1)
+                            currentIndex = Math.max(0, releaseFilter.indexFromRelease(delegate.mod.currentRelease));
+                    }
+                }
                 onActivated: delegate.mod.setCurrentRelease(currentValue)
 
                 Connections {
@@ -238,6 +248,15 @@ ListView {
                 Component.onCompleted: checked = releaseFilter.showNightlies
                 onCheckedChanged: releaseFilter.showNightlies = checked
             }
+        }
+
+        Connections {
+            function onInstalledInGameChanged(game: Game) {
+                ++installToGameButton.forceUpdate;
+                ++versionCombo.forceUpdate;
+            }
+
+            target: delegate.mod
         }
     }
     model: ModsFilterModel {

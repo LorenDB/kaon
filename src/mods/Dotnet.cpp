@@ -96,7 +96,7 @@ void Dotnet::installMod(Game *game)
         return;
 
     Wine::instance()->runInWine(".NET Desktop Runtime installer"_L1, game, m_dotnetInstallerCache, {}, [this, game] {
-        emit installedInGameChanged(game);
+        Mod::installMod(game);
     });
 }
 
