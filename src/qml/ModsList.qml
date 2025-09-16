@@ -97,7 +97,8 @@ ListView {
 
                 onClicked: {
                     forceUpdate;
-                    if (!delegate.mod.dependenciesSatisfied(list.game)) {
+                    if (!delegate.mod.dependenciesSatisfied(list.game) && !(delegate.mod.type === Mod.Installable
+                                                                            && delegate.mod.isInstalledForGame(list.game))) {
                         missingDependenciesDialog.mod = delegate.mod;
                         missingDependenciesDialog.game = list.game;
                         missingDependenciesDialog.open();
