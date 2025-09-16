@@ -209,6 +209,7 @@ void GitHubZipExtractorMod::uninstallMod(Game *game)
             QFile{fullPath}.remove();
     }
 
+    std::sort(dirs.begin(), dirs.end(), [](const auto &l, const auto &r) { return l.count('/') > r.count('/'); });
     for (const auto &dir : std::as_const(dirs))
         if (QDir d{dir}; d.isEmpty())
             d.removeRecursively();
