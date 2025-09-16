@@ -36,8 +36,6 @@ class Game : public QObject
     Q_PROPERTY(bool canLaunch MEMBER m_canLaunch CONSTANT FINAL)
     Q_PROPERTY(bool canOpenSettings MEMBER m_canOpenSettings CONSTANT FINAL)
 
-    Q_PROPERTY(bool dotnetInstalled READ dotnetInstalled NOTIFY dotnetInstalledChanged FINAL)
-
 public:
     enum Engine
     {
@@ -118,8 +116,6 @@ public:
     LogoPosition logoHPosition() const { return m_logoHPosition; }
     LogoPosition logoVPosition() const { return m_logoVPosition; }
 
-    bool dotnetInstalled() const;
-
     // This is used to detect if a game has fully loaded or if there were errors parsing it.
     bool isValid() const { return m_valid; }
 
@@ -130,8 +126,6 @@ public:
 signals:
     void winePrefixExistsChanged(bool state);
     void wineBinaryChanged(QString path);
-
-    void dotnetInstalledChanged();
 
 protected:
     explicit Game(QObject *parent = nullptr);

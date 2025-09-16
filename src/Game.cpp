@@ -44,11 +44,6 @@ bool Game::noWindowsSupport() const
     });
 }
 
-bool Game::dotnetInstalled() const
-{
-    return Dotnet::instance()->isInstalledForGame(this);
-}
-
 void Game::detectGameEngine()
 {
     QString binaryDir{m_installDir};

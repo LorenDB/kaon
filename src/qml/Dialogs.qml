@@ -5,27 +5,6 @@ import dev.lorendb.kaon
 
 Item {
     Dialog {
-        id: dotnetDownloadDialog
-
-        property Game game: null
-
-        closePolicy: Popup.CloseOnEscape
-        modal: true
-        standardButtons: Dialog.Ok | Dialog.Cancel
-        title: "Download .NET desktop runtime"
-
-        onAccepted: {
-            Dotnet.downloadDotnetDesktopRuntime(game);
-            game = null;
-        }
-
-        Label {
-            text: "Kaon needs to download the .NET desktop runtime. This download is about 55 MB and will be cached for future use."
-            wrapMode: Text.WordWrap
-        }
-    }
-
-    Dialog {
         id: downloadFailedDialog
 
         property string whatWasBeingDownloaded: "<null>"
@@ -95,14 +74,6 @@ Item {
             text: (wineFailedDialog.prettyName === "" ? "An unknown process" : wineFailedDialog.prettyName) + " failed!"
             wrapMode: Text.WordWrap
         }
-    }
-
-    Connections {
-        function onDotnetDownloadFailed() {
-            downloadFailedDialog.open();
-        }
-
-        target: Dotnet
     }
 
     Connections {

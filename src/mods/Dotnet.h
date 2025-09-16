@@ -12,9 +12,6 @@ class Dotnet : public Mod
     QML_ELEMENT
     QML_SINGLETON
 
-    Q_PROPERTY(bool hasDotnetCached READ hasDotnetCached NOTIFY hasDotnetCachedChanged FINAL)
-    Q_PROPERTY(bool dotnetDownloadInProgress READ dotnetDownloadInProgress NOTIFY dotnetDownloadInProgressChanged FINAL)
-
 public:
     static Dotnet *instance();
     static Dotnet *create(QQmlEngine *, QJSEngine *);
@@ -29,29 +26,19 @@ public:
     virtual bool checkGameCompatibility(const Game *game) const override;
     virtual bool isInstalledForGame(const Game *game) const override;
 
-    bool hasDotnetCached() const;
-    bool dotnetDownloadInProgress() const;
-
 public slots:
     void downloadRelease(ModRelease *) override;
     void deleteRelease(ModRelease *release) override;
 
     void installMod(Game *game) override;
     void uninstallMod(Game *game) override;
-    void downloadDotnetDesktopRuntime(Game *game = nullptr);
-
-signals:
-    void hasDotnetCachedChanged(const bool);
-    void dotnetDownloadInProgressChanged(const bool);
-    void dotnetDownloadFailed();
 
 private:
     explicit Dotnet(QObject *parent = nullptr);
     static Dotnet *s_instance;
 
     virtual QList<ModRelease *> releases() const override;
+    bool hasDotnetCached() const;
 
-    // TODO: remove this flag
-    bool m_dotnetDownloadInProgress{false};
     QString m_dotnetInstallerCache;
 };
