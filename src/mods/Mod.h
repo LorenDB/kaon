@@ -60,6 +60,8 @@ class Mod : public QAbstractListModel
     Q_PROPERTY(ModRelease *currentRelease READ currentRelease NOTIFY currentReleaseChanged FINAL)
     Q_PROPERTY(QString info READ info CONSTANT FINAL)
 
+    Q_PROPERTY(bool hasRepairOption READ hasRepairOption CONSTANT FINAL)
+
 public:
     Mod(QObject *parent = nullptr);
 
@@ -67,6 +69,8 @@ public:
     virtual QString settingsGroup() const = 0;
     virtual QString info() const { return {}; }
     virtual const QLoggingCategory &logger() const = 0;
+
+    virtual bool hasRepairOption() const = 0;
 
     enum class Type
     {

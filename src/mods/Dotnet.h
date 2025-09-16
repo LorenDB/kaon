@@ -21,6 +21,8 @@ public:
     QString settingsGroup() const final { return "dotnet"_L1; }
     const QLoggingCategory &logger() const final;
 
+    bool hasRepairOption() const override { return true; }
+
     // .NET is only needed for UEVR, so we'll only show it for Unreal games
     virtual Game::Engines compatibleEngines() const override { return Game::Engine::Unreal; }
     virtual bool checkGameCompatibility(const Game *game) const override;

@@ -39,6 +39,9 @@ class GitHubZipExtractorMod : public GitHubMod
 {
     Q_OBJECT
 
+public:
+    bool hasRepairOption() const override { return false; }
+
 protected:
     explicit GitHubZipExtractorMod(QObject *parent = nullptr);
     ~GitHubZipExtractorMod() {}

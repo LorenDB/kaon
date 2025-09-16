@@ -73,7 +73,12 @@ ListView {
                         return "Launch";
                     else if (delegate.mod.type === Mod.Installable) {
                         if (delegate.mod.isInstalledForGame(list.game))
-                            return "Repair or uninstall";
+                        {
+                            if (delegate.mod.hasRepairOption)
+                                return "Repair or uninstall";
+                            else
+                                return "Uninstall";
+                        }
                         else
                             return "Install";
                     }

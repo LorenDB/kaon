@@ -23,6 +23,8 @@ public:
     QString settingsGroup() const final { return "uevr"_L1; }
     const QLoggingCategory &logger() const final;
 
+    bool hasRepairOption() const override { return false; }
+
     Game::Engines compatibleEngines() const override { return Game::Engine::Unreal; }
     virtual QList<Mod *> dependencies() const override;
     virtual bool checkGameCompatibility(const Game *game) const override;
