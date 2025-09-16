@@ -15,7 +15,7 @@ class ModRelease : public QObject
     Q_PROPERTY(QString name READ name CONSTANT)
     Q_PROPERTY(QDateTime timestamp READ timestamp CONSTANT)
     Q_PROPERTY(bool nightly READ nightly CONSTANT)
-    Q_PROPERTY(bool installed READ installed NOTIFY installedChanged)
+    Q_PROPERTY(bool downloaded READ downloaded NOTIFY downloadedChanged)
     Q_PROPERTY(QUrl downloadUrl READ downloadUrl CONSTANT FINAL)
 
 public:
@@ -23,7 +23,7 @@ public:
                QString name,
                QDateTime timestamp,
                bool nightly,
-               bool installed,
+               bool downloaded,
                QUrl downloadUrl,
                QObject *parent = nullptr);
 
@@ -31,20 +31,20 @@ public:
     QString name() const { return m_name; }
     QDateTime timestamp() const { return m_timestamp; }
     bool nightly() const { return m_nightly; }
-    bool installed() const { return m_installed; }
+    bool downloaded() const { return m_downloaded; }
     QUrl downloadUrl() const { return m_downloadUrl; }
 
-    virtual void setInstalled(bool state);
+    virtual void setDownloaded(bool state);
 
 signals:
-    void installedChanged(bool state);
+    void downloadedChanged(bool state);
 
 private:
     int m_id = 0;
     QString m_name;
     QDateTime m_timestamp;
     bool m_nightly = false;
-    bool m_installed = false;
+    bool m_downloaded = false;
     QUrl m_downloadUrl;
 };
 
@@ -102,7 +102,7 @@ public:
         Id = Qt::UserRole + 1,
         Name,
         Timestamp,
-        Installed,
+        Downloaded,
     };
 
 public slots:

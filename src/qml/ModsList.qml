@@ -71,7 +71,7 @@ ListView {
 
                 property int forceUpdate: 0
 
-                enabled: delegate.mod.currentRelease.installed
+                enabled: delegate.mod.currentRelease.downloaded
                 text: {
                     forceUpdate;
                     if (delegate.mod.type === Mod.Launchable)
@@ -118,7 +118,7 @@ ListView {
             Button {
                 id: launchWithDelay
 
-                enabled: delegate.mod.currentRelease.installed && delegate.mod.type === Mod.Launchable
+                enabled: delegate.mod.currentRelease.downloaded && delegate.mod.type === Mod.Launchable
                 text: {
                     if (delegate.mod.type === Mod.Launchable)
                     return "Launch game, then mod";
@@ -215,7 +215,7 @@ ListView {
                 icon.color: palette.buttonText
                 icon.name: "download"
                 icon.source: Qt.resolvedUrl("icons/download.svg")
-                visible: delegate.mod.currentRelease && !delegate.mod.currentRelease.installed
+                visible: delegate.mod.currentRelease && !delegate.mod.currentRelease.downloaded
 
                 onClicked: delegate.mod.downloadRelease(delegate.mod.currentRelease)
             }
@@ -224,7 +224,7 @@ ListView {
                 icon.color: "#da4453"
                 icon.name: "delete"
                 icon.source: Qt.resolvedUrl("icons/delete.svg")
-                visible: delegate.mod.currentRelease && delegate.mod.currentRelease.installed
+                visible: delegate.mod.currentRelease && delegate.mod.currentRelease.downloaded
 
                 onClicked: {
                     deleteModDialog.mod = delegate.mod;

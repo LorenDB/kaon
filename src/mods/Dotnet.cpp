@@ -79,15 +79,15 @@ void Dotnet::downloadRelease(ModRelease *)
         [this](const QNetworkReply::NetworkError error, const QString &errorMessage) {
             qCWarning(DotNetLog) << ".NET desktop runtime download failed:" << errorMessage;
         },
-        [this] { releases().first()->setInstalled(hasDotnetCached()); });
+        [this] { releases().first()->setDownloaded(hasDotnetCached()); });
 }
 
 void Dotnet::deleteRelease(ModRelease *release)
 {
-    if (!release->installed())
+    if (!release->downloaded())
         return;
     if (QFile{m_dotnetInstallerCache}.remove())
-        release->setInstalled(false);
+        release->setDownloaded(false);
 }
 
 void Dotnet::installMod(Game *game)

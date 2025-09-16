@@ -8,20 +8,20 @@
 #include "ModsFilterModel.h"
 
 ModRelease::ModRelease(
-    int id, QString name, QDateTime timestamp, bool nightly, bool installed, QUrl downloadUrl, QObject *parent)
+        int id, QString name, QDateTime timestamp, bool nightly, bool downloaded, QUrl downloadUrl, QObject *parent)
     : QObject{parent},
       m_id{id},
       m_name{name},
       m_timestamp{timestamp},
       m_nightly{nightly},
-      m_installed{installed},
+      m_downloaded{downloaded},
       m_downloadUrl{downloadUrl}
 {}
 
-void ModRelease::setInstalled(bool state)
+void ModRelease::setDownloaded(bool state)
 {
-    m_installed = state;
-    emit installedChanged(state);
+    m_downloaded = state;
+    emit downloadedChanged(state);
 }
 
 Mod::Mod(QObject *parent)
@@ -100,8 +100,8 @@ QVariant Mod::data(const QModelIndex &index, int role) const
         return item->name();
     case Roles::Timestamp:
         return item->timestamp();
-    case Roles::Installed:
-        return item->installed();
+    case Roles::Downloaded:
+        return item->downloaded();
     }
 
     return {};
@@ -112,7 +112,7 @@ QHash<int, QByteArray> Mod::roleNames() const
     return {{Roles::Id, "id"_ba},
             {Roles::Name, "name"_ba},
             {Roles::Timestamp, "timestamp"_ba},
-            {Roles::Installed, "installed"_ba}};
+            {Roles::Downloaded, "downloaded"_ba}};
 }
 
 void Mod::setCurrentRelease(const int id)

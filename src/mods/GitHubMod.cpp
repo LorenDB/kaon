@@ -30,7 +30,7 @@ void GitHubMod::downloadRelease(ModRelease *release)
             {
                 file.write(data);
                 file.close();
-                release->setInstalled(true);
+                release->setDownloaded(true);
             }
             else
                 qCWarning(logger()).noquote() << "Failed to save" << displayName();
@@ -42,12 +42,12 @@ void GitHubMod::downloadRelease(ModRelease *release)
 
 void GitHubMod::deleteRelease(ModRelease *release)
 {
-    if (!release->installed())
+    if (!release->downloaded())
         return;
 
-    QFile installed{pathForRelease(release->id())};
-    if (installed.remove())
-        release->setInstalled(false);
+    QFile downloaded{pathForRelease(release->id())};
+    if (downloaded.remove())
+        release->setDownloaded(false);
 }
 
 QString GitHubMod::path(const Paths p) const
@@ -131,7 +131,7 @@ void GitHubMod::parseReleaseInfoJson()
         const auto name = release["name"_L1].toString();
         const auto id = release["id"_L1].toInt();
         const auto timestamp = QDateTime::fromString(release["published_at"_L1].toString(), Qt::ISODate);
-        const auto installed = QFileInfo::exists(pathForRelease(id));
+        const auto downloaded = QFileInfo::exists(pathForRelease(id));
 
         QUrl downloadUrl;
         for (const auto &asset : release["assets"_L1].toArray())
@@ -143,7 +143,7 @@ void GitHubMod::parseReleaseInfoJson()
             }
         }
 
-        m_releases.push_back(new ModRelease{id, name, timestamp, false, installed, downloadUrl, this});
+        m_releases.push_back(new ModRelease{id, name, timestamp, false, downloaded, downloadUrl, this});
     }
 
     endResetModel();

@@ -61,7 +61,7 @@ bool UEVR::checkGameCompatibility(const Game *game) const
 
 bool UEVR::isInstalledForGame(const Game *game) const
 {
-    return currentRelease()->installed();
+    return currentRelease()->downloaded();
 }
 
 void UEVR::downloadRelease(ModRelease *release)
@@ -108,7 +108,7 @@ void UEVR::downloadRelease(ModRelease *release)
                     qCWarning(UEVRLog) << process.readAllStandardError();
                 }
                 else
-                    release->setInstalled(true);
+                    release->setDownloaded(true);
             }
             else
                 qCWarning(UEVRLog) << "Failed to save UEVR";
@@ -121,12 +121,12 @@ void UEVR::downloadRelease(ModRelease *release)
 
 void UEVR::deleteRelease(ModRelease *release)
 {
-    if (!release->installed())
+    if (!release->downloaded())
         return;
 
     QDir installDir{path(Paths::UEVRBasePath) + '/' + QString::number(release->id())};
     if (installDir.removeRecursively())
-        release->setInstalled(false);
+        release->setDownloaded(false);
 }
 
 void UEVR::launchMod(Game *game)
@@ -233,7 +233,7 @@ void UEVR::parseReleaseInfoJson()
 
         const auto id = json["id"_L1].toInt();
         const auto timestamp = QDateTime::fromString(json["published_at"_L1].toString(), Qt::ISODate);
-        const auto installed = QFileInfo::exists(UEVR::instance()->path(UEVR::Paths::UEVRBasePath) + '/' +
+        const auto downloaded = QFileInfo::exists(UEVR::instance()->path(UEVR::Paths::UEVRBasePath) + '/' +
                                                  QString::number(id) + "/UEVRInjector.exe"_L1);
 
         QUrl downloadUrl;
@@ -246,7 +246,7 @@ void UEVR::parseReleaseInfoJson()
             }
         }
 
-        return new ModRelease{id, name, timestamp, nightly, installed, downloadUrl, this};
+        return new ModRelease{id, name, timestamp, nightly, downloaded, downloadUrl, this};
     };
 
     for (const auto &release : releases.array())
