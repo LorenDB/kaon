@@ -14,8 +14,6 @@ Item {
         standardButtons: Dialog.Ok
         title: "Download failed"
 
-        onAccepted: whatWasBeingDownloaded = "<null>"
-
         Label {
             anchors.fill: parent
             text: "Downloading " + downloadFailedDialog.whatWasBeingDownloaded

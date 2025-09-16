@@ -249,7 +249,6 @@ ListView {
 
         onAccepted: {
             mod.deleteRelease(mod.currentRelease);
-            mod = undefined;
         }
 
         Label {
