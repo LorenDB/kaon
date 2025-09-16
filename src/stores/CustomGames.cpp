@@ -53,6 +53,7 @@ public:
         m_executables[0] = lo;
 
         detectGameEngine();
+        detectArchitectures();
         detectAnticheat();
 
         m_valid = !m_installDir.isEmpty();
@@ -86,6 +87,7 @@ public:
         m_executables[0] = lo;
 
         detectGameEngine();
+        detectArchitectures();
         detectAnticheat();
 
         m_valid = !m_installDir.isEmpty();

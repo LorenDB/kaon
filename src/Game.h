@@ -48,6 +48,14 @@ public:
     Q_ENUM(Engine)
     Q_DECLARE_FLAGS(Engines, Engine)
 
+    enum class Architecture
+    {
+        x86,
+        x64,
+        Unknown,
+    };
+    Q_ENUM(Architecture)
+
     enum class AppType
     {
         Game = 1,
@@ -131,6 +139,7 @@ protected:
     explicit Game(QObject *parent = nullptr);
 
     void detectGameEngine();
+    void detectArchitectures();
     void detectAnticheat();
 
     QString m_id;
@@ -161,6 +170,7 @@ protected:
         };
 
         Platform platform;
+        Architecture arch = Architecture::Unknown;
         QString executable;
     };
 

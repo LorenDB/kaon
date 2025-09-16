@@ -135,6 +135,7 @@ public:
         }
 
         detectGameEngine();
+        detectArchitectures();
         detectAnticheat();
 
         m_valid = true;

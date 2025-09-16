@@ -4,7 +4,7 @@
 #include <QFileInfo>
 #include <QRegularExpression>
 
-#include "Dotnet.h"
+#include "Aptabase.h"
 
 Game::Game(QObject *parent)
     : QObject{parent}
@@ -149,6 +149,141 @@ void Game::detectGameEngine()
     {
         m_engine = Engine::Godot;
         return;
+    }
+}
+
+void Game::detectArchitectures()
+{
+    for (auto &exe : m_executables)
+    {
+        QFile raw{exe.executable};
+        if (raw.open(QFile::ReadOnly))
+        {
+            if (exe.platform == LaunchOption::Platform::Windows)
+            {
+                QDataStream ds(&raw);
+                ds.setByteOrder(QDataStream::LittleEndian);
+
+                // Verify DOS header (MZ signature)
+                raw.seek(0);
+                quint16 dosSig;
+                ds >> dosSig;
+                if (dosSig != 0x5A4D)
+                    continue;
+
+                // Read PE header offset
+                raw.seek(0x3C);
+                qint32 peOffset;
+                ds >> peOffset;
+
+                // Seek to PE header and verify signature
+                raw.seek(peOffset);
+                quint32 peSig;
+                ds >> peSig;
+                if (peSig != 0x00004550)
+                    continue;
+
+                // Read the Machine field (architecture)
+                quint16 machine;
+                ds >> machine;
+
+                // Determine architecture
+                switch (machine)
+                {
+                case 0x014C:
+                    exe.arch = Architecture::x86;
+                    break;
+                case 0x8664:
+                    exe.arch = Architecture::x64;
+                    break;
+                // In case we need to start dealing with Arm games:
+                // case 0xAA64:
+                //     // ARM64
+                //     break;
+                // case 0x01C0:
+                // case 0x01C4:
+                //     // ARM
+                //     break;
+                default:
+                    Aptabase::instance()->track(
+                                "unknown-pe-architecture-bug"_L1,
+                                {{"pe-arch"_L1, machine},
+                                 {"game-id", m_id},
+                                 {"executable", exe.executable},
+                                 {"store", QMetaEnum::fromType<Store>().valueToKey(static_cast<quint64>(store()))}});
+                    break;
+                }
+            }
+            else if (exe.platform == LaunchOption::Platform::Linux)
+            {
+                // TODO: some games (e.g. Portal 2) ship a .sh for the Linux launch option. I should come up with a generic
+                // solution eventually. For now, we hardcode it.
+                if (m_id == "620"_L1 && store() == Store::Steam && exe.executable.endsWith(".sh"_L1))
+                {
+                    // Portal 2 launches via shell script but has an x86 binary
+                    exe.arch = Architecture::x86;
+                    continue;
+                }
+
+                QDataStream ds(&raw);
+                ds.setByteOrder(QDataStream::LittleEndian); // Initial read is fixed
+
+                // Verify ELF magic number
+                raw.seek(0);
+                quint32 magic;
+                ds >> magic;
+                if (magic != 0x464C457F)
+                    continue;
+
+                // Read class (32/64 bit)
+                raw.seek(4);
+                quint8 elfClass;
+                ds >> elfClass;
+                if (elfClass != 1 && elfClass != 2)
+                    continue;
+
+                // Read data encoding (endianness)
+                quint8 data;
+                ds >> data;
+                if (data == 1)
+                    ds.setByteOrder(QDataStream::LittleEndian);
+                else if (data == 2)
+                    ds.setByteOrder(QDataStream::BigEndian);
+                else
+                    continue; // invalid encoding
+
+                // Skip to e_machine (offset 18)
+                raw.seek(18);
+                quint16 machine;
+                ds >> machine;
+
+                // Determine architecture
+                switch (machine)
+                {
+                case 3: // EM_386
+                    exe.arch = Architecture::x86;
+                    break;
+                case 62: // EM_X86_64
+                    exe.arch = Architecture::x64;
+                    break;
+                // If Deckard is what they say it is...
+                // case 183: // EM_AARCH64
+                //     // ARM64 (AARCH64)
+                //     break;
+                // case 40: // EM_ARM
+                //     // ARM
+                //     break;
+                default:
+                    Aptabase::instance()->track(
+                                "unknown-elf-architecture-bug"_L1,
+                                {{"elf-arch"_L1, machine},
+                                 {"game-id", m_id},
+                                 {"executable", exe.executable},
+                                 {"store", QMetaEnum::fromType<Store>().valueToKey(static_cast<quint64>(store()))}});
+                    break;
+                }
+            }
+        }
     }
 }
 
