@@ -27,7 +27,7 @@ bool Game::hasMultiplePlatforms() const
     if (m_executables.isEmpty())
         return false;
 
-    LaunchOption::Platforms prev = m_executables.first().platform;
+    LaunchOption::Platform prev = m_executables.first().platform;
     for (const auto &exe : m_executables)
     {
         if (exe.platform != prev)
@@ -40,7 +40,7 @@ bool Game::hasMultiplePlatforms() const
 bool Game::noWindowsSupport() const
 {
     return std::all_of(m_executables.begin(), m_executables.end(), [](const auto &exe) {
-        return !exe.platform.testFlag(LaunchOption::Platform::Windows);
+        return exe.platform != LaunchOption::Platform::Windows;
     });
 }
 

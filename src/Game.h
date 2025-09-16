@@ -159,9 +159,8 @@ protected:
             Linux,
             MacOS,
         };
-        Q_DECLARE_FLAGS(Platforms, Platform)
 
-        Platforms platform;
+        Platform platform;
         QString executable;
     };
 

@@ -115,15 +115,21 @@ public:
                 {
                     LaunchOption lo;
                     lo.executable = entry.absoluteFilePath();
-                    lo.platform |= LaunchOption::Platform::Windows;
-                    m_executables[0] = lo;
+                    lo.platform = LaunchOption::Platform::Windows;
+                    if (m_executables.size() == 0)
+                        m_executables[0] = lo;
+                    else
+                        m_executables[m_executables.keys().last() + 1] = lo;
                 }
                 else if (entry.suffix() == "x86"_L1 || entry.suffix() == "x86_64"_L1)
                 {
                     LaunchOption lo;
                     lo.executable = entry.absoluteFilePath();
-                    lo.platform |= LaunchOption::Platform::Linux;
-                    m_executables[0] = lo;
+                    lo.platform = LaunchOption::Platform::Linux;
+                    if (m_executables.size() == 0)
+                        m_executables[0] = lo;
+                    else
+                        m_executables[m_executables.keys().last() + 1] = lo;
                 }
             }
         }

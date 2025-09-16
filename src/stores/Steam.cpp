@@ -138,11 +138,11 @@ public:
                     {
                         const QString os = static_cast<const char *>(value.second);
                         if (os.contains("windows"_L1))
-                            m_executables[id].platform |= LaunchOption::Platform::Windows;
+                            m_executables[id].platform = LaunchOption::Platform::Windows;
                         if (os.contains("linux"_L1))
-                            m_executables[id].platform |= LaunchOption::Platform::Linux;
+                            m_executables[id].platform = LaunchOption::Platform::Linux;
                         if (os.contains("macos"_L1))
-                            m_executables[id].platform |= LaunchOption::Platform::MacOS;
+                            m_executables[id].platform = LaunchOption::Platform::MacOS;
                     }
                 }
             }
