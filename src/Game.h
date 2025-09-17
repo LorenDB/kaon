@@ -39,7 +39,7 @@ class Game : public QObject
 public:
     enum Engine
     {
-        Unknown = 1,
+        UnknownEngine = 1,
         Unreal = 1 << 1,
         Unity = 1 << 2,
         Godot = 1 << 3,
@@ -52,7 +52,7 @@ public:
     {
         x86,
         x64,
-        Unknown,
+        UnknownArch,
     };
     Q_ENUM(Architecture)
 
@@ -170,7 +170,7 @@ protected:
         };
 
         Platform platform;
-        Architecture arch = Architecture::Unknown;
+        Architecture arch = Architecture::UnknownArch;
         QString executable;
     };
 
@@ -183,7 +183,7 @@ protected:
     bool m_valid = false;
 
 private:
-    Engine m_engine = Engine::Unknown;
+    Engine m_engine = Engine::UnknownEngine;
 };
 Q_DECLARE_METATYPE(Game)
 

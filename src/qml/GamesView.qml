@@ -264,8 +264,8 @@ RowLayout {
 
                 text: "Other/Unknown"
 
-                Component.onCompleted: checked = GamesFilterModel.isEngineFilterSet(Game.Unknown)
-                onCheckedChanged: GamesFilterModel.setEngineFilter(Game.Unknown, checked)
+                Component.onCompleted: checked = GamesFilterModel.isEngineFilterSet(Game.UnknownEngine)
+                onCheckedChanged: GamesFilterModel.setEngineFilter(Game.UnknownEngine, checked)
             }
 
             /////////////////////////////////////
