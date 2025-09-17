@@ -16,8 +16,8 @@ Wine::Wine(QObject *parent)
 
 Wine *Wine::instance()
 {
-    static Wine w;
-    return &w;
+    static auto w = new Wine;
+    return w;
 }
 
 Wine *Wine::create(QQmlEngine *, QJSEngine *)

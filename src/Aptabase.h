@@ -28,7 +28,7 @@ signals:
 
 private:
     explicit Aptabase();
-    ~Aptabase() {}
+    ~Aptabase() = default;
 
     QString m_host;
     QString m_key;

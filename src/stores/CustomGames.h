@@ -20,8 +20,8 @@ public:
     Q_INVOKABLE void deleteGame(Game *game);
 
 private:
-    explicit CustomGames(QObject *parent = nullptr);
-    ~CustomGames() {}
+    explicit CustomGames();
+    ~CustomGames() = default;
 
     void scanStore() final;
     void writeConfig();

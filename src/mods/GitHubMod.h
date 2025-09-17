@@ -12,7 +12,7 @@ public slots:
 
 protected:
     explicit GitHubMod(QObject *parent = nullptr);
-    ~GitHubMod() {}
+    ~GitHubMod() = default;
 
     enum class Paths
     {
@@ -44,7 +44,7 @@ public:
 
 protected:
     explicit GitHubZipExtractorMod(QObject *parent = nullptr);
-    ~GitHubZipExtractorMod() {}
+    ~GitHubZipExtractorMod() = default;
 
     virtual QString modInstallDirForGame(const Game *game, const Game::LaunchOption &executable) const;
 

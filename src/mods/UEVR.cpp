@@ -30,8 +30,8 @@ UEVR::UEVR(QObject *parent)
 
 UEVR *UEVR::instance()
 {
-    static UEVR u;
-    return &u;
+    static auto u = new UEVR;
+    return u;
 }
 
 UEVR *UEVR::create(QQmlEngine *, QJSEngine *)

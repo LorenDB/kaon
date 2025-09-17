@@ -299,8 +299,8 @@ AppInfoVDF::AppInfo *AppInfoVDF::AppInfo::getNextApp(void)
 
 AppInfoVDF *AppInfoVDF::instance()
 {
-    static AppInfoVDF vdf;
-    return &vdf;
+    static auto vdf = new AppInfoVDF;
+    return vdf;
 }
 
 AppInfoVDF::AppInfo *AppInfoVDF::game(int steamId)

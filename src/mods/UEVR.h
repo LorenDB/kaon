@@ -48,7 +48,7 @@ public slots:
 
 private:
     explicit UEVR(QObject *parent = nullptr);
-    ~UEVR() {}
+    ~UEVR() = default;
 
     virtual QList<ModRelease *> releases() const override { return m_releases; }
 

@@ -7,8 +7,8 @@ Q_LOGGING_CATEGORY(P2VRLog, "portal2vr")
 
 Portal2VR *Portal2VR::instance()
 {
-    static Portal2VR p2vr;
-    return &p2vr;
+    static auto p = new Portal2VR;
+    return p;
 }
 
 Portal2VR *Portal2VR::create(QQmlEngine *, QJSEngine *)

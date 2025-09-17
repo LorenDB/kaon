@@ -26,7 +26,7 @@ signals:
 
 private:
     explicit Steam(QObject *parent = nullptr);
-    ~Steam() {}
+    ~Steam() = default;
 
     void scanStore() final;
 

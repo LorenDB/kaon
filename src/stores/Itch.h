@@ -19,7 +19,7 @@ public:
 
 private:
     explicit Itch(QObject *parent = nullptr);
-    ~Itch() {}
+    ~Itch() = default;
 
     void scanStore() final;
 

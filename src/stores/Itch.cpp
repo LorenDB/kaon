@@ -145,8 +145,8 @@ public:
 
 Itch *Itch::instance()
 {
-    static Itch i;
-    return &i;
+    static auto i = new Itch;
+    return i;
 }
 
 Itch::Itch(QObject *parent)

@@ -279,8 +279,8 @@ Steam::Steam(QObject *parent)
 
 Steam *Steam::instance()
 {
-    static Steam s;
-    return &s;
+    static auto s = new Steam;
+    return s;
 }
 
 Steam *Steam::create(QQmlEngine *qml, QJSEngine *js)

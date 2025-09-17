@@ -33,5 +33,5 @@ protected:
 
 private:
     explicit Portal2VR(QObject *parent = nullptr);
-    ~Portal2VR() {}
+    ~Portal2VR() = default;
 };

@@ -20,7 +20,7 @@ public:
 
 private:
     explicit Heroic(QObject *parent = nullptr);
-    ~Heroic() {}
+    ~Heroic() = default;
 
     void scanStore() final;
 

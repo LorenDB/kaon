@@ -37,7 +37,7 @@ public slots:
 
 private:
     explicit Dotnet(QObject *parent = nullptr);
-    ~Dotnet() {}
+    ~Dotnet() = default;
 
     virtual QList<ModRelease *> releases() const override;
     bool hasDotnetCached() const;

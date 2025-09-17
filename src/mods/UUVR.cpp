@@ -9,8 +9,8 @@ Q_LOGGING_CATEGORY(UUVRLog, "uuvr")
 
 UUVR *UUVR::instance()
 {
-    static UUVR uuvr;
-    return &uuvr;
+    static auto u = new UUVR;
+    return u;
 }
 
 UUVR *UUVR::create(QQmlEngine *, QJSEngine *)

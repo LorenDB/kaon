@@ -22,8 +22,8 @@ UpdateChecker::UpdateChecker(QObject *parent)
 
 UpdateChecker *UpdateChecker::instance()
 {
-    static UpdateChecker u;
-    return &u;
+    static auto u = new UpdateChecker;
+    return u;
 }
 
 UpdateChecker *UpdateChecker::create(QQmlEngine *, QJSEngine *)

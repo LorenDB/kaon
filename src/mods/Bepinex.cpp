@@ -8,8 +8,8 @@ Q_LOGGING_CATEGORY(BepinexLog, "bepinex")
 
 Bepinex *Bepinex::instance()
 {
-    static Bepinex b;
-    return &b;
+    static auto b = new Bepinex;
+    return b;
 }
 
 Bepinex *Bepinex::create(QQmlEngine *, QJSEngine *)

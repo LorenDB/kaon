@@ -17,8 +17,8 @@ DownloadManager::DownloadManager(QObject *parent)
 
 DownloadManager *DownloadManager::instance()
 {
-    static DownloadManager dm;
-    return &dm;
+    static auto dm = new DownloadManager;
+    return dm;
 }
 
 void DownloadManager::download(const QNetworkRequest &request,

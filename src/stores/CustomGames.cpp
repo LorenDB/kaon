@@ -123,8 +123,8 @@ public:
 
 CustomGames *CustomGames::instance()
 {
-    static CustomGames c;
-    return &c;
+    static auto c = new CustomGames;
+    return c;
 }
 
 CustomGames *CustomGames::create(QQmlEngine *qml, QJSEngine *js)
@@ -162,8 +162,8 @@ void CustomGames::deleteGame(Game *game)
     endRemoveRows();
 }
 
-CustomGames::CustomGames(QObject *parent)
-    : Store{parent}
+CustomGames::CustomGames()
+    : Store{nullptr}
 {}
 
 void CustomGames::scanStore()

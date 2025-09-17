@@ -29,8 +29,8 @@ void Aptabase::init(const QString &host, const QString &key)
 
 Aptabase *Aptabase::instance()
 {
-    static Aptabase a;
-    return &a;
+    static auto a = new Aptabase;
+    return a;
 }
 
 Aptabase *Aptabase::create(QQmlEngine *qmlEngine, QJSEngine *jsEngine)

@@ -45,8 +45,8 @@ GamesFilterModel::GamesFilterModel(QObject *parent)
 
 GamesFilterModel *GamesFilterModel::instance()
 {
-    static GamesFilterModel g;
-    return &g;
+    static auto g = new GamesFilterModel;
+    return g;
 }
 
 GamesFilterModel *GamesFilterModel::create(QQmlEngine *, QJSEngine *)

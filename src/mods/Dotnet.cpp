@@ -20,8 +20,8 @@ Dotnet::Dotnet(QObject *parent)
 
 Dotnet *Dotnet::instance()
 {
-    static Dotnet d;
-    return &d;
+    static auto d = new Dotnet;
+    return d;
 }
 
 Dotnet *Dotnet::create(QQmlEngine *, QJSEngine *)

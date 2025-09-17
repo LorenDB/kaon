@@ -231,8 +231,8 @@ Heroic::Heroic(QObject *parent)
 
 Heroic *Heroic::instance()
 {
-    static Heroic h;
-    return &h;
+    static auto h = new Heroic;
+    return h;
 }
 
 Heroic *Heroic::create(QQmlEngine *qml, QJSEngine *js)

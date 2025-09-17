@@ -31,5 +31,5 @@ protected:
 
 private:
     explicit UUVR(QObject *parent = nullptr);
-    ~UUVR() {}
+    ~UUVR() = default;
 };
