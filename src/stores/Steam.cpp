@@ -12,8 +12,6 @@
 
 Q_LOGGING_CATEGORY(SteamLog, "steam")
 
-Steam *Steam::s_instance = nullptr;
-
 class SteamGame : public Game
 {
     Q_OBJECT
@@ -291,9 +289,8 @@ Steam::Steam(QObject *parent)
 
 Steam *Steam::instance()
 {
-    if (s_instance == nullptr)
-        s_instance = new Steam;
-    return s_instance;
+    static Steam s;
+    return &s;
 }
 
 Steam *Steam::create(QQmlEngine *qml, QJSEngine *js)

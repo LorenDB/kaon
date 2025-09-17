@@ -10,12 +10,8 @@
 #include <QRandomGenerator64>
 #include <QSettings>
 
-Aptabase *Aptabase::s_instance = nullptr;
-
-Aptabase::Aptabase(const QString &host, const QString &key, QObject *parent)
-    : QObject{parent},
-      m_host{host},
-      m_key{key}
+Aptabase::Aptabase()
+    : QObject{nullptr}
 {
     m_sessionId = QString::number(QDateTime::currentDateTime().currentSecsSinceEpoch()) +
                   QString::number(QRandomGenerator64::global()->generate64());
@@ -27,19 +23,19 @@ Aptabase::Aptabase(const QString &host, const QString &key, QObject *parent)
 
 void Aptabase::init(const QString &host, const QString &key)
 {
-    if (s_instance)
-        s_instance->deleteLater();
-    s_instance = new Aptabase{host, key};
+    instance()->m_host = host;
+    instance()->m_key = key;
 }
 
 Aptabase *Aptabase::instance()
 {
-    return s_instance;
+    static Aptabase a;
+    return &a;
 }
 
 Aptabase *Aptabase::create(QQmlEngine *qmlEngine, QJSEngine *jsEngine)
 {
-    return s_instance;
+    return instance();
 }
 
 void Aptabase::setEnabled(bool state)

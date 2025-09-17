@@ -21,7 +21,7 @@ public:
 
 private:
     explicit CustomGames(QObject *parent = nullptr);
-    static CustomGames *s_instance;
+    ~CustomGames() {}
 
     void scanStore() final;
     void writeConfig();

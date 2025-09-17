@@ -37,7 +37,7 @@ signals:
 
 private:
     explicit DownloadManager(QObject *parent = nullptr);
-    static DownloadManager *s_instance;
+    ~DownloadManager() {}
 
     void downloadNextInQueue();
 

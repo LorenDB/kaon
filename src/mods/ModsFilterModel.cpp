@@ -7,9 +7,8 @@ class ModsModel : public QAbstractListModel
 public:
     static ModsModel *instance()
     {
-        if (!s_instance)
-            s_instance = new ModsModel;
-        return s_instance;
+        static ModsModel m;
+        return &m;
     }
 
     void registerMod(Mod *mod)
@@ -51,8 +50,7 @@ private:
     explicit ModsModel()
         : QAbstractListModel{}
     {}
-
-    inline static ModsModel *s_instance;
+    ~ModsModel() {}
 
     QList<Mod *> m_mods;
 };

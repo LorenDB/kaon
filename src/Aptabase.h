@@ -27,8 +27,8 @@ signals:
     void enabledChanged(bool state);
 
 private:
-    explicit Aptabase(const QString &host, const QString &key, QObject *parent = nullptr);
-    static Aptabase *s_instance;
+    explicit Aptabase();
+    ~Aptabase() {}
 
     QString m_host;
     QString m_key;

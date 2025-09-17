@@ -120,7 +120,8 @@ public:
 
 private:
     AppInfoVDF();
-    static AppInfoVDF *s_instance;
+    ~AppInfoVDF() {}
+
     static uint32_t vdf_version;
 
     QString m_appInfoPath;

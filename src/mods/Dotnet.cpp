@@ -10,8 +10,6 @@
 
 Q_LOGGING_CATEGORY(DotNetLog, "dotnet")
 
-Dotnet *Dotnet::s_instance = nullptr;
-
 Dotnet::Dotnet(QObject *parent)
     : Mod{parent},
       m_dotnetInstallerCache{QStandardPaths::writableLocation(QStandardPaths::CacheLocation) +
@@ -22,9 +20,8 @@ Dotnet::Dotnet(QObject *parent)
 
 Dotnet *Dotnet::instance()
 {
-    if (s_instance == nullptr)
-        s_instance = new Dotnet;
-    return s_instance;
+    static Dotnet d;
+    return &d;
 }
 
 Dotnet *Dotnet::create(QQmlEngine *, QJSEngine *)

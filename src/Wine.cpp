@@ -10,17 +10,14 @@
 
 Q_LOGGING_CATEGORY(WineLog, "wine")
 
-Wine *Wine::s_instance = nullptr;
-
 Wine::Wine(QObject *parent)
     : QObject{parent}
 {}
 
 Wine *Wine::instance()
 {
-    if (!s_instance)
-        s_instance = new Wine;
-    return s_instance;
+    static Wine w;
+    return &w;
 }
 
 Wine *Wine::create(QQmlEngine *, QJSEngine *)

@@ -43,8 +43,6 @@ namespace
     constexpr uint32_t LAST_STEAM_APP = 0;
 }
 
-AppInfoVDF *AppInfoVDF::s_instance{nullptr};
-
 uint32_t AppInfoVDF::vdf_version = 0x27; // Default to Pre-December 2022
 
 AppInfoVDF::AppInfoVDF()
@@ -301,9 +299,8 @@ AppInfoVDF::AppInfo *AppInfoVDF::AppInfo::getNextApp(void)
 
 AppInfoVDF *AppInfoVDF::instance()
 {
-    if (!s_instance)
-        s_instance = new AppInfoVDF;
-    return s_instance;
+    static AppInfoVDF vdf;
+    return &vdf;
 }
 
 AppInfoVDF::AppInfo *AppInfoVDF::game(int steamId)

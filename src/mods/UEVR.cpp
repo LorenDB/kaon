@@ -17,8 +17,6 @@
 
 Q_LOGGING_CATEGORY(UEVRLog, "uevr")
 
-UEVR *UEVR::s_instance = nullptr;
-
 UEVR::UEVR(QObject *parent)
     : Mod{parent}
 {
@@ -32,9 +30,8 @@ UEVR::UEVR(QObject *parent)
 
 UEVR *UEVR::instance()
 {
-    if (!s_instance)
-        s_instance = new UEVR;
-    return s_instance;
+    static UEVR u;
+    return &u;
 }
 
 UEVR *UEVR::create(QQmlEngine *, QJSEngine *)

@@ -15,8 +15,6 @@
 
 Q_LOGGING_CATEGORY(CustomGameLog, "custom")
 
-CustomGames *CustomGames::s_instance = nullptr;
-
 class CustomGame : public Game
 {
     Q_OBJECT
@@ -125,9 +123,8 @@ public:
 
 CustomGames *CustomGames::instance()
 {
-    if (!s_instance)
-        s_instance = new CustomGames;
-    return s_instance;
+    static CustomGames c;
+    return &c;
 }
 
 CustomGames *CustomGames::create(QQmlEngine *qml, QJSEngine *js)

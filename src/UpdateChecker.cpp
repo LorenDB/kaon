@@ -8,8 +8,6 @@
 
 #include "DownloadManager.h"
 
-UpdateChecker *UpdateChecker::s_instance = nullptr;
-
 UpdateChecker::UpdateChecker(QObject *parent)
     : QObject{parent}
 {
@@ -24,9 +22,8 @@ UpdateChecker::UpdateChecker(QObject *parent)
 
 UpdateChecker *UpdateChecker::instance()
 {
-    if (!s_instance)
-        s_instance = new UpdateChecker;
-    return s_instance;
+    static UpdateChecker u;
+    return &u;
 }
 
 UpdateChecker *UpdateChecker::create(QQmlEngine *, QJSEngine *)

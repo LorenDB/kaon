@@ -6,8 +6,6 @@
 
 Q_LOGGING_CATEGORY(DownloadLog, "download")
 
-DownloadManager *DownloadManager::s_instance = nullptr;
-
 DownloadManager::DownloadManager(QObject *parent)
     : QObject{parent}
 {
@@ -19,9 +17,8 @@ DownloadManager::DownloadManager(QObject *parent)
 
 DownloadManager *DownloadManager::instance()
 {
-    if (!s_instance)
-        s_instance = new DownloadManager;
-    return s_instance;
+    static DownloadManager dm;
+    return &dm;
 }
 
 void DownloadManager::download(const QNetworkRequest &request,

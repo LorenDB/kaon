@@ -13,8 +13,6 @@
 
 Q_LOGGING_CATEGORY(HeroicLog, "heroic")
 
-Heroic *Heroic::s_instance = nullptr;
-
 namespace
 {
     QJsonArray amazonLibraryCache;
@@ -233,9 +231,8 @@ Heroic::Heroic(QObject *parent)
 
 Heroic *Heroic::instance()
 {
-    if (s_instance == nullptr)
-        s_instance = new Heroic;
-    return s_instance;
+    static Heroic h;
+    return &h;
 }
 
 Heroic *Heroic::create(QQmlEngine *qml, QJSEngine *js)

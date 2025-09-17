@@ -32,7 +32,7 @@ signals:
 
 private:
     explicit UpdateChecker(QObject *parent = nullptr);
-    static UpdateChecker *s_instance;
+    ~UpdateChecker() {}
 
     bool m_enabled{true};
     QString m_ignore;

@@ -17,8 +17,6 @@
 
 Q_LOGGING_CATEGORY(ItchLog, "itch")
 
-Itch *Itch::s_instance = nullptr;
-
 namespace
 {
     QSqlDatabase ITCH_DB;
@@ -147,9 +145,8 @@ public:
 
 Itch *Itch::instance()
 {
-    if (!s_instance)
-        s_instance = new Itch;
-    return s_instance;
+    static Itch i;
+    return &i;
 }
 
 Itch::Itch(QObject *parent)

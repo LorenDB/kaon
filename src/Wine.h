@@ -31,5 +31,5 @@ signals:
 
 private:
     explicit Wine(QObject *parent = nullptr);
-    static Wine *s_instance;
+    ~Wine() {}
 };

@@ -93,7 +93,7 @@ protected:
 
 private:
     explicit GamesFilterModel(QObject *parent = nullptr);
-    inline static GamesFilterModel *s_instance = nullptr;
+    ~GamesFilterModel() {}
 
     QConcatenateTablesProxyModel *m_models;
 
