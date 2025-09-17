@@ -10,15 +10,14 @@ import dev.lorendb.kaon
 ListView {
     id: list
 
-    enum DisplayMode
-    {
+    enum DisplayMode {
         GlobalModsManager,
         ManageGameInstalledMods
     }
 
+    readonly property int displayMode: game ? ModsList.ManageGameInstalledMods : ModsList.GlobalModsManager
     property Game game
     property alias showIncompatible: mfm.showIncompatible
-    readonly property int displayMode: game ? ModsList.ManageGameInstalledMods : ModsList.GlobalModsManager
 
     clip: true
 
@@ -123,7 +122,8 @@ ListView {
                     if (delegate.mod.type === Mod.Launchable)
                     return "Launch game, then mod";
                 }
-                visible: list.displayMode === ModsList.ManageGameInstalledMods && list.game.canLaunch && delegate.mod.type === Mod.Launchable
+                visible: list.displayMode === ModsList.ManageGameInstalledMods && list.game.canLaunch && delegate.mod.type
+                         === Mod.Launchable
 
                 onClicked: {
                     if (!delegate.mod.dependenciesSatisfied(list.game)) {
@@ -188,12 +188,12 @@ ListView {
 
                 Component.onCompleted: {
                     if (list.displayMode === ModsList.GlobalModsManager)
-                        currentIndex = Math.max(0, releaseFilter.indexFromRelease(delegate.mod.currentRelease));
-                    else
-                    {
-                        currentIndex = Math.max(0, releaseFilter.indexFromRelease(delegate.mod.releaseInstalledForGame(list.game)));
+                    currentIndex = Math.max(0, releaseFilter.indexFromRelease(delegate.mod.currentRelease));
+                    else {
+                        currentIndex = Math.max(0, releaseFilter.indexFromRelease(delegate.mod.releaseInstalledForGame(
+                                                                                      list.game)));
                         if (currentIndex === -1)
-                            currentIndex = Math.max(0, releaseFilter.indexFromRelease(delegate.mod.currentRelease));
+                        currentIndex = Math.max(0, releaseFilter.indexFromRelease(delegate.mod.currentRelease));
                     }
                 }
                 onActivated: delegate.mod.setCurrentRelease(currentValue)

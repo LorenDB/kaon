@@ -234,7 +234,7 @@ void UEVR::parseReleaseInfoJson()
         const auto id = json["id"_L1].toInt();
         const auto timestamp = QDateTime::fromString(json["published_at"_L1].toString(), Qt::ISODate);
         const auto downloaded = QFileInfo::exists(UEVR::instance()->path(UEVR::Paths::UEVRBasePath) + '/' +
-                                                 QString::number(id) + "/UEVRInjector.exe"_L1);
+                                                  QString::number(id) + "/UEVRInjector.exe"_L1);
 
         QUrl downloadUrl;
         for (const auto &asset : json["assets"_L1].toArray())

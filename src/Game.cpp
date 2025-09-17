@@ -206,11 +206,11 @@ void Game::detectArchitectures()
                 //     break;
                 default:
                     Aptabase::instance()->track(
-                                "unknown-pe-architecture-bug"_L1,
-                                {{"pe-arch"_L1, machine},
-                                 {"game-id", m_id},
-                                 {"executable", exe.executable},
-                                 {"store", QMetaEnum::fromType<Store>().valueToKey(static_cast<quint64>(store()))}});
+                        "unknown-pe-architecture-bug"_L1,
+                        {{"pe-arch"_L1, machine},
+                         {"game-id", m_id},
+                         {"executable", exe.executable},
+                         {"store", QMetaEnum::fromType<Store>().valueToKey(static_cast<quint64>(store()))}});
                     break;
                 }
             }
@@ -275,11 +275,11 @@ void Game::detectArchitectures()
                 //     break;
                 default:
                     Aptabase::instance()->track(
-                                "unknown-elf-architecture-bug"_L1,
-                                {{"elf-arch"_L1, machine},
-                                 {"game-id", m_id},
-                                 {"executable", exe.executable},
-                                 {"store", QMetaEnum::fromType<Store>().valueToKey(static_cast<quint64>(store()))}});
+                        "unknown-elf-architecture-bug"_L1,
+                        {{"elf-arch"_L1, machine},
+                         {"game-id", m_id},
+                         {"executable", exe.executable},
+                         {"store", QMetaEnum::fromType<Store>().valueToKey(static_cast<quint64>(store()))}});
                     break;
                 }
             }

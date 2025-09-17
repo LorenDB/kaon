@@ -8,7 +8,7 @@
 #include "ModsFilterModel.h"
 
 ModRelease::ModRelease(
-        int id, QString name, QDateTime timestamp, bool nightly, bool downloaded, QUrl downloadUrl, QObject *parent)
+    int id, QString name, QDateTime timestamp, bool nightly, bool downloaded, QUrl downloadUrl, QObject *parent)
     : QObject{parent},
       m_id{id},
       m_name{name},

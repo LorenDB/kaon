@@ -35,10 +35,10 @@ bool Bepinex::checkGameCompatibility(const Game *game) const
     return std::none_of(game->executables().cbegin(),
                         game->executables().cend(),
                         [this, game](const auto &exe) {
-        return QFileInfo::exists(modInstallDirForGame(game, exe) + "/GameAssembly.dll"_L1) ||
-                QFileInfo::exists(modInstallDirForGame(game, exe) + "/GameAssembly.so"_L1);
-    }) &&
-            GitHubZipExtractorMod::checkGameCompatibility(game);
+                            return QFileInfo::exists(modInstallDirForGame(game, exe) + "/GameAssembly.dll"_L1) ||
+                                   QFileInfo::exists(modInstallDirForGame(game, exe) + "/GameAssembly.so"_L1);
+                        }) &&
+           GitHubZipExtractorMod::checkGameCompatibility(game);
 }
 
 bool Bepinex::isInstalledForGame(const Game *game) const
