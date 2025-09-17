@@ -31,18 +31,24 @@ QList<Mod *> UUVR::dependencies() const
 bool UUVR::checkGameCompatibility(const Game *game) const
 {
     // Filter out IL2CPP builds
-    if (QFileInfo::exists(GitHubZipExtractorMod::modInstallDirForGame(game) + "/GameAssembly.dll"_L1) ||
-            QFileInfo::exists(GitHubZipExtractorMod::modInstallDirForGame(game) + "/GameAssembly.so"_L1))
-        return false;
-
-    return GitHubZipExtractorMod::checkGameCompatibility(game);
+    return std::none_of(game->executables().cbegin(),
+                        game->executables().cend(),
+                        [this, game](const auto &exe) {
+        return QFileInfo::exists(GitHubZipExtractorMod::modInstallDirForGame(game, exe) +
+                                 "/GameAssembly.dll"_L1) ||
+                QFileInfo::exists(GitHubZipExtractorMod::modInstallDirForGame(game, exe) +
+                                  "/GameAssembly.so"_L1);
+    }) &&
+            GitHubZipExtractorMod::checkGameCompatibility(game);
 }
 
 bool UUVR::isInstalledForGame(const Game *game) const
 {
     if (!game)
         return false;
-    return QFileInfo::exists(modInstallDirForGame(game) + "/plugins/Uuvr.dll"_L1);
+    return std::any_of(game->executables().cbegin(), game->executables().cend(), [this, game](const auto &exe) {
+        return QFileInfo::exists(modInstallDirForGame(game, exe) + "/plugins/Uuvr.dll"_L1);
+    });
 }
 
 bool UUVR::isThisFileTheActualModDownload(const QString &file) const
@@ -50,9 +56,9 @@ bool UUVR::isThisFileTheActualModDownload(const QString &file) const
     return file.toLower() == "uuvr-mono-modern.zip"_L1;
 }
 
-QString UUVR::modInstallDirForGame(const Game *game) const
+QString UUVR::modInstallDirForGame(const Game *game, const Game::LaunchOption &executable) const
 {
-    return GitHubZipExtractorMod::modInstallDirForGame(game) + "/BepInEx"_L1;
+    return GitHubZipExtractorMod::modInstallDirForGame(game, executable) + "/BepInEx"_L1;
 }
 
 UUVR::UUVR(QObject *parent)

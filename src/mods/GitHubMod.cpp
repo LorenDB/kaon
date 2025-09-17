@@ -155,59 +155,63 @@ GitHubZipExtractorMod::GitHubZipExtractorMod(QObject *parent)
     : GitHubMod{parent}
 {}
 
-QString GitHubZipExtractorMod::modInstallDirForGame(const Game *game) const
+QString GitHubZipExtractorMod::modInstallDirForGame(const Game *game, const Game::LaunchOption &executable) const
 {
-    QString retval;
-    for (const auto &exe : game->executables())
-    {
-        if (!QFileInfo::exists(exe.executable))
-            continue;
-        const auto sliced = exe.executable.sliced(0, exe.executable.lastIndexOf('/'));
-        // We prefer x64 binaries if possible
-        if (exe.arch == Game::Architecture::x64)
-        {
-            retval = sliced;
-            break;
-        }
-        else if (retval.isEmpty())
-            retval = sliced;
-    }
-
-    if (retval.isEmpty())
-        retval = game->installDir();
+    const auto retval = executable.executable.sliced(0, executable.executable.lastIndexOf('/'));
+    if (retval.isEmpty() || !QFileInfo::exists(executable.executable))
+        return game->installDir();
     return retval;
 }
 
 void GitHubZipExtractorMod::installMod(Game *game)
 {
-    if (!QFileInfo::exists(modInstallDirForGame(game)))
-        QDir().mkpath(modInstallDirForGame(game));
+    QStringList installedFilesListing;
+    QSet<QString> dirsInstalledTo;
 
-    QProcess process;
-    process.setWorkingDirectory(modInstallDirForGame(game));
-    QStringList args;
-    args << "-o" << path(Paths::CurrentRelease);
-    process.start("unzip", args);
-    process.waitForFinished();
-    if (process.exitCode() != 0)
+    for (const auto &exe : game->executables())
     {
-        qCWarning(logger()).noquote() << "Unzip" << displayName() << "failed:" << process.errorString();
-        qCWarning(logger()) << process.readAllStandardError();
-        return;
+        const auto installDir = modInstallDirForGame(game, exe);
+
+        // Prevent pointlessly overwriting an already-installed mod
+        if (dirsInstalledTo.contains(installDir))
+            continue;
+        else
+            dirsInstalledTo.insert(installDir);
+
+        if (!QFileInfo::exists(installDir))
+            QDir().mkpath(installDir);
+
+        QProcess process;
+        process.setWorkingDirectory(installDir);
+        QStringList args;
+        args << "-o" << path(Paths::CurrentRelease);
+        process.start("unzip", args);
+        process.waitForFinished();
+        if (process.exitCode() != 0)
+        {
+            qCWarning(logger()).noquote() << "Unzip" << displayName() << "failed:" << process.errorString();
+            qCWarning(logger()) << process.readAllStandardError();
+            continue;
+        }
+
+        args[0] = "-Z1"_L1;
+        process.start("unzip", args);
+        process.waitForFinished();
+        if (process.exitCode() == 0)
+        {
+            const auto files = QString{process.readAllStandardOutput()}.split('\n');
+            for (const auto &file : files)
+            {
+                if (!file.isEmpty())
+                    installedFilesListing += installDir + '/' + file;
+            }
+        }
     }
 
-    args[0] = "-Z1"_L1;
-    process.start("unzip", args);
-    process.waitForFinished();
-    if (process.exitCode() == 0)
-    {
-        QSettings settings;
-        settings.beginGroup(settingsGroup());
-        settings.beginGroup(game->id());
-
-        const auto listing = QString{process.readAllStandardOutput()}.split('\n');
-        settings.setValue("installedFiles"_L1, listing);
-    }
+    QSettings settings;
+    settings.beginGroup(settingsGroup());
+    settings.beginGroup(game->id());
+    settings.setValue("installedFiles"_L1, installedFilesListing);
 
     Mod::installMod(game);
 }
@@ -225,11 +229,10 @@ void GitHubZipExtractorMod::uninstallMod(Game *game)
     {
         if (file.isEmpty())
             continue;
-        const auto fullPath = modInstallDirForGame(game) + '/' + file;
-        if (fullPath.endsWith('/'))
-            dirs << fullPath;
+        if (file.endsWith('/'))
+            dirs << file;
         else
-            QFile{fullPath}.remove();
+            QFile{file}.remove();
     }
 
     std::sort(dirs.begin(), dirs.end(), [](const auto &l, const auto &r) { return l.count('/') > r.count('/'); });

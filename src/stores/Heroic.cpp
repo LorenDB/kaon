@@ -200,7 +200,7 @@ public:
         detectArchitectures();
         detectAnticheat();
 
-        m_valid = true;
+        m_valid = m_executables.size() > 0;
     }
 
     Store store() const override { return Store::Heroic; }

@@ -181,7 +181,9 @@ protected:
     bool m_canLaunch{false};
     bool m_canOpenSettings{false};
 
-    // Set this to true at the very end of your Game constructor
+    // Set this to true at the very end of your Game constructor, assuming all has gone well. Examples of not going well
+    // would include finding that the game has disappeared from disk, not being sent any valid launch options, or having some
+    // other critical piece of game infrastructure not exist.
     bool m_valid = false;
 
 private:

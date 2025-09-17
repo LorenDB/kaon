@@ -56,7 +56,7 @@ public:
         detectArchitectures();
         detectAnticheat();
 
-        m_valid = !m_installDir.isEmpty();
+        m_valid = !m_installDir.isEmpty() && QFileInfo::exists(m_executables[0].executable);
     }
 
     CustomGame(const QString &name, const QString &executable, QObject *parent)
@@ -90,7 +90,7 @@ public:
         detectArchitectures();
         detectAnticheat();
 
-        m_valid = !m_installDir.isEmpty();
+        m_valid = !m_installDir.isEmpty() && QFileInfo::exists(m_executables[0].executable);
     }
 
     Store store() const override { return Store::Custom; }
