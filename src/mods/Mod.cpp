@@ -219,6 +219,9 @@ bool ModReleaseFilter::lessThan(const QModelIndex &left, const QModelIndex &righ
 }
 void Mod::installMod(Game *game)
 {
+    Aptabase::instance()->track("install-"_L1 + settingsGroup(),
+                                {{"version"_L1, currentRelease()->name()}, {"game"_L1, game->name()}});
+
     QSettings settings;
     settings.beginGroup(settingsGroup());
     settings.beginGroup(game->id());
