@@ -21,8 +21,9 @@ public:
 
     Game::Engines compatibleEngines() const override { return Game::Engine::Unity; }
     QList<Mod *> dependencies() const override;
-    bool checkGameCompatibility(const Game *game) const override;
     bool isInstalledForGame(const Game *game) const override;
+
+    virtual QMap<int, Game::LaunchOption> acceptableInstallCandidates(const Game *game) const override;
 
 protected:
     QUrl githubUrl() const final { return {"https://api.github.com/repos/Raicuparta/uuvr/releases"_L1}; }

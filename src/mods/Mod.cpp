@@ -1,5 +1,6 @@
 #include "Mod.h"
 
+#include <QFileInfo>
 #include <QLoggingCategory>
 #include <QSettings>
 #include <QTimer>
@@ -42,11 +43,6 @@ Mod::Mod(QObject *parent)
             setCurrentRelease(id);
         }
     });
-}
-
-bool Mod::checkGameCompatibility(const Game *game) const
-{
-    return compatibleEngines().testFlag(game->engine());
 }
 
 bool Mod::dependenciesSatisfied(const Game *game) const
@@ -143,6 +139,15 @@ void Mod::setCurrentRelease(const int id)
     QSettings settings;
     settings.beginGroup(settingsGroup());
     settings.setValue("currentRelease"_L1, id);
+}
+
+QMap<int, Game::LaunchOption> Mod::acceptableInstallCandidates(const Game *game) const
+{
+    if (!compatibleEngines().testFlag(game->engine()))
+        return {};
+    auto copy = game->executables();
+    copy.removeIf([](const std::pair<int, Game::LaunchOption> &exe) { return !QFileInfo::exists(exe.second.executable); });
+    return copy;
 }
 
 ModReleaseFilter::ModReleaseFilter(QObject *parent)

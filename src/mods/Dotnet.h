@@ -25,8 +25,9 @@ public:
 
     // .NET is only needed for UEVR, so we'll only show it for Unreal games
     virtual Game::Engines compatibleEngines() const override { return Game::Engine::Unreal; }
-    virtual bool checkGameCompatibility(const Game *game) const override;
     virtual bool isInstalledForGame(const Game *game) const override;
+
+    virtual QMap<int, Game::LaunchOption> acceptableInstallCandidates(const Game *game) const override;
 
 public slots:
     void downloadRelease(ModRelease *) override;

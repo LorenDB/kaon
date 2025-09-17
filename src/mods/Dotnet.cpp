@@ -34,13 +34,6 @@ const QLoggingCategory &Dotnet::logger() const
     return DotNetLog();
 }
 
-bool Dotnet::checkGameCompatibility(const Game *game) const
-{
-    if (game->noWindowsSupport())
-        return false;
-    return Mod::checkGameCompatibility(game);
-}
-
 bool Dotnet::isInstalledForGame(const Game *game) const
 {
     if (!game || !game->hasValidWine())
@@ -100,6 +93,15 @@ void Dotnet::uninstallMod(Game *game)
 {
     // Installer and uninstaller are the same
     installMod(game);
+}
+
+QMap<int, Game::LaunchOption> Dotnet::acceptableInstallCandidates(const Game *game) const
+{
+    auto options = Mod::acceptableInstallCandidates(game);
+    options.removeIf([this, game](const std::pair<int, Game::LaunchOption> &exe) {
+        return exe.second.platform != Game::LaunchOption::Platform::Windows;
+    });
+    return options;
 }
 
 QList<ModRelease *> Dotnet::releases() const

@@ -29,24 +29,13 @@ const QLoggingCategory &Bepinex::logger() const
     return BepinexLog();
 }
 
-bool Bepinex::checkGameCompatibility(const Game *game) const
-{
-    // Filter out IL2CPP builds
-    return std::none_of(game->executables().cbegin(),
-                        game->executables().cend(),
-                        [this, game](const auto &exe) {
-                            return QFileInfo::exists(modInstallDirForGame(game, exe) + "/GameAssembly.dll"_L1) ||
-                                   QFileInfo::exists(modInstallDirForGame(game, exe) + "/GameAssembly.so"_L1);
-                        }) &&
-           GitHubZipExtractorMod::checkGameCompatibility(game);
-}
-
 bool Bepinex::isInstalledForGame(const Game *game) const
 {
     if (!game)
         return false;
     // TODO: this only detects Linux/macOS installations of BepInEx
-    return std::any_of(game->executables().cbegin(), game->executables().cend(), [this, game](const auto &exe) {
+    const auto exes = acceptableInstallCandidates(game);
+    return std::any_of(exes.cbegin(), exes.cend(), [this, game](const auto &exe) {
         return QFileInfo::exists(modInstallDirForGame(game, exe) + "/run_bepinex.sh"_L1);
     });
 }
@@ -56,7 +45,7 @@ void Bepinex::installMod(Game *game)
     GitHubZipExtractorMod::installMod(game);
 
     QSet<QString> dirsInstalledTo;
-    for (const auto &exe : game->executables())
+    for (const auto &exe : acceptableInstallCandidates(game))
     {
         if (!QFileInfo::exists(exe.executable))
             continue;
@@ -86,6 +75,18 @@ void Bepinex::installMod(Game *game)
             }
         }
     }
+}
+
+QMap<int, Game::LaunchOption> Bepinex::acceptableInstallCandidates(const Game *game) const
+{
+    auto options = GitHubZipExtractorMod::acceptableInstallCandidates(game);
+    options.removeIf([this, game](const std::pair<int, Game::LaunchOption> &exe) {
+        // Filter out IL2CPP builds (I seriously doubt that there are any games with both IL2CPP and Mono builds available at
+        // the same time, but who knows. People do crazy things sometimes.
+        return QFileInfo::exists(modInstallDirForGame(game, exe.second) + "/GameAssembly.dll"_L1) ||
+               QFileInfo::exists(modInstallDirForGame(game, exe.second) + "/GameAssembly.so"_L1);
+    });
+    return options;
 }
 
 bool Bepinex::isThisFileTheActualModDownload(const QString &file) const

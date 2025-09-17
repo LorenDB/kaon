@@ -26,16 +26,12 @@ const QLoggingCategory &Portal2VR::logger() const
     return P2VRLog();
 }
 
-bool Portal2VR::checkGameCompatibility(const Game *game) const
-{
-    return game->store() == Game::Store::Steam && (game->id() == "620"_L1 || game->id() == "317400"_L1);
-}
-
 bool Portal2VR::isInstalledForGame(const Game *game) const
 {
     if (!game)
         return false;
-    return std::any_of(game->executables().cbegin(), game->executables().cend(), [this, game](const auto &exe) {
+    const auto exes = acceptableInstallCandidates(game);
+    return std::any_of(exes.cbegin(), exes.cend(), [this, game](const auto &exe) {
         return QFileInfo::exists(modInstallDirForGame(game, exe) + "/bin/openvr_api.dll"_L1);
     });
 }
@@ -47,7 +43,7 @@ void Portal2VR::installMod(Game *game)
     // Portal Stories: Mel needs special configuration to work
     if (game->id() == "317400"_L1)
     {
-        for (const auto &exe : game->executables())
+        for (const auto &exe : acceptableInstallCandidates(game))
         {
             // Applying fixes shown here: https://steamcommunity.com/sharedfiles/filedetails/?id=3037963726
             QFile config{modInstallDirForGame(game, exe) + "/VR/config.txt"_L1};
@@ -82,6 +78,13 @@ void Portal2VR::installMod(Game *game)
             }
         }
     }
+}
+
+QMap<int, Game::LaunchOption> Portal2VR::acceptableInstallCandidates(const Game *game) const
+{
+    if (game->store() != Game::Store::Steam || (game->id() != "620"_L1 && game->id() != "317400"_L1))
+        return {};
+    return GitHubZipExtractorMod::acceptableInstallCandidates(game);
 }
 
 bool Portal2VR::isThisFileTheActualModDownload(const QString &file) const

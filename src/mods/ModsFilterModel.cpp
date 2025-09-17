@@ -94,7 +94,7 @@ bool ModsFilterModel::filterAcceptsRow(int row, const QModelIndex &parent) const
         return false;
     if (m_game && m_game->isValid())
     {
-        if (!m_showIncompatible && !mod->checkGameCompatibility(m_game))
+        if (!m_showIncompatible && mod->acceptableInstallCandidates(m_game).isEmpty())
             return false;
     }
     return QSortFilterProxyModel::filterAcceptsRow(row, parent);
@@ -107,8 +107,8 @@ bool ModsFilterModel::lessThan(const QModelIndex &left, const QModelIndex &right
 
     if (m_game)
     {
-        const auto leftCompat = leftMod->checkGameCompatibility(m_game);
-        const auto rightCompat = rightMod->checkGameCompatibility(m_game);
+        const auto leftCompat = leftMod->acceptableInstallCandidates(m_game).isEmpty();
+        const auto rightCompat = rightMod->acceptableInstallCandidates(m_game).isEmpty();
         if (leftCompat != rightCompat)
             return leftCompat > rightCompat;
     }

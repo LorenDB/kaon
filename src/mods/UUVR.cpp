@@ -28,27 +28,26 @@ QList<Mod *> UUVR::dependencies() const
     return {Bepinex::instance()};
 }
 
-bool UUVR::checkGameCompatibility(const Game *game) const
-{
-    // Filter out IL2CPP builds
-    return std::none_of(game->executables().cbegin(),
-                        game->executables().cend(),
-                        [this, game](const auto &exe) {
-                            return QFileInfo::exists(GitHubZipExtractorMod::modInstallDirForGame(game, exe) +
-                                                     "/GameAssembly.dll"_L1) ||
-                                   QFileInfo::exists(GitHubZipExtractorMod::modInstallDirForGame(game, exe) +
-                                                     "/GameAssembly.so"_L1);
-                        }) &&
-           GitHubZipExtractorMod::checkGameCompatibility(game);
-}
-
 bool UUVR::isInstalledForGame(const Game *game) const
 {
     if (!game)
         return false;
-    return std::any_of(game->executables().cbegin(), game->executables().cend(), [this, game](const auto &exe) {
+    const auto exes = acceptableInstallCandidates(game);
+    return std::any_of(exes.cbegin(), exes.cend(), [this, game](const auto &exe) {
         return QFileInfo::exists(modInstallDirForGame(game, exe) + "/plugins/Uuvr.dll"_L1);
     });
+}
+
+QMap<int, Game::LaunchOption> UUVR::acceptableInstallCandidates(const Game *game) const
+{
+    auto options = GitHubZipExtractorMod::acceptableInstallCandidates(game);
+    options.removeIf([this, game](const std::pair<int, Game::LaunchOption> &exe) {
+        // Filter out IL2CPP builds (I seriously doubt that there are any games with both IL2CPP and Mono builds available at
+        // the same time, but who knows. People do crazy things sometimes.
+        return QFileInfo::exists(GitHubZipExtractorMod::modInstallDirForGame(game, exe.second) + "/GameAssembly.dll"_L1) ||
+               QFileInfo::exists(GitHubZipExtractorMod::modInstallDirForGame(game, exe.second) + "/GameAssembly.so"_L1);
+    });
+    return options;
 }
 
 bool UUVR::isThisFileTheActualModDownload(const QString &file) const

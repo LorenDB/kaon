@@ -49,13 +49,6 @@ QList<Mod *> UEVR::dependencies() const
     return {Dotnet::instance()};
 }
 
-bool UEVR::checkGameCompatibility(const Game *game) const
-{
-    if (game->noWindowsSupport())
-        return false;
-    return Mod::checkGameCompatibility(game);
-}
-
 bool UEVR::isInstalledForGame(const Game *game) const
 {
     return currentRelease()->downloaded();
@@ -130,6 +123,15 @@ void UEVR::launchMod(Game *game)
 {
     Aptabase::instance()->track("launch-uevr"_L1, {{"version"_L1, currentRelease()->name()}, {"game"_L1, game->name()}});
     Wine::instance()->runInWine(currentRelease()->name(), game, path(Paths::CurrentUEVRInjector));
+}
+
+QMap<int, Game::LaunchOption> UEVR::acceptableInstallCandidates(const Game *game) const
+{
+    auto options = Mod::acceptableInstallCandidates(game);
+    options.removeIf([this, game](const std::pair<int, Game::LaunchOption> &exe) {
+        return exe.second.platform != Game::LaunchOption::Platform::Windows;
+    });
+    return options;
 }
 
 QString UEVR::path(const Paths path) const

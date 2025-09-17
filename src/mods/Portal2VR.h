@@ -21,8 +21,9 @@ public:
     const QLoggingCategory &logger() const final;
 
     Game::Engines compatibleEngines() const override { return Game::Engine::Source; }
-    virtual bool checkGameCompatibility(const Game *game) const override;
     virtual bool isInstalledForGame(const Game *game) const override;
+
+    virtual QMap<int, Game::LaunchOption> acceptableInstallCandidates(const Game *game) const override;
 
 public slots:
     void installMod(Game *game) override;

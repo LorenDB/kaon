@@ -83,8 +83,6 @@ public:
     virtual Game::Engines compatibleEngines() const = 0;
     virtual QList<Mod *> dependencies() const { return {}; }
 
-    // By default, just checks against engine compatibility. You may need to override to check for specific games.
-    virtual bool checkGameCompatibility(const Game *game) const;
     Q_INVOKABLE virtual bool isInstalledForGame(const Game *game) const = 0;
     Q_INVOKABLE bool dependenciesSatisfied(const Game *game) const;
 
@@ -93,6 +91,9 @@ public:
     ModRelease *currentRelease() const;
     ModRelease *releaseFromId(const int id) const;
     Q_INVOKABLE ModRelease *releaseInstalledForGame(const Game *game);
+
+    // Override this to apply filters to both the entire game and individual executables
+    virtual QMap<int, Game::LaunchOption> acceptableInstallCandidates(const Game *game) const;
 
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;

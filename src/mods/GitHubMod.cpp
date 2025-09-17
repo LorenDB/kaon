@@ -168,7 +168,7 @@ void GitHubZipExtractorMod::installMod(Game *game)
     QStringList installedFilesListing;
     QSet<QString> dirsInstalledTo;
 
-    for (const auto &exe : game->executables())
+    for (const auto &exe : acceptableInstallCandidates(game))
     {
         const auto installDir = modInstallDirForGame(game, exe);
 
