@@ -35,7 +35,7 @@ bool Portal2VR::isInstalledForGame(const Game *game) const
 {
     if (!game)
         return false;
-    return QFileInfo::exists(game->installDir() + "/bin/openvr_api.dll"_L1);
+    return QFileInfo::exists(modInstallDirForGame(game) + "/bin/openvr_api.dll"_L1);
 }
 
 void Portal2VR::installMod(Game *game)
@@ -46,7 +46,7 @@ void Portal2VR::installMod(Game *game)
     if (game->id() == "317400"_L1)
     {
         // Applying fixes shown here: https://steamcommunity.com/sharedfiles/filedetails/?id=3037963726
-        QFile config{game->installDir() + "/VR/config.txt"_L1};
+        QFile config{modInstallDirForGame(game) + "/VR/config.txt"_L1};
         if (config.open(QIODevice::ReadOnly))
         {
             QStringList lines;
@@ -82,11 +82,6 @@ void Portal2VR::installMod(Game *game)
 bool Portal2VR::isThisFileTheActualModDownload(const QString &file) const
 {
     return file.startsWith("Portal2VR"_L1) && file.endsWith(".zip"_L1) && !file.contains("debug"_L1, Qt::CaseInsensitive);
-}
-
-QString Portal2VR::modInstallDirForGame(Game *game) const
-{
-    return game->installDir();
 }
 
 Portal2VR::Portal2VR(QObject *parent)

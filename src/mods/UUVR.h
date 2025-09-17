@@ -27,7 +27,7 @@ public:
 protected:
     QUrl githubUrl() const final { return {"https://api.github.com/repos/Raicuparta/uuvr/releases"_L1}; }
     bool isThisFileTheActualModDownload(const QString &file) const final;
-    QString modInstallDirForGame(Game *game) const final;
+    QString modInstallDirForGame(const Game *game) const final;
 
 private:
     explicit UUVR(QObject *parent = nullptr);

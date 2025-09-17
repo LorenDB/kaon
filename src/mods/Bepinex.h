@@ -30,7 +30,6 @@ public slots:
 protected:
     QUrl githubUrl() const final { return {"https://api.github.com/repos/BepInEx/BepInEx/releases"_L1}; }
     bool isThisFileTheActualModDownload(const QString &file) const final;
-    QString modInstallDirForGame(Game *game) const final;
 
 private:
     explicit Bepinex(QObject *parent = nullptr);

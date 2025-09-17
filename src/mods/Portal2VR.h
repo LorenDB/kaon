@@ -30,7 +30,6 @@ public slots:
 protected:
     QUrl githubUrl() const final { return {"https://api.github.com/repos/Gistix/portal2vr/releases"_L1}; }
     bool isThisFileTheActualModDownload(const QString &file) const final;
-    virtual QString modInstallDirForGame(Game *game) const final;
 
 private:
     explicit Portal2VR(QObject *parent = nullptr);

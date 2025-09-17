@@ -32,8 +32,8 @@ const QLoggingCategory &Bepinex::logger() const
 bool Bepinex::checkGameCompatibility(const Game *game) const
 {
     // Filter out IL2CPP builds
-    if (QFileInfo::exists(game->installDir() + "/GameAssembly.dll"_L1) ||
-            QFileInfo::exists(game->installDir() + "/GameAssembly.so"_L1))
+    if (QFileInfo::exists(modInstallDirForGame(game) + "/GameAssembly.dll"_L1) ||
+            QFileInfo::exists(modInstallDirForGame(game) + "/GameAssembly.so"_L1))
         return false;
 
     return Mod::checkGameCompatibility(game);
@@ -43,7 +43,7 @@ bool Bepinex::isInstalledForGame(const Game *game) const
 {
     if (!game)
         return false;
-    return QFileInfo::exists(game->installDir() + "/run_bepinex.sh"_L1);
+    return QFileInfo::exists(modInstallDirForGame(game) + "/run_bepinex.sh"_L1);
 }
 
 void Bepinex::installMod(Game *game)
@@ -51,7 +51,7 @@ void Bepinex::installMod(Game *game)
     GitHubZipExtractorMod::installMod(game);
 
     QProcess process;
-    process.setWorkingDirectory(game->installDir());
+    process.setWorkingDirectory(modInstallDirForGame(game));
     process.start("chmod"_L1, {"+x"_L1, "run_bepinex.sh"_L1});
     process.waitForFinished();
 }
@@ -59,11 +59,6 @@ void Bepinex::installMod(Game *game)
 bool Bepinex::isThisFileTheActualModDownload(const QString &file) const
 {
     return file.startsWith("BepInEx_linux"_L1);
-}
-
-QString Bepinex::modInstallDirForGame(Game *game) const
-{
-    return game->installDir();
 }
 
 Bepinex::Bepinex(QObject *parent)

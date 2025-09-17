@@ -155,6 +155,29 @@ GitHubZipExtractorMod::GitHubZipExtractorMod(QObject *parent)
     : GitHubMod{parent}
 {}
 
+QString GitHubZipExtractorMod::modInstallDirForGame(const Game *game) const
+{
+    QString retval;
+    for (const auto &exe : game->executables())
+    {
+        if (!QFileInfo::exists(exe.executable))
+            continue;
+        const auto sliced = exe.executable.sliced(0, exe.executable.lastIndexOf('/'));
+        // We prefer x64 binaries if possible
+        if (exe.arch == Game::Architecture::x64)
+        {
+            retval = sliced;
+            break;
+        }
+        else if (retval.isEmpty())
+            retval = sliced;
+    }
+
+    if (retval.isEmpty())
+        retval = game->installDir();
+    return retval;
+}
+
 void GitHubZipExtractorMod::installMod(Game *game)
 {
     if (!QFileInfo::exists(modInstallDirForGame(game)))

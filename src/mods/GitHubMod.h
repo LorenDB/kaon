@@ -46,7 +46,7 @@ protected:
     explicit GitHubZipExtractorMod(QObject *parent = nullptr);
     ~GitHubZipExtractorMod() {}
 
-    virtual QString modInstallDirForGame(Game *game) const = 0;
+    virtual QString modInstallDirForGame(const Game *game) const;
 
 public slots:
     void installMod(Game *game) override;

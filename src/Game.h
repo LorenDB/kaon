@@ -124,6 +124,22 @@ public:
     LogoPosition logoHPosition() const { return m_logoHPosition; }
     LogoPosition logoVPosition() const { return m_logoVPosition; }
 
+    struct LaunchOption
+    {
+        enum class Platform
+        {
+            Windows,
+            Linux,
+            MacOS,
+        };
+
+        Platform platform;
+        Architecture arch = Architecture::UnknownArch;
+        QString executable;
+    };
+
+    const QMap<int, LaunchOption> executables() const { return m_executables; }
+
     // This is used to detect if a game has fully loaded or if there were errors parsing it.
     bool isValid() const { return m_valid; }
 
@@ -159,20 +175,6 @@ protected:
     double m_logoHeight{0};
     LogoPosition m_logoHPosition;
     LogoPosition m_logoVPosition;
-
-    struct LaunchOption
-    {
-        enum class Platform
-        {
-            Windows,
-            Linux,
-            MacOS,
-        };
-
-        Platform platform;
-        Architecture arch = Architecture::UnknownArch;
-        QString executable;
-    };
 
     QMap<int, LaunchOption> m_executables;
 
