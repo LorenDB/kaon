@@ -49,7 +49,7 @@ AppInfoVDF::AppInfoVDF()
     : m_appInfoPath{Steam::instance()->storeRoot() + "/appcache/appinfo.vdf"_L1}
 {
     if (!QFileInfo::exists(m_appInfoPath))
-        return; // TODO: log error
+        return;
 
     QFile dataFile{m_appInfoPath};
     if (dataFile.open(QIODevice::ReadOnly))

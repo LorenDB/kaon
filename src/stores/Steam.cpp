@@ -145,20 +145,6 @@ public:
                 }
             }
 
-            // This is in theory a great way to detect Source games. Unfortunately it seems to pick up some non-Source games
-            // (e.g. Sonic Racing Transformed for some reason). Therefore, I'm disabling this check for now unless and until
-            // I can figure out why Sonic Racing Transformed is marked as using Source.
-            //
-            // else if (section.name == "appinfo.extended"_L1)
-            // {
-            //     for (const auto &[key, value] : std::as_const(section.keys))
-            //     {
-            //         // TODO: this does not detect all Source games (e.g. mods don't detect)
-            //         if (key == "sourcegame"_L1 && parseInt(value.first, value.second) == 1)
-            //             m_engine = Engine::Source;
-            //     }
-            // }
-
             else if (section.name == "appinfo.common.library_assets.logo_position"_L1)
             {
                 for (const auto &[key, value] : std::as_const(section.keys))

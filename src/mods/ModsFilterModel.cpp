@@ -107,7 +107,6 @@ bool ModsFilterModel::lessThan(const QModelIndex &left, const QModelIndex &right
 
     if (m_game)
     {
-        // TODO: should this be toggleable?
         const auto leftCompat = leftMod->checkGameCompatibility(m_game);
         const auto rightCompat = rightMod->checkGameCompatibility(m_game);
         if (leftCompat != rightCompat)
