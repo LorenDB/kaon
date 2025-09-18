@@ -48,13 +48,14 @@ void Bepinex::installModImpl(Game *game, const Game::LaunchOption &exe)
         return;
 
     const auto installDir = modInstallDirForGame(game, exe);
-    QProcess process;
-    process.setWorkingDirectory(installDir);
-    process.start("chmod"_L1, {"+x"_L1, "run_bepinex.sh"_L1});
-    process.waitForFinished();
 
     if (exe.platform == Game::Platform::Linux)
     {
+        QProcess process;
+        process.setWorkingDirectory(installDir);
+        process.start("chmod"_L1, {"+x"_L1, "run_bepinex.sh"_L1});
+        process.waitForFinished();
+
         QFile file{installDir + "/run_bepinex.sh"_L1};
         if (file.open(QIODevice::ReadWrite))
         {
