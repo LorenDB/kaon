@@ -69,7 +69,7 @@ void Dotnet::downloadRelease(ModRelease *)
         [this](const QNetworkReply::NetworkError error, const QString &errorMessage) {
             qCWarning(DotNetLog) << ".NET desktop runtime download failed:" << errorMessage;
         },
-        [this] { releases().first()->setDownloaded(hasDotnetCached()); });
+        [this] { releases().constFirst()->setDownloaded(hasDotnetCached()); });
 }
 
 void Dotnet::deleteRelease(ModRelease *release)

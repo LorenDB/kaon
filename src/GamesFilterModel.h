@@ -85,7 +85,7 @@ signals:
 
     void viewTypeChanged(GamesFilterModel::ViewType viewType);
     void sortTypeChanged(GamesFilterModel::SortType sortType);
-    void featureFilterTypeChanged(FilterType type);
+    void featureFilterTypeChanged(GamesFilterModel::FilterType type);
 
 protected:
     bool filterAcceptsRow(int row, const QModelIndex &parent) const override;
