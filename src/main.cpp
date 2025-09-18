@@ -9,6 +9,7 @@
 #include <QStandardPaths>
 
 #include "Aptabase.h"
+#include "BepInExConfigManager.h"
 #include "Bepinex.h"
 #include "CustomGames.h"
 #include "Dotnet.h"
@@ -103,6 +104,7 @@ int main(int argc, char *argv[])
     Heroic::instance();
 
     Bepinex::instance();
+    BepInExConfigManager::instance();
     CustomGames::instance();
     Dotnet::instance();
     GamesFilterModel::instance();

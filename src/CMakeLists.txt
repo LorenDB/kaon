@@ -41,6 +41,8 @@ qt_add_qml_module(kaon
 
         mods/Bepinex.cpp
         mods/Bepinex.h
+        mods/BepInExConfigManager.cpp
+        mods/BepInExConfigManager.h
         mods/Dotnet.cpp
         mods/Dotnet.h
         mods/GitHubMod.cpp

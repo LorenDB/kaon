@@ -3,6 +3,7 @@
 #include <QFileInfo>
 #include <QLoggingCategory>
 
+#include "BepInExConfigManager.h"
 #include "Bepinex.h"
 
 Q_LOGGING_CATEGORY(UUVRLog, "uuvr")
@@ -25,7 +26,7 @@ const QLoggingCategory &UUVR::logger() const
 
 QList<Mod *> UUVR::dependencies() const
 {
-    return {Bepinex::instance()};
+    return {Bepinex::instance(), BepInExConfigManager::instance()};
 }
 
 bool UUVR::isInstalledForGame(const Game *game) const
