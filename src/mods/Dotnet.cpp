@@ -13,9 +13,18 @@ Q_LOGGING_CATEGORY(DotNetLog, "dotnet")
 
 Dotnet::Dotnet(QObject *parent)
     : Mod{parent},
-      m_dotnetInstallerCache{QStandardPaths::writableLocation(QStandardPaths::CacheLocation) +
+      m_dotnetInstallerCache{QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) +
                              "/windowsdesktop-runtime-6.0.36-win-x64.exe"_L1}
 {
+    // TODO: migration, remove me before 0.4.0
+    if (QFile cache(QStandardPaths::writableLocation(QStandardPaths::CacheLocation) +
+                    "/windowsdesktop-runtime-6.0.36-win-x64.exe"_L1);
+            cache.exists())
+    {
+        cache.copy(m_dotnetInstallerCache);
+        cache.remove();
+    }
+
     setCurrentRelease(42);
 }
 
