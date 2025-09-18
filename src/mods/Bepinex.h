@@ -30,6 +30,7 @@ protected:
 
     QUrl githubUrl() const final { return {"https://api.github.com/repos/BepInEx/BepInEx/releases"_L1}; }
     bool isThisFileTheActualModDownload(const QString &file) const final;
+    ModRelease::Asset chooseAssetToInstall(const Game *game, const Game::LaunchOption &exe) const final;
 
 private:
     explicit Bepinex(QObject *parent = nullptr);

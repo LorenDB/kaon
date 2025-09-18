@@ -218,6 +218,8 @@ void GitHubZipExtractorMod::installModImpl(Game *game, const Game::LaunchOption 
         QDir().mkpath(installDir);
 
     const auto asset = chooseAssetToInstall(game, exe);
+    if (asset.id == -1)
+        return; // TODO: show user an error message
 
     QProcess process;
     process.setWorkingDirectory(installDir);
