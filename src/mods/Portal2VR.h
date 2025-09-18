@@ -25,10 +25,9 @@ public:
 
     virtual QMap<int, Game::LaunchOption> acceptableInstallCandidates(const Game *game) const override;
 
-public slots:
-    void installMod(Game *game) override;
-
 protected:
+    void installModImpl(Game *game, const Game::LaunchOption &exe) override;
+
     QUrl githubUrl() const final { return {"https://api.github.com/repos/Gistix/portal2vr/releases"_L1}; }
     bool isThisFileTheActualModDownload(const QString &file) const final;
 

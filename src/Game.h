@@ -48,6 +48,14 @@ public:
     Q_ENUM(Engine)
     Q_DECLARE_FLAGS(Engines, Engine)
 
+    enum class Platform
+    {
+        Windows,
+        Linux,
+        MacOS,
+    };
+    Q_ENUM(Platform)
+
     enum class Architecture
     {
         x86,
@@ -126,13 +134,6 @@ public:
 
     struct LaunchOption
     {
-        enum class Platform
-        {
-            Windows,
-            Linux,
-            MacOS,
-        };
-
         Platform platform;
         Architecture arch = Architecture::UnknownArch;
         QString executable;

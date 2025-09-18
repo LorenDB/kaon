@@ -203,6 +203,11 @@ ListView {
                         versionCombo.currentIndex = Math.max(0, releaseFilter.indexFromRelease(delegate.mod.currentRelease));
                     }
 
+                    function onRequestChooseLaunchOption(m: GameExecutablePickerModel) {
+                        executableChooser.m = m;
+                        executableChooser.open();
+                    }
+
                     target: delegate.mod
                 }
 
@@ -310,6 +315,48 @@ ListView {
             }
             textFormat: Text.MarkdownText
             wrapMode: Text.WordWrap
+        }
+    }
+
+    Dialog {
+        id: executableChooser
+
+        property GameExecutablePickerModel m
+
+        closePolicy: Popup.CloseOnEscape
+        modal: true
+        standardButtons: Dialog.Ok | Dialog.Cancel
+        title: "Choose executable"
+        contentHeight: pickerLayout.implicitHeight
+        contentWidth: pickerLayout.implicitWidth
+
+        onAccepted: {
+            m.select(picker.currentIndex);
+            m.destroySelf();
+            m = null;
+        }
+        onRejected: m.destroySelf()
+
+        ColumnLayout {
+            id: pickerLayout
+
+            anchors.fill: parent
+            spacing: 10
+
+            Label {
+                text: executableChooser.m ? executableChooser.m.game.name + " has multiple valid executables. Please choose which one you wish to mod." : ""
+                textFormat: Text.MarkdownText
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+            }
+
+            ComboBox {
+                id: picker
+
+                model: executableChooser.m
+                textRole: "text"
+            }
         }
     }
 }

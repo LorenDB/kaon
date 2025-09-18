@@ -27,7 +27,7 @@ bool Game::hasMultiplePlatforms() const
     if (m_executables.isEmpty())
         return false;
 
-    LaunchOption::Platform prev = m_executables.first().platform;
+    Platform prev = m_executables.first().platform;
     for (const auto &exe : m_executables)
     {
         if (exe.platform != prev)
@@ -40,7 +40,7 @@ bool Game::hasMultiplePlatforms() const
 bool Game::noWindowsSupport() const
 {
     return std::all_of(m_executables.begin(), m_executables.end(), [](const auto &exe) {
-        return exe.platform != LaunchOption::Platform::Windows;
+        return exe.platform != Platform::Windows;
     });
 }
 
@@ -159,7 +159,7 @@ void Game::detectArchitectures()
         QFile raw{exe.executable};
         if (raw.open(QFile::ReadOnly))
         {
-            if (exe.platform == LaunchOption::Platform::Windows)
+            if (exe.platform == Platform::Windows)
             {
                 QDataStream ds(&raw);
                 ds.setByteOrder(QDataStream::LittleEndian);
@@ -214,7 +214,7 @@ void Game::detectArchitectures()
                     break;
                 }
             }
-            else if (exe.platform == LaunchOption::Platform::Linux)
+            else if (exe.platform == Platform::Linux)
             {
                 // TODO: some games (e.g. Portal 2) ship a .sh for the Linux launch option. I should come up with a generic
                 // solution eventually. For now, we hardcode it.

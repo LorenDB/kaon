@@ -48,9 +48,9 @@ public:
             // (check for updated version if Epic ever adds Linux support, I guess)
             // We are skipping Android and iOS for now, but can add those if it ever becomes a problem
             if (const auto platform = json["platform"].toString(); platform == "Windows"_L1 || platform == "Win32"_L1)
-                lo.platform = LaunchOption::Platform::Windows;
+                lo.platform = Platform::Windows;
             else if (platform == "Mac"_L1)
-                lo.platform = LaunchOption::Platform::MacOS;
+                lo.platform = Platform::MacOS;
 
             m_executables[m_executables.size()] = lo;
 
@@ -79,13 +79,13 @@ public:
                 const auto info = QJsonDocument::fromJson(gogGameInfo.readAll()).object();
                 m_name = info["name"_L1].toString();
 
-                LaunchOption::Platform platform;
+                Platform platform;
                 if (const auto p = json["platform"].toString(); p == "windows"_L1)
-                    platform = LaunchOption::Platform::Windows;
+                    platform = Platform::Windows;
                 else if (p == "osx"_L1)
-                    platform = LaunchOption::Platform::MacOS;
+                    platform = Platform::MacOS;
                 else if (p == "linux"_L1)
-                    platform = LaunchOption::Platform::Linux;
+                    platform = Platform::Linux;
 
                 for (const auto &entry : info["playTasks"_L1].toArray())
                 {
@@ -149,7 +149,7 @@ public:
                 const auto fuel = QJsonDocument::fromJson(fuelJson.readAll());
 
                 LaunchOption lo;
-                lo.platform = LaunchOption::Platform::Windows;
+                lo.platform = Platform::Windows;
                 lo.executable = m_installDir + '/' + fuel["Main"_L1]["Command"_L1].toString();
                 m_executables[0] = lo;
             }

@@ -6,6 +6,7 @@
 #include <QTimer>
 
 #include "Aptabase.h"
+#include "GameExecutablePickerModel.h"
 #include "ModsFilterModel.h"
 
 ModRelease::ModRelease(
@@ -141,6 +142,22 @@ void Mod::setCurrentRelease(const int id)
     settings.setValue("currentRelease"_L1, id);
 }
 
+void Mod::installModImpl(Game *game, const Game::LaunchOption &exe)
+{
+    if (!QFileInfo::exists(exe.executable))
+        return; // TODO: show user-facing error here
+
+    Aptabase::instance()->track("install-"_L1 + settingsGroup(),
+                                {{"version"_L1, currentRelease()->name()}, {"game"_L1, game->name()}});
+
+    QSettings settings;
+    settings.beginGroup(settingsGroup());
+    settings.beginGroup(game->id());
+    settings.setValue("installedVersion"_L1, m_currentRelease->id());
+
+    emit installedInGameChanged(game);
+}
+
 QMap<int, Game::LaunchOption> Mod::acceptableInstallCandidates(const Game *game) const
 {
     if (!compatibleEngines().testFlag(game->engine()))
@@ -222,18 +239,29 @@ bool ModReleaseFilter::lessThan(const QModelIndex &left, const QModelIndex &righ
 {
     return left.data(Mod::Roles::Timestamp).toDateTime() > right.data(Mod::Roles::Timestamp).toDateTime();
 }
+
 void Mod::installMod(Game *game)
 {
-    Aptabase::instance()->track("install-"_L1 + settingsGroup(),
-                                {{"version"_L1, currentRelease()->name()}, {"game"_L1, game->name()}});
+    const auto exes = acceptableInstallCandidates(game);
 
-    QSettings settings;
-    settings.beginGroup(settingsGroup());
-    settings.beginGroup(game->id());
-    settings.setValue("installedVersion"_L1, m_currentRelease->id());
-
-    emit installedInGameChanged(game);
+    switch (exes.size())
+    {
+    case 0:
+        // TODO: show error to user
+        break;
+    case 1:
+        installModImpl(game, exes.first());
+        break;
+    default:
+    {
+        auto m = new GameExecutablePickerModel{
+                this, game, [this, game](const Game::LaunchOption &exe) { installModImpl(game, exe); }};
+        emit requestChooseLaunchOption(m);
+        break;
+    }
+    }
 }
+
 void Mod::uninstallMod(Game *game)
 {
     QSettings settings;

@@ -80,26 +80,26 @@ void Dotnet::deleteRelease(ModRelease *release)
         release->setDownloaded(false);
 }
 
-void Dotnet::installMod(Game *game)
+void Dotnet::uninstallMod(Game *game)
+{
+    // Installer and uninstaller are the same
+    installModImpl(game, {});
+}
+
+void Dotnet::installModImpl(Game *game, const Game::LaunchOption &exe)
 {
     if (!hasDotnetCached())
         return;
 
     Wine::instance()->runInWine(
-        ".NET Desktop Runtime installer"_L1, game, m_dotnetInstallerCache, {}, [this, game] { Mod::installMod(game); });
-}
-
-void Dotnet::uninstallMod(Game *game)
-{
-    // Installer and uninstaller are the same
-    installMod(game);
+        ".NET Desktop Runtime installer"_L1, game, m_dotnetInstallerCache, {}, [this, game, exe] { Mod::installModImpl(game, exe); });
 }
 
 QMap<int, Game::LaunchOption> Dotnet::acceptableInstallCandidates(const Game *game) const
 {
     auto options = Mod::acceptableInstallCandidates(game);
     options.removeIf([this, game](const std::pair<int, Game::LaunchOption> &exe) {
-        return exe.second.platform != Game::LaunchOption::Platform::Windows;
+        return exe.second.platform != Game::Platform::Windows;
     });
     return options;
 }

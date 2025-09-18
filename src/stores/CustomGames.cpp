@@ -45,9 +45,9 @@ public:
         LaunchOption lo;
         lo.executable = json["executable"_L1].toString();
         if (lo.executable.endsWith(".exe"_L1))
-            lo.platform = LaunchOption::Platform::Windows;
+            lo.platform = Platform::Windows;
         else
-            lo.platform = LaunchOption::Platform::Linux;
+            lo.platform = Platform::Linux;
         m_executables[0] = lo;
 
         detectGameEngine();
@@ -79,9 +79,9 @@ public:
         LaunchOption lo;
         lo.executable = executable;
         if (lo.executable.endsWith(".exe"_L1))
-            lo.platform = LaunchOption::Platform::Windows;
+            lo.platform = Platform::Windows;
         else
-            lo.platform = LaunchOption::Platform::Linux;
+            lo.platform = Platform::Linux;
         m_executables[0] = lo;
 
         detectGameEngine();
@@ -98,9 +98,9 @@ public:
         const auto lo = m_executables.first();
         qCInfo(CustomGameLog) << "Launching" << lo.executable;
 
-        if (lo.platform == LaunchOption::Platform::Windows)
+        if (lo.platform == Platform::Windows)
             Wine::instance()->runInWine(m_name, this, lo.executable);
-        else if (lo.platform == LaunchOption::Platform::Linux)
+        else if (lo.platform == Platform::Linux)
         {
             auto process = new QProcess;
             connect(process, &QProcess::finished, process, &QObject::deleteLater);

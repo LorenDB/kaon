@@ -90,7 +90,7 @@ public:
                     LaunchOption lo;
                     lo.executable = m_installDir + '/' + candidate["path"_L1].toString();
                     if (const auto flavor = candidate["flavor"_L1].toString(); flavor == "linux"_L1)
-                        lo.platform = LaunchOption::Platform::Linux;
+                        lo.platform = Platform::Linux;
                     else if (flavor == "html"_L1)
                         continue; // skip these as executables
                     m_executables[0] = lo;
@@ -113,7 +113,7 @@ public:
                 {
                     LaunchOption lo;
                     lo.executable = entry.absoluteFilePath();
-                    lo.platform = LaunchOption::Platform::Windows;
+                    lo.platform = Platform::Windows;
                     if (m_executables.size() == 0)
                         m_executables[0] = lo;
                     else
@@ -123,7 +123,7 @@ public:
                 {
                     LaunchOption lo;
                     lo.executable = entry.absoluteFilePath();
-                    lo.platform = LaunchOption::Platform::Linux;
+                    lo.platform = Platform::Linux;
                     if (m_executables.size() == 0)
                         m_executables[0] = lo;
                     else

@@ -36,45 +36,42 @@ bool Portal2VR::isInstalledForGame(const Game *game) const
     });
 }
 
-void Portal2VR::installMod(Game *game)
+void Portal2VR::installModImpl(Game *game, const Game::LaunchOption &exe)
 {
-    GitHubZipExtractorMod::installMod(game);
+    GitHubZipExtractorMod::installModImpl(game, exe);
 
     // Portal Stories: Mel needs special configuration to work
     if (game->id() == "317400"_L1)
     {
-        for (const auto &exe : acceptableInstallCandidates(game))
+        // Applying fixes shown here: https://steamcommunity.com/sharedfiles/filedetails/?id=3037963726
+        QFile config{modInstallDirForGame(game, exe) + "/VR/config.txt"_L1};
+        if (config.open(QIODevice::ReadOnly))
         {
-            // Applying fixes shown here: https://steamcommunity.com/sharedfiles/filedetails/?id=3037963726
-            QFile config{modInstallDirForGame(game, exe) + "/VR/config.txt"_L1};
-            if (config.open(QIODevice::ReadOnly))
+            QStringList lines;
+            while (!config.atEnd())
+                lines << config.readLine().trimmed();
+            config.close();
+
+            static const QMap<QString, QString> replacements{
+                {"ViewmodelPosCustomOffsetX=0.0", "ViewmodelPosCustomOffsetX=12"},
+                {"ViewmodelPosCustomOffsetY=0.0", "ViewmodelPosCustomOffsetY=10"},
+                {"ViewmodelPosCustomOffsetZ=0.0", "ViewmodelPosCustomOffsetZ=-10"},
+                {"ViewmodelAngCustomOffsetX=0.0", "ViewmodelAngCustomOffsetX=-10"},
+                {"ViewmodelAngCustomOffsetY=0.0", "ViewmodelAngCustomOffsetY=-18"},
+                {"ViewmodelAngCustomOffsetZ=0.0", "ViewmodelAngCustomOffsetZ=0.0"},
+            };
+
+            if (config.open(QIODevice::WriteOnly))
             {
-                QStringList lines;
-                while (!config.atEnd())
-                    lines << config.readLine().trimmed();
-                config.close();
-
-                static const QMap<QString, QString> replacements{
-                    {"ViewmodelPosCustomOffsetX=0.0", "ViewmodelPosCustomOffsetX=12"},
-                    {"ViewmodelPosCustomOffsetY=0.0", "ViewmodelPosCustomOffsetY=10"},
-                    {"ViewmodelPosCustomOffsetZ=0.0", "ViewmodelPosCustomOffsetZ=-10"},
-                    {"ViewmodelAngCustomOffsetX=0.0", "ViewmodelAngCustomOffsetX=-10"},
-                    {"ViewmodelAngCustomOffsetY=0.0", "ViewmodelAngCustomOffsetY=-18"},
-                    {"ViewmodelAngCustomOffsetZ=0.0", "ViewmodelAngCustomOffsetZ=0.0"},
-                };
-
-                if (config.open(QIODevice::WriteOnly))
+                QTextStream out{&config};
+                for (const auto &line : std::as_const(lines))
                 {
-                    QTextStream out{&config};
-                    for (const auto &line : std::as_const(lines))
-                    {
-                        if (replacements.contains(line))
-                            out << replacements[line] << '\n';
-                        else
-                            out << line + '\n';
-                    }
-                    config.close();
+                    if (replacements.contains(line))
+                        out << replacements[line] << '\n';
+                    else
+                        out << line + '\n';
                 }
+                config.close();
             }
         }
     }
@@ -87,7 +84,7 @@ QMap<int, Game::LaunchOption> Portal2VR::acceptableInstallCandidates(const Game 
 
     auto options = GitHubZipExtractorMod::acceptableInstallCandidates(game);
     options.removeIf([this, game](const std::pair<int, Game::LaunchOption> &exe) {
-        return exe.second.platform != Game::LaunchOption::Platform::Windows;
+        return exe.second.platform != Game::Platform::Windows;
     });
     return options;
 }

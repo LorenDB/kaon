@@ -163,59 +163,6 @@ QString GitHubZipExtractorMod::modInstallDirForGame(const Game *game, const Game
     return retval;
 }
 
-void GitHubZipExtractorMod::installMod(Game *game)
-{
-    QStringList installedFilesListing;
-    QSet<QString> dirsInstalledTo;
-
-    for (const auto &exe : acceptableInstallCandidates(game))
-    {
-        const auto installDir = modInstallDirForGame(game, exe);
-
-        // Prevent pointlessly overwriting an already-installed mod
-        if (dirsInstalledTo.contains(installDir))
-            continue;
-        else
-            dirsInstalledTo.insert(installDir);
-
-        if (!QFileInfo::exists(installDir))
-            QDir().mkpath(installDir);
-
-        QProcess process;
-        process.setWorkingDirectory(installDir);
-        QStringList args;
-        args << "-o" << path(Paths::CurrentRelease);
-        process.start("unzip", args);
-        process.waitForFinished();
-        if (process.exitCode() != 0)
-        {
-            qCWarning(logger()).noquote() << "Unzip" << displayName() << "failed:" << process.errorString();
-            qCWarning(logger()) << process.readAllStandardError();
-            continue;
-        }
-
-        args[0] = "-Z1"_L1;
-        process.start("unzip", args);
-        process.waitForFinished();
-        if (process.exitCode() == 0)
-        {
-            const auto files = QString{process.readAllStandardOutput()}.split('\n');
-            for (const auto &file : files)
-            {
-                if (!file.isEmpty())
-                    installedFilesListing += installDir + '/' + file;
-            }
-        }
-    }
-
-    QSettings settings;
-    settings.beginGroup(settingsGroup());
-    settings.beginGroup(game->id());
-    settings.setValue("installedFiles"_L1, installedFilesListing);
-
-    Mod::installMod(game);
-}
-
 void GitHubZipExtractorMod::uninstallMod(Game *game)
 {
     QSettings settings;
@@ -242,4 +189,45 @@ void GitHubZipExtractorMod::uninstallMod(Game *game)
 
     settings.remove("installedFiles"_L1);
     Mod::uninstallMod(game);
+}
+
+void GitHubZipExtractorMod::installModImpl(Game *game, const Game::LaunchOption &exe)
+{
+    QStringList installedFilesListing;
+    const auto installDir = modInstallDirForGame(game, exe);
+
+    if (!QFileInfo::exists(installDir))
+        QDir().mkpath(installDir);
+
+    QProcess process;
+    process.setWorkingDirectory(installDir);
+    QStringList args;
+    args << "-o" << path(Paths::CurrentRelease);
+    process.start("unzip", args);
+    process.waitForFinished();
+    if (process.exitCode() != 0)
+    {
+        qCWarning(logger()).noquote() << "Unzip" << displayName() << "failed:" << process.errorString();
+        qCWarning(logger()) << process.readAllStandardError();
+        // TODO: show error in GUI
+        return;
+    }
+
+    args[0] = "-Z1"_L1;
+    process.start("unzip", args);
+    process.waitForFinished();
+    if (process.exitCode() == 0)
+    {
+        const auto files = QString{process.readAllStandardOutput()}.split('\n');
+        for (const auto &file : files)
+            if (!file.isEmpty())
+                installedFilesListing += installDir + '/' + file;
+    }
+
+    QSettings settings;
+    settings.beginGroup(settingsGroup());
+    settings.beginGroup(game->id());
+    settings.setValue("installedFiles"_L1, installedFilesListing);
+
+    Mod::installModImpl(game, exe);
 }

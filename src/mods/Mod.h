@@ -5,6 +5,8 @@
 
 #include "Game.h"
 
+class GameExecutablePickerModel;
+
 class ModRelease : public QObject
 {
     Q_OBJECT
@@ -112,7 +114,7 @@ public slots:
     virtual void deleteRelease(ModRelease *release) = 0;
 
     virtual void launchMod(Game *game) {}
-    virtual void installMod(Game *game);
+    void installMod(Game *game);
     virtual void uninstallMod(Game *game);
 
     void setCurrentRelease(const int id);
@@ -120,8 +122,12 @@ public slots:
 signals:
     void currentReleaseChanged(ModRelease *);
     void installedInGameChanged(Game *game);
+    void requestChooseLaunchOption(GameExecutablePickerModel *m);
 
 protected:
+    // Override this to implement the actual installation logic. Your implementation must call this base function at its end!
+    virtual void installModImpl(Game *game, const Game::LaunchOption &exe);
+
     // Use this if you need to have whatever the settings had at startup, e.g. if you need to download release information
     // before you can build the release list
     int m_lastCurrentReleaseId = 0;

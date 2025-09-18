@@ -33,8 +33,10 @@ public slots:
     void downloadRelease(ModRelease *) override;
     void deleteRelease(ModRelease *release) override;
 
-    void installMod(Game *game) override;
     void uninstallMod(Game *game) override;
+
+protected:
+    void installModImpl(Game *game, const Game::LaunchOption &exe) override;
 
 private:
     explicit Dotnet(QObject *parent = nullptr);

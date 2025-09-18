@@ -40,39 +40,29 @@ bool Bepinex::isInstalledForGame(const Game *game) const
     });
 }
 
-void Bepinex::installMod(Game *game)
+void Bepinex::installModImpl(Game *game, const Game::LaunchOption &exe)
 {
-    GitHubZipExtractorMod::installMod(game);
+    GitHubZipExtractorMod::installModImpl(game, exe);
 
-    QSet<QString> dirsInstalledTo;
-    for (const auto &exe : acceptableInstallCandidates(game))
+    if (!QFileInfo::exists(exe.executable))
+        return;
+
+    const auto installDir = modInstallDirForGame(game, exe);
+    QProcess process;
+    process.setWorkingDirectory(installDir);
+    process.start("chmod"_L1, {"+x"_L1, "run_bepinex.sh"_L1});
+    process.waitForFinished();
+
+    if (exe.platform == Game::Platform::Linux)
     {
-        if (!QFileInfo::exists(exe.executable))
-            continue;
-
-        const auto installDir = modInstallDirForGame(game, exe);
-        // Prevent pointlessly overwriting an already-installed mod
-        if (dirsInstalledTo.contains(installDir))
-            continue;
-        else
-            dirsInstalledTo.insert(installDir);
-
-        QProcess process;
-        process.setWorkingDirectory(installDir);
-        process.start("chmod"_L1, {"+x"_L1, "run_bepinex.sh"_L1});
-        process.waitForFinished();
-
-        if (exe.platform == Game::LaunchOption::Platform::Linux)
+        QFile file{installDir + "/run_bepinex.sh"_L1};
+        if (file.open(QIODevice::ReadWrite))
         {
-            QFile file{installDir + "/run_bepinex.sh"_L1};
-            if (file.open(QIODevice::ReadWrite))
-            {
-                auto content = file.readAll();
-                file.resize(0);
-                file.write(content.replace("executable_name=\"\""_ba,
-                                           "executable_name=\""_ba + exe.executable.split('/').last().toLatin1() + '"'));
-                file.close();
-            }
+            auto content = file.readAll();
+            file.resize(0);
+            file.write(content.replace("executable_name=\"\""_ba,
+                                       "executable_name=\""_ba + exe.executable.split('/').last().toLatin1() + '"'));
+            file.close();
         }
     }
 }

@@ -28,6 +28,8 @@ qt_add_qml_module(kaon
         DownloadManager.h
         Game.cpp
         Game.h
+        GameExecutablePickerModel.cpp
+        GameExecutablePickerModel.h
         GamesFilterModel.cpp
         GamesFilterModel.h
         UpdateChecker.cpp
