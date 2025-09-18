@@ -82,7 +82,9 @@ QMap<int, Game::LaunchOption> Bepinex::acceptableInstallCandidates(const Game *g
 
 bool Bepinex::isThisFileTheActualModDownload(const QString &file) const
 {
-    return file.startsWith("BepInEx_linux"_L1);
+    return file.startsWith("BepInEx"_L1, Qt::CaseInsensitive) &&
+            (file.contains("linux"_L1, Qt::CaseInsensitive) || file.contains("unix", Qt::CaseInsensitive)) &&
+            !file.contains("IL2CPP"_L1, Qt::CaseInsensitive);
 }
 
 Bepinex::Bepinex(QObject *parent)
