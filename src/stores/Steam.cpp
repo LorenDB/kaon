@@ -209,14 +209,18 @@ public:
                         else if (type == "music"_L1)
                             m_type = AppType::Music;
                     }
-                    else if (key == "icon"_L1)
+                    else if (key == "icon"_L1 || key == "clienticon"_L1)
                     {
                         const QString logoId{static_cast<const char *>(value.second)};
+
+                        // We prefer to use the .jpg but will fall back to the .ico if the .jpg is available
                         if (QFileInfo fi{
                                 u"%1/appcache/librarycache/%2/%3.jpg"_s.arg(Steam::instance()->storeRoot(), m_id, logoId)};
                             fi.exists())
                             m_icon = "file://"_L1 + fi.absoluteFilePath();
-                        // TODO: could also extract clienticon key to find icons in $steamroot/steam/games
+                        else if (QFileInfo fi{u"%1/steam/games/%2.ico"_s.arg(Steam::instance()->storeRoot(), logoId)};
+                                 fi.exists() && !m_icon.isEmpty())
+                            m_icon = "file://"_L1 + fi.absoluteFilePath();
                     }
                     else if ((key == "openvrsupport"_L1 || key == "openxrsupport"_L1) && !m_features.testFlag(Feature::VR))
                         m_features.setFlag(Feature::VR, parseInt(value.first, value.second));
