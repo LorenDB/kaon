@@ -96,14 +96,18 @@ int main(int argc, char *argv[])
     // Here we will initialize all the QML singletons, because otherwise we might run into a situation where they don't get
     // initialized immediately. This is quite annoying, e.g. when a mod doesn't show up in the mod list since it hasn't been
     // referred to yet.
+
+    // Steam and Heroic come first. This is because we scan them for potential fallback Wine/Proton binaries, but they need
+    // to have loaded that information first. Initializing them first gives them a chance to do that.
+    Steam::instance();
+    Heroic::instance();
+
     Bepinex::instance();
     CustomGames::instance();
     Dotnet::instance();
     GamesFilterModel::instance();
-    Heroic::instance();
     Itch::instance();
     Portal2VR::instance();
-    Steam::instance();
     UEVR::instance();
     UUVR::instance();
     UpdateChecker::instance();
