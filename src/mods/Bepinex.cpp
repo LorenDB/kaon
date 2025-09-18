@@ -73,7 +73,7 @@ QMap<int, Game::LaunchOption> Bepinex::acceptableInstallCandidates(const Game *g
     auto options = GitHubZipExtractorMod::acceptableInstallCandidates(game);
     options.removeIf([this, game](const std::pair<int, Game::LaunchOption> &exe) {
         // Filter out IL2CPP builds (I seriously doubt that there are any games with both IL2CPP and Mono builds available at
-        // the same time, but who knows. People do crazy things sometimes.
+        // the same time, but who knows. People do crazy things sometimes).
         return QFileInfo::exists(modInstallDirForGame(game, exe.second) + "/GameAssembly.dll"_L1) ||
                QFileInfo::exists(modInstallDirForGame(game, exe.second) + "/GameAssembly.so"_L1);
     });
