@@ -242,7 +242,17 @@ bool ModReleaseFilter::lessThan(const QModelIndex &left, const QModelIndex &righ
 
 void Mod::installMod(Game *game)
 {
-    const auto exes = acceptableInstallCandidates(game);
+    auto exes = acceptableInstallCandidates(game).values();
+    QSet<QString> seen;
+    exes.removeIf([&seen](const auto &exe) {
+        if (seen.contains(exe.executable))
+            return true;
+        else
+        {
+            seen.insert(exe.executable);
+            return false;
+        }
+    });
 
     switch (exes.size())
     {
