@@ -5,6 +5,7 @@
 #include <QLoggingCategory>
 #include <QStandardPaths>
 
+#include "Aptabase.h"
 #include "DownloadManager.h"
 #include "Wine.h"
 
@@ -51,6 +52,7 @@ void Dotnet::downloadRelease(ModRelease *)
 {
     QUrl url{
         "https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/6.0.36/windowsdesktop-runtime-6.0.36-win-x64.exe"_L1};
+    Aptabase::instance()->track("download-"_L1 + settingsGroup(), {{"version"_L1, currentRelease()->name()}});
 
     DownloadManager::instance()->download(
         QNetworkRequest{url},
