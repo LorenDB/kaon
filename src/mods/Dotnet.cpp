@@ -114,6 +114,13 @@ QList<ModRelease *> Dotnet::releases() const
         QDateTime{{2024, 11, 12}, {0, 0, 0}},
         false,
         hasDotnetCached(),
-        {"https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/6.0.36/windowsdesktop-runtime-6.0.36-win-x64.exe"_L1}}};
+        {ModRelease::Asset{
+             .id = 42,
+             .name = ".NET Desktop Runtime 6.0.36"_L1,
+             .url =
+             {"https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/6.0.36/windowsdesktop-runtime-6.0.36-win-x64.exe"_L1},
+             .timestamp = QDateTime{{2024, 11, 12}, {0, 0, 0}},
+             .size = 57380656,
+         }}}};
     return l;
 }

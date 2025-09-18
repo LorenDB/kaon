@@ -17,15 +17,20 @@ void GitHubMod::downloadRelease(ModRelease *release)
 {
     Aptabase::instance()->track("download-"_L1 + settingsGroup(), {{"version"_L1, release->name()}});
 
-    if (release->downloadUrl().isEmpty())
+    if (release->assets().isEmpty())
         return;
 
-    DownloadManager::instance()->download(
-        QNetworkRequest{release->downloadUrl()},
-        release->name(),
-        true,
-        [this, release](const QByteArray &data) {
-            QFile file{pathForRelease(release->id())};
+    for (const auto asset: release->assets())
+    {
+        if (asset.url.isEmpty())
+            continue;
+
+        DownloadManager::instance()->download(
+                    QNetworkRequest{asset.url},
+                    release->name(),
+                    true,
+                    [this, release, asset](const QByteArray &data) {
+            QFile file{pathForRelease(release, asset)};
             if (file.open(QIODevice::WriteOnly))
             {
                 file.write(data);
@@ -38,6 +43,7 @@ void GitHubMod::downloadRelease(ModRelease *release)
         [this](const QNetworkReply::NetworkError error, const QString &errorMessage) {
             qCWarning(logger()).noquote() << "Download" << displayName() << "failed:" << errorMessage;
         });
+    }
 }
 
 void GitHubMod::deleteRelease(ModRelease *release)
@@ -45,17 +51,15 @@ void GitHubMod::deleteRelease(ModRelease *release)
     if (!release->downloaded())
         return;
 
-    QFile downloaded{pathForRelease(release->id())};
-    if (downloaded.remove())
-        release->setDownloaded(false);
+    for (const auto &asset : release->assets())
+        QFile{pathForRelease(release, asset)}.remove();
+    release->setDownloaded(false);
 }
 
 QString GitHubMod::path(const Paths p) const
 {
     switch (p)
     {
-    case Paths::CurrentRelease:
-        return pathForRelease(currentRelease()->id());
     case Paths::ReleaseBasePath:
         return QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + '/' + settingsGroup();
     case Paths::CachedReleasesJSON:
@@ -65,9 +69,15 @@ QString GitHubMod::path(const Paths p) const
     }
 }
 
-QString GitHubMod::pathForRelease(int id) const
+QString GitHubMod::pathForRelease(ModRelease *release, const ModRelease::Asset &asset) const
 {
-    return path(Paths::ReleaseBasePath) + "/%1_%2.zip"_L1.arg(settingsGroup(), QString::number(id));
+    return path(Paths::ReleaseBasePath) +
+            "/%1_%2_%3.zip"_L1.arg(settingsGroup(), QString::number(release->id()), QString::number(asset.id));
+}
+
+ModRelease::Asset GitHubMod::chooseAssetToInstall(const Game *game, const Game::LaunchOption &exe) const
+{
+    return currentRelease()->assets().constFirst();
 }
 
 GitHubMod::GitHubMod(QObject *parent)
@@ -131,19 +141,27 @@ void GitHubMod::parseReleaseInfoJson()
         const auto name = release["name"_L1].toString();
         const auto id = release["id"_L1].toInt();
         const auto timestamp = QDateTime::fromString(release["published_at"_L1].toString(), Qt::ISODate);
-        const auto downloaded = QFileInfo::exists(pathForRelease(id));
 
-        QUrl downloadUrl;
+        QList<ModRelease::Asset> assets;
         for (const auto &asset : release["assets"_L1].toArray())
         {
             if (isThisFileTheActualModDownload(asset["name"_L1].toString()))
             {
-                downloadUrl = asset["browser_download_url"_L1].toString();
-                break;
+                assets.push_back({
+                    .id = asset["id"_L1].toInt(),
+                    .name = asset["name"_L1].toString(),
+                    .url = {asset["browser_download_url"_L1].toString()},
+                    .timestamp = QDateTime::fromString(asset["updated_at"_L1].toString(), Qt::ISODate),
+                    .size = asset["size"_L1].toInt(),
+                });
             }
         }
 
-        m_releases.push_back(new ModRelease{id, name, timestamp, false, downloaded, downloadUrl, this});
+        auto m = new ModRelease{id, name, timestamp, false, false, assets, this};
+        m->setDownloaded(std::all_of(m->assets().cbegin(), m->assets().cend(), [this, m](const auto &a) {
+            return QFileInfo::exists(pathForRelease(m, a));
+        }));
+        m_releases.push_back(m);
     }
 
     endResetModel();
@@ -199,10 +217,12 @@ void GitHubZipExtractorMod::installModImpl(Game *game, const Game::LaunchOption 
     if (!QFileInfo::exists(installDir))
         QDir().mkpath(installDir);
 
+    const auto asset = chooseAssetToInstall(game, exe);
+
     QProcess process;
     process.setWorkingDirectory(installDir);
     QStringList args;
-    args << "-o" << path(Paths::CurrentRelease);
+    args << "-o" << pathForRelease(currentRelease(), asset);
     process.start("unzip", args);
     process.waitForFinished();
     if (process.exitCode() != 0)

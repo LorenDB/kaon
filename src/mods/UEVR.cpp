@@ -58,7 +58,7 @@ void UEVR::downloadRelease(ModRelease *release)
 {
     Aptabase::instance()->track("download-uevr"_L1, {{"version"_L1, release->name()}});
 
-    if (release->downloadUrl().isEmpty())
+    if (release->assets().isEmpty())
         return;
 
     auto tempDir = new QTemporaryDir;
@@ -71,7 +71,7 @@ void UEVR::downloadRelease(ModRelease *release)
     const QString zipPath = tempDir->path() + "/uevr_" + QString::number(release->id()) + ".zip";
 
     DownloadManager::instance()->download(
-        QNetworkRequest{release->downloadUrl()},
+        QNetworkRequest{release->assets().constFirst().url},
         release->name(),
         true,
         [this, zipPath, release](const QByteArray &data) {
@@ -235,17 +235,22 @@ void UEVR::parseReleaseInfoJson()
         const auto downloaded = QFileInfo::exists(UEVR::instance()->path(UEVR::Paths::UEVRBasePath) + '/' +
                                                   QString::number(id) + "/UEVRInjector.exe"_L1);
 
-        QUrl downloadUrl;
+        QList<ModRelease::Asset> assets;
         for (const auto &asset : json["assets"_L1].toArray())
         {
             if (asset["name"_L1].toString().toLower() == "uevr.zip"_L1)
             {
-                downloadUrl = asset["browser_download_url"_L1].toString();
-                break;
+                assets.push_back({
+                    .id = asset["id"_L1].toInt(),
+                    .name = asset["name"_L1].toString(),
+                    .url = {asset["browser_download_url"_L1].toString()},
+                    .timestamp = QDateTime::fromString(asset["updated_at"_L1].toString(), Qt::ISODate),
+                    .size = asset["size"_L1].toInt(),
+                });
             }
         }
 
-        return new ModRelease{id, name, timestamp, nightly, downloaded, downloadUrl, this};
+        return new ModRelease{id, name, timestamp, nightly, downloaded, assets, this};
     };
 
     for (const auto &release : releases.array())

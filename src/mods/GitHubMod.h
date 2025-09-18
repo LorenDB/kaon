@@ -16,15 +16,15 @@ protected:
 
     enum class Paths
     {
-        CurrentRelease,
         ReleaseBasePath,
         CachedReleasesJSON,
     };
     QString path(const Paths p) const;
-    QString pathForRelease(int id) const;
+    QString pathForRelease(ModRelease *release, const ModRelease::Asset &asset) const;
 
     virtual QUrl githubUrl() const = 0;
     virtual bool isThisFileTheActualModDownload(const QString &file) const = 0;
+    virtual ModRelease::Asset chooseAssetToInstall(const Game *game, const Game::LaunchOption &exe) const;
 
 private:
     virtual QList<ModRelease *> releases() const final { return m_releases; }

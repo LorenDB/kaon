@@ -10,14 +10,14 @@
 #include "ModsFilterModel.h"
 
 ModRelease::ModRelease(
-    int id, QString name, QDateTime timestamp, bool nightly, bool downloaded, QUrl downloadUrl, QObject *parent)
+        int id, QString name, QDateTime timestamp, bool nightly, bool downloaded, QList<Asset> assets, QObject *parent)
     : QObject{parent},
       m_id{id},
       m_name{name},
       m_timestamp{timestamp},
       m_nightly{nightly},
       m_downloaded{downloaded},
-      m_downloadUrl{downloadUrl}
+      m_assets{assets}
 {}
 
 void ModRelease::setDownloaded(bool state)
@@ -227,7 +227,7 @@ bool ModReleaseFilter::filterAcceptsRow(int row, const QModelIndex &parent) cons
     const auto release =
         m_mod->releaseFromId(sourceModel()->data(sourceModel()->index(row, 0, parent), Mod::Roles::Id).toInt());
 
-    if (release->downloadUrl().isEmpty())
+    if (release->assets().isEmpty())
         return false;
     if (!m_showNightlies && (!release || release->nightly()))
         return false;

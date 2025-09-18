@@ -18,15 +18,23 @@ class ModRelease : public QObject
     Q_PROPERTY(QDateTime timestamp READ timestamp CONSTANT)
     Q_PROPERTY(bool nightly READ nightly CONSTANT)
     Q_PROPERTY(bool downloaded READ downloaded NOTIFY downloadedChanged)
-    Q_PROPERTY(QUrl downloadUrl READ downloadUrl CONSTANT FINAL)
 
 public:
+    struct Asset
+    {
+        int id = -1;
+        QString name;
+        QUrl url;
+        QDateTime timestamp;
+        int size = 0;
+    };
+
     ModRelease(int id,
                QString name,
                QDateTime timestamp,
                bool nightly,
                bool downloaded,
-               QUrl downloadUrl,
+               QList<Asset> assets,
                QObject *parent = nullptr);
 
     int id() const { return m_id; }
@@ -34,7 +42,7 @@ public:
     QDateTime timestamp() const { return m_timestamp; }
     bool nightly() const { return m_nightly; }
     bool downloaded() const { return m_downloaded; }
-    QUrl downloadUrl() const { return m_downloadUrl; }
+    QList<Asset> assets() const { return m_assets; }
 
     virtual void setDownloaded(bool state);
 
@@ -47,7 +55,7 @@ private:
     QDateTime m_timestamp;
     bool m_nightly = false;
     bool m_downloaded = false;
-    QUrl m_downloadUrl;
+    QList<Asset> m_assets;
 };
 
 class Mod : public QAbstractListModel
