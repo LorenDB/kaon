@@ -83,9 +83,9 @@ QMap<int, Game::LaunchOption> Bepinex::acceptableInstallCandidates(const Game *g
 bool Bepinex::isThisFileTheActualModDownload(const QString &file) const
 {
     return file.startsWith("BepInEx"_L1, Qt::CaseInsensitive) &&
-            ((file.contains("linux"_L1, Qt::CaseInsensitive) || file.contains("unix", Qt::CaseInsensitive)) ||
-             (file.contains("win"_L1, Qt::CaseInsensitive) || file.startsWith("BepInEx_x"_L1, Qt::CaseInsensitive))) &&
-            !file.contains("IL2CPP"_L1, Qt::CaseInsensitive) && !file.contains("NET."_L1, Qt::CaseInsensitive);
+           ((file.contains("linux"_L1, Qt::CaseInsensitive) || file.contains("unix", Qt::CaseInsensitive)) ||
+            (file.contains("win"_L1, Qt::CaseInsensitive) || file.startsWith("BepInEx_x"_L1, Qt::CaseInsensitive))) &&
+           !file.contains("IL2CPP"_L1, Qt::CaseInsensitive) && !file.contains("NET."_L1, Qt::CaseInsensitive);
 }
 
 ModRelease::Asset Bepinex::chooseAssetToInstall(const Game *game, const Game::LaunchOption &exe) const
@@ -102,10 +102,10 @@ ModRelease::Asset Bepinex::chooseAssetToInstall(const Game *game, const Game::La
     assets.removeIf([game, &exe](const ModRelease::Asset &asset) {
         if (exe.platform == Game::Platform::Linux)
             return !asset.name.contains("linux"_L1, Qt::CaseInsensitive) &&
-                    !asset.name.contains("unix"_L1, Qt::CaseInsensitive);
+                   !asset.name.contains("unix"_L1, Qt::CaseInsensitive);
         else if (exe.platform == Game::Platform::Windows)
             return !asset.name.contains("win"_L1, Qt::CaseInsensitive) &&
-                    !asset.name.startsWith("BepInEx_x"_L1, Qt::CaseInsensitive);
+                   !asset.name.startsWith("BepInEx_x"_L1, Qt::CaseInsensitive);
         return true;
     });
 

@@ -33,4 +33,3 @@ private:
     explicit BepInExConfigManager(QObject *parent = nullptr);
     ~BepInExConfigManager() = default;
 };
-

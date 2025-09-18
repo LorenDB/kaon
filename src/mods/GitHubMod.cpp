@@ -20,29 +20,29 @@ void GitHubMod::downloadRelease(ModRelease *release)
     if (release->assets().isEmpty())
         return;
 
-    for (const auto asset: release->assets())
+    for (const auto asset : release->assets())
     {
         if (asset.url.isEmpty())
             continue;
 
         DownloadManager::instance()->download(
-                    QNetworkRequest{asset.url},
-                    release->name(),
-                    true,
-                    [this, release, asset](const QByteArray &data) {
-            QFile file{pathForRelease(release, asset)};
-            if (file.open(QIODevice::WriteOnly))
-            {
-                file.write(data);
-                file.close();
-                release->setDownloaded(true);
-            }
-            else
-                qCWarning(logger()).noquote() << "Failed to save" << displayName();
-        },
-        [this](const QNetworkReply::NetworkError error, const QString &errorMessage) {
-            qCWarning(logger()).noquote() << "Download" << displayName() << "failed:" << errorMessage;
-        });
+            QNetworkRequest{asset.url},
+            release->name(),
+            true,
+            [this, release, asset](const QByteArray &data) {
+                QFile file{pathForRelease(release, asset)};
+                if (file.open(QIODevice::WriteOnly))
+                {
+                    file.write(data);
+                    file.close();
+                    release->setDownloaded(true);
+                }
+                else
+                    qCWarning(logger()).noquote() << "Failed to save" << displayName();
+            },
+            [this](const QNetworkReply::NetworkError error, const QString &errorMessage) {
+                qCWarning(logger()).noquote() << "Download" << displayName() << "failed:" << errorMessage;
+            });
     }
 }
 
@@ -72,7 +72,7 @@ QString GitHubMod::path(const Paths p) const
 QString GitHubMod::pathForRelease(ModRelease *release, const ModRelease::Asset &asset) const
 {
     return path(Paths::ReleaseBasePath) +
-            "/%1_%2_%3.zip"_L1.arg(settingsGroup(), QString::number(release->id()), QString::number(asset.id));
+           "/%1_%2_%3.zip"_L1.arg(settingsGroup(), QString::number(release->id()), QString::number(asset.id));
 }
 
 ModRelease::Asset GitHubMod::chooseAssetToInstall(const Game *game, const Game::LaunchOption &exe) const

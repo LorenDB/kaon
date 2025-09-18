@@ -324,11 +324,11 @@ ListView {
         property GameExecutablePickerModel m
 
         closePolicy: Popup.CloseOnEscape
+        contentHeight: pickerLayout.implicitHeight
+        contentWidth: pickerLayout.implicitWidth
         modal: true
         standardButtons: Dialog.Ok | Dialog.Cancel
         title: "Choose executable"
-        contentHeight: pickerLayout.implicitHeight
-        contentWidth: pickerLayout.implicitWidth
 
         onAccepted: {
             m.select(picker.currentIndex);
@@ -344,11 +344,13 @@ ListView {
             spacing: 10
 
             Label {
-                text: executableChooser.m ? executableChooser.m.game.name + " has multiple valid executables. Please choose which one you wish to mod." : ""
+                Layout.fillHeight: true
+                Layout.fillWidth: true
+                text: executableChooser.m ? executableChooser.m.game.name
+                                            + " has multiple valid executables. Please choose which one you wish to mod." :
+                                            ""
                 textFormat: Text.MarkdownText
                 wrapMode: Text.WordWrap
-                Layout.fillWidth: true
-                Layout.fillHeight: true
             }
 
             ComboBox {

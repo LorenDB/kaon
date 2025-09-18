@@ -19,7 +19,7 @@ Dotnet::Dotnet(QObject *parent)
     // TODO: migration, remove me before 0.4.0
     if (QFile cache(QStandardPaths::writableLocation(QStandardPaths::CacheLocation) +
                     "/windowsdesktop-runtime-6.0.36-win-x64.exe"_L1);
-            cache.exists())
+        cache.exists())
     {
         cache.copy(m_dotnetInstallerCache);
         cache.remove();
@@ -102,8 +102,9 @@ void Dotnet::installModImpl(Game *game, const Game::LaunchOption &exe)
     if (!hasDotnetCached())
         return;
 
-    Wine::instance()->runInWine(
-        ".NET Desktop Runtime installer"_L1, game, m_dotnetInstallerCache, {}, [this, game, exe] { Mod::installModImpl(game, exe); });
+    Wine::instance()->runInWine(".NET Desktop Runtime installer"_L1, game, m_dotnetInstallerCache, {}, [this, game, exe] {
+        Mod::installModImpl(game, exe);
+    });
 }
 
 QMap<int, Game::LaunchOption> Dotnet::acceptableInstallCandidates(const Game *game) const
@@ -124,12 +125,12 @@ QList<ModRelease *> Dotnet::releases() const
         false,
         hasDotnetCached(),
         {ModRelease::Asset{
-             .id = 42,
-             .name = ".NET Desktop Runtime 6.0.36"_L1,
-             .url =
-             {"https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/6.0.36/windowsdesktop-runtime-6.0.36-win-x64.exe"_L1},
-             .timestamp = QDateTime{{2024, 11, 12}, {0, 0, 0}},
-             .size = 57380656,
-         }}}};
+            .id = 42,
+            .name = ".NET Desktop Runtime 6.0.36"_L1,
+            .url =
+                {"https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/6.0.36/windowsdesktop-runtime-6.0.36-win-x64.exe"_L1},
+            .timestamp = QDateTime{{2024, 11, 12}, {0, 0, 0}},
+            .size = 57380656,
+        }}}};
     return l;
 }

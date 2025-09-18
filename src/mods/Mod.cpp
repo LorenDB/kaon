@@ -10,7 +10,7 @@
 #include "ModsFilterModel.h"
 
 ModRelease::ModRelease(
-        int id, QString name, QDateTime timestamp, bool nightly, bool downloaded, QList<Asset> assets, QObject *parent)
+    int id, QString name, QDateTime timestamp, bool nightly, bool downloaded, QList<Asset> assets, QObject *parent)
     : QObject{parent},
       m_id{id},
       m_name{name},
@@ -255,7 +255,7 @@ void Mod::installMod(Game *game)
     default:
     {
         auto m = new GameExecutablePickerModel{
-                this, game, [this, game](const Game::LaunchOption &exe) { installModImpl(game, exe); }};
+            this, game, [this, game](const Game::LaunchOption &exe) { installModImpl(game, exe); }};
         emit requestChooseLaunchOption(m);
         break;
     }

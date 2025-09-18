@@ -39,9 +39,8 @@ bool Game::hasMultiplePlatforms() const
 
 bool Game::noWindowsSupport() const
 {
-    return std::all_of(m_executables.begin(), m_executables.end(), [](const auto &exe) {
-        return exe.platform != Platform::Windows;
-    });
+    return std::all_of(
+        m_executables.begin(), m_executables.end(), [](const auto &exe) { return exe.platform != Platform::Windows; });
 }
 
 void Game::detectGameEngine()

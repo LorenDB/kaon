@@ -31,4 +31,3 @@ private:
 
     std::function<void(Game::LaunchOption)> m_callback;
 };
-
