@@ -73,6 +73,7 @@ int main(int argc, char *argv[])
     QDir dirMaker;
     dirMaker.mkpath(QStandardPaths::writableLocation(QStandardPaths::CacheLocation));
     dirMaker.mkpath(QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation));
+    dirMaker.mkpath(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation));
 
     QCommandLineParser p;
     p.setApplicationDescription("VR mod manager"_L1);
