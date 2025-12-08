@@ -40,9 +40,10 @@ jobs:
 
       - name: Build release package
         run: |
-          # remove QSqlMimer
+          # remove problematic QSql drivers
           # TODO: use variable instead of /home/runner/work/kaon
           rm -f /home/runner/work/kaon/Qt/6.*/gcc_64/plugins/sqldrivers/libqsqlmimer.so
+          rm -f /home/runner/work/kaon/Qt/6.*/gcc_64/plugins/sqldrivers/libqsqloci.so
 
           QML_SOURCES_PATHS=src linuxdeploy-x86_64.AppImage \
               --plugin qt \
