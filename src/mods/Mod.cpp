@@ -206,8 +206,9 @@ void ModReleaseFilter::setMod(Mod *mod)
 
 void ModReleaseFilter::setShowNightlies(bool state)
 {
+    beginFilterChange();
     m_showNightlies = state;
-    invalidateRowsFilter();
+    endFilterChange();
 
     emit showNightliesChanged(state);
 

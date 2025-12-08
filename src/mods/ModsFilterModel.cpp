@@ -58,10 +58,6 @@ private:
 ModsFilterModel::ModsFilterModel(QObject *parent)
     : QSortFilterProxyModel{parent}
 {
-    connect(this, &ModsFilterModel::gameChanged, this, &ModsFilterModel::invalidateFilter);
-    connect(this, &ModsFilterModel::searchChanged, this, &ModsFilterModel::invalidateFilter);
-    connect(this, &ModsFilterModel::showIncompatibleChanged, this, &ModsFilterModel::invalidateFilter);
-
     setSourceModel(ModsModel::instance());
 
     setDynamicSortFilter(true);
@@ -75,14 +71,16 @@ void ModsFilterModel::registerMod(Mod *mod)
 
 void ModsFilterModel::setGame(Game *game)
 {
+    beginFilterChange();
     m_game = game;
-    emit gameChanged(game);
+    endFilterChange();
 }
 
 void ModsFilterModel::setSearch(const QString &search)
 {
+    beginFilterChange();
     m_search = search;
-    emit searchChanged();
+    endFilterChange();
 }
 
 bool ModsFilterModel::filterAcceptsRow(int row, const QModelIndex &parent) const
