@@ -83,6 +83,13 @@ void ModsFilterModel::setSearch(const QString &search)
     endFilterChange();
 }
 
+void ModsFilterModel::setShowIncompatible(const bool state)
+{
+    beginFilterChange();
+    m_showIncompatible = state;
+    endFilterChange();
+}
+
 bool ModsFilterModel::filterAcceptsRow(int row, const QModelIndex &parent) const
 {
     const auto mod = sourceModel()->data(sourceModel()->index(row, 0, parent), ModsModel::Roles::ModObject).value<Mod *>();

@@ -13,7 +13,7 @@ class ModsFilterModel : public QSortFilterProxyModel
 
     Q_PROPERTY(Game *game READ game WRITE setGame NOTIFY gameChanged FINAL)
     Q_PROPERTY(QString search READ search WRITE setSearch NOTIFY searchChanged FINAL)
-    Q_PROPERTY(bool showIncompatible MEMBER m_showIncompatible NOTIFY showIncompatibleChanged FINAL)
+    Q_PROPERTY(bool showIncompatible READ showIncompatible WRITE setShowIncompatible NOTIFY showIncompatibleChanged FINAL)
 
 public:
     explicit ModsFilterModel(QObject *parent = nullptr);
@@ -21,9 +21,11 @@ public:
 
     Game *game() const { return m_game; }
     QString search() const { return m_search; }
+    bool showIncompatible() const { return m_showIncompatible; }
 
     void setGame(Game *game);
     void setSearch(const QString &search);
+    void setShowIncompatible(const bool state);
 
 signals:
     void gameChanged(Game *game);
