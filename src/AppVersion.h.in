@@ -1,0 +1,3 @@
+#pragma once
+
+#define KAON_APP_VERSION_LITERAL "@PROJECT_VERSION@"_L1

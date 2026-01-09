@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(kaon VERSION 0.1 LANGUAGES CXX)
+project(kaon VERSION 0.2.4 LANGUAGES CXX)
+
+add_compile_definitions(KAON_APP_VERSION="${PROJECT_VERSION}"_L1)
 
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_STANDARD 23)

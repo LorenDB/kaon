@@ -67,7 +67,7 @@ int main(int argc, char *argv[])
     qSetMessagePattern("[%{time}] [%{category}] %{type}: %{message}"_L1);
 
     QCoreApplication::setApplicationName("Kaon"_L1);
-    QCoreApplication::setApplicationVersion("0.2.4"_L1);
+    QCoreApplication::setApplicationVersion(KAON_APP_VERSION);
     QCoreApplication::setOrganizationName("LorenDB"_L1);
     QCoreApplication::setOrganizationDomain("lorendb.dev"_L1);
     QApplication app(argc, argv);
