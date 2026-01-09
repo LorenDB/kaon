@@ -9,8 +9,6 @@
 #include <QStandardPaths>
 
 #include "Aptabase.h"
-#include "BepInExConfigManager.h"
-#include "Bepinex.h"
 #include "CustomGames.h"
 #include "Dotnet.h"
 #include "GamesFilterModel.h"
@@ -19,9 +17,14 @@
 #include "Portal2VR.h"
 #include "Steam.h"
 #include "UEVR.h"
-#include "UUVR.h"
 #include "UpdateChecker.h"
 #include "Wine.h"
+
+#if defined EXPERIMENTAL_UUVR_SUPPORT
+#include "BepInExConfigManager.h"
+#include "Bepinex.h"
+#include "UUVR.h"
+#endif
 
 namespace
 {
