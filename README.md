@@ -34,7 +34,8 @@ Alternatively, bleeding-edge builds are available via CI. To get them, click on 
 
 ## Building from source
 
-You'll need Qt 6.8 installed to build Kaon.
+You'll need the latest Qt installed to build Kaon. Older Qt versions may work, but I tend to use new Qt
+features as they come out, so I only officially support the most recent release of Qt.
 
 ``` bash
 git clone https://github.com/LorenDB/kaon.git
