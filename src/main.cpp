@@ -104,17 +104,20 @@ int main(int argc, char *argv[])
     Steam::instance();
     Heroic::instance();
 
-    Bepinex::instance();
-    BepInExConfigManager::instance();
     CustomGames::instance();
     Dotnet::instance();
     GamesFilterModel::instance();
     Itch::instance();
     Portal2VR::instance();
     UEVR::instance();
-    UUVR::instance();
     UpdateChecker::instance();
     Wine::instance();
+
+#if defined EXPERIMENTAL_UUVR_SUPPORT
+    Bepinex::instance();
+    BepInExConfigManager::instance();
+    UUVR::instance();
+#endif
 
     QQmlApplicationEngine engine;
     QObject::connect(

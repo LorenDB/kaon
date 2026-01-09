@@ -39,10 +39,6 @@ qt_add_qml_module(kaon
         Wine.cpp
         Wine.h
 
-        mods/Bepinex.cpp
-        mods/Bepinex.h
-        mods/BepInExConfigManager.cpp
-        mods/BepInExConfigManager.h
         mods/Dotnet.cpp
         mods/Dotnet.h
         mods/GitHubMod.cpp
@@ -55,8 +51,6 @@ qt_add_qml_module(kaon
         mods/Portal2VR.h
         mods/UEVR.cpp
         mods/UEVR.h
-        mods/UUVR.cpp
-        mods/UUVR.h
 
         stores/CustomGames.cpp
         stores/CustomGames.h
@@ -80,6 +74,18 @@ qt_add_qml_module(kaon
         qml/icons/settings-configure.svg
         qml/icons/view-refresh.svg
 )
+
+if (EXPERIMENTAL_UUVR_SUPPORT)
+    add_compile_definitions(EXPERIMENTAL_UUVR_SUPPORT)
+    target_sources(kaon PRIVATE
+        mods/Bepinex.cpp
+        mods/Bepinex.h
+        mods/BepInExConfigManager.cpp
+        mods/BepInExConfigManager.h
+        mods/UUVR.cpp
+        mods/UUVR.h
+    )
+endif()
 
 # needed to make the QML module compilation find headers that aren't directly in src
 target_include_directories(kaon PUBLIC
