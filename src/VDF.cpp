@@ -114,36 +114,38 @@ void AppInfoVDF::dumpAppInfo()
 
         QFile f{QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + "/appinfo/"_L1 +
                 QString::number(info->appid)};
-        f.open(QIODevice::WriteOnly | QIODevice::Truncate);
-        QTextStream s{&f};
-
-        static AppInfo::Section section;
-        AppInfo::SectionDesc app_desc{};
-
-        section.finished_sections.clear();
-        app_desc.blob = info->getRootSection(&app_desc.size);
-        section.parse(app_desc);
-
-        for (auto &finished_section : section.finished_sections)
+        if (f.open(QIODevice::WriteOnly | QIODevice::Truncate))
         {
-            s << finished_section.name << '\n';
-            for (const auto &[key, value] : std::as_const(finished_section.keys))
+            QTextStream s{&f};
+
+            static AppInfo::Section section;
+            AppInfo::SectionDesc app_desc{};
+
+            section.finished_sections.clear();
+            app_desc.blob = info->getRootSection(&app_desc.size);
+            section.parse(app_desc);
+
+            for (auto &finished_section : section.finished_sections)
             {
-                switch (value.first)
+                s << finished_section.name << '\n';
+                for (const auto &[key, value] : std::as_const(finished_section.keys))
                 {
-                case AppInfo::Section::Int32:
-                    s << "\ti32: "_L1 << key << " = "_L1 << *static_cast<int32_t *>(value.second);
-                    break;
-                case AppInfo::Section::Int64:
-                    s << "\ti64: "_L1 << key << " = "_L1 << *static_cast<int64_t *>(value.second);
-                    break;
-                case AppInfo::Section::String:
-                    s << "\tstr: "_L1 << key << " = "_L1 << static_cast<const char *>(value.second);
-                    break;
-                default:
-                    break;
+                    switch (value.first)
+                    {
+                    case AppInfo::Section::Int32:
+                        s << "\ti32: "_L1 << key << " = "_L1 << *static_cast<int32_t *>(value.second);
+                        break;
+                    case AppInfo::Section::Int64:
+                        s << "\ti64: "_L1 << key << " = "_L1 << *static_cast<int64_t *>(value.second);
+                        break;
+                    case AppInfo::Section::String:
+                        s << "\tstr: "_L1 << key << " = "_L1 << static_cast<const char *>(value.second);
+                        break;
+                    default:
+                        break;
+                    }
+                    s << '\n';
                 }
-                s << '\n';
             }
         }
 

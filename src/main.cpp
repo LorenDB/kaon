@@ -42,9 +42,7 @@ void logToFile(QtMsgType type, const QMessageLogContext &context, const QString 
 {
     QString message = qFormatLogMessage(type, context, msg);
     static QFile logFile{QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + "/kaon.log"_L1};
-    if (!logFile.isOpen())
-        logFile.open(QIODevice::WriteOnly);
-    if (logFile.isOpen())
+    if (logFile.isOpen() || logFile.open(QIODevice::WriteOnly))
     {
         logFile.write(message.toLatin1() + '\n');
         logFile.flush();
