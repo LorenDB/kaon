@@ -21,9 +21,9 @@
 #include "Wine.h"
 
 #if defined EXPERIMENTAL_UUVR_SUPPORT
-#include "BepInExConfigManager.h"
-#include "Bepinex.h"
-#include "UUVR.h"
+    #include "BepInExConfigManager.h"
+    #include "Bepinex.h"
+    #include "UUVR.h"
 #endif
 
 namespace
