@@ -130,7 +130,8 @@ void Mod::setCurrentRelease(const int id)
     if (newVersion == releases().constEnd())
     {
         qCWarning(logger()) << "Attempted to activate nonexistent %1"_L1.arg(displayName());
-        Aptabase::instance()->track("nonexistent-mod-activation-bug");
+        Aptabase::instance()->track("nonexistent-mod-activation-bug",
+                                    {{"mod"_L1, displayName()}, {"id"_L1, QString::number(id)}});
         return;
     }
 
@@ -145,7 +146,13 @@ void Mod::setCurrentRelease(const int id)
 void Mod::installModImpl(Game *game, const Game::LaunchOption &exe)
 {
     if (!QFileInfo::exists(exe.executable))
-        return; // TODO: show user-facing error here
+    {
+        // TODO: also show error to user
+        qCWarning(logger()) << "Attempted to install mod for game with nonexistent executable: %1"_L1.arg(exe.executable);
+        Aptabase::instance()->track("nonexistent-executable-mod-install-bug",
+                                    {{"executable"_L1, exe.executable}, {"game"_L1, game->name()}});
+        return;
+    }
 
     Aptabase::instance()->track("install-"_L1 + settingsGroup(),
                                 {{"version"_L1, currentRelease()->name()}, {"game"_L1, game->name()}});
@@ -241,6 +248,13 @@ bool ModReleaseFilter::lessThan(const QModelIndex &left, const QModelIndex &righ
     return left.data(Mod::Roles::Timestamp).toDateTime() > right.data(Mod::Roles::Timestamp).toDateTime();
 }
 
+void Mod::launchMod(Game *game)
+{
+    // TODO: refactor to have launchModImpl() like installMod() does
+    Aptabase::instance()->track("launch-%1"_L1.arg(settingsGroup()),
+                                {{"version"_L1, currentRelease()->name()}, {"game"_L1, game->name()}});
+}
+
 void Mod::installMod(Game *game)
 {
     auto exes = acceptableInstallCandidates(game).values();
@@ -259,8 +273,13 @@ void Mod::installMod(Game *game)
     {
     case 0:
         // TODO: show error to user
+        qCWarning(logger()) << "No acceptable executables found for installing mod "_L1 + displayName()
+                           << " for game "_L1 + game->name();
+        Aptabase::instance()->track("no-executable-mod-install-bug", {{"mod"_L1, displayName()}, {"game"_L1, game->name()}});
         break;
     case 1:
+        Aptabase::instance()->track("install-%1"_L1.arg(settingsGroup()),
+                                    {{"version"_L1, currentRelease()->name()}, {"game"_L1, game->name()}});
         installModImpl(game, exes.first());
         break;
     default:

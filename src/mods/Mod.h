@@ -121,7 +121,7 @@ public slots:
     virtual void downloadRelease(ModRelease *release) = 0;
     virtual void deleteRelease(ModRelease *release) = 0;
 
-    virtual void launchMod(Game *game) {}
+    virtual void launchMod(Game *game);
     void installMod(Game *game);
     virtual void uninstallMod(Game *game);
 
