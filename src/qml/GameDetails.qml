@@ -231,6 +231,13 @@ Pane {
             wrapMode: Label.WordWrap
         }
 
+        Label {
+            Layout.maximumWidth: parent.width
+            text: "⚠️ P2:CE has experimental VR support. Launch the game with the -vr command line option."
+            visible: gameDetailsRoot.game.id === "440000" && gameDetailsRoot.game.store === Game.Steam
+            wrapMode: Label.WordWrap
+        }
+
         RowLayout {
             spacing: 10
 
