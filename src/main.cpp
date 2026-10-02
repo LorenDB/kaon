@@ -17,6 +17,7 @@
 #include "Portal2VR.h"
 #include "Steam.h"
 #include "UEVR.h"
+#include "UEVRAFW.h"
 #include "UpdateChecker.h"
 #include "Wine.h"
 
@@ -111,6 +112,7 @@ int main(int argc, char *argv[])
     Itch::instance();
     Portal2VR::instance();
     UEVR::instance();
+    UEVRAFW::instance();
     UpdateChecker::instance();
     Wine::instance();
 

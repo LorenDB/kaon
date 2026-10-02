@@ -51,6 +51,8 @@ qt_add_qml_module(kaon
         mods/Portal2VR.h
         mods/UEVR.cpp
         mods/UEVR.h
+        mods/UEVRAFW.cpp
+        mods/UEVRAFW.h
 
         stores/CustomGames.cpp
         stores/CustomGames.h
