@@ -145,7 +145,7 @@ Flickable {
                 anchors.verticalCenter: parent.verticalCenter
                 font.pixelSize: 14
                 font.weight: Font.Bold
-                text: "Frame colour"
+                text: "Frame color"
             }
 
             Segmented {

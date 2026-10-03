@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Shapes
 
-// Small line-icon set drawn on a 24-unit grid, so every concept can restyle stroke weight and colour.
+// Small line-icon set drawn on a 24-unit grid, so every concept can restyle stroke weight and color.
 Item {
     id: root
 

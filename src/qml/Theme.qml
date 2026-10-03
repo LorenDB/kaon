@@ -4,8 +4,8 @@ import QtCore
 import QtQuick
 
 // Kaon is drawn as the headset: a plastic shell around a black glass visor, cut with the nose notch from the app icon.
-// The shell follows the desktop's colour scheme unless Settings overrides it. The visor is black either way, because
-// game art reads best on it. Colour is reserved for status lights, and a switch that's on uses the ready light.
+// The shell follows the desktop's color scheme unless Settings overrides it. The visor is black either way, because
+// game art reads best on it. Color is reserved for status lights, and a switch that's on uses the ready light.
 QtObject {
     id: theme
 
