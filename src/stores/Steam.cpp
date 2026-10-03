@@ -350,6 +350,7 @@ Steam::Steam(QObject *parent)
     : Store{parent}
 {
     discover(true);
+    countAsLauncher();
 }
 
 Steam *Steam::instance()
@@ -386,22 +387,22 @@ void Steam::launchSteamVR()
     QDesktopServices::openUrl({"steam://run/250820"_L1});
 }
 
-void Steam::scanStore()
+void Steam::prepareScan()
 {
     discover(false);
+}
 
+bool Steam::readLibrary(QList<Game *> &games)
+{
     qCDebug(SteamLog) << "Scanning Steam library";
-    beginResetModel();
 
-    for (const auto game : std::as_const(m_games))
-        game->deleteLater();
-    m_games.clear();
-    m_hasSteamVR = false;
+    auto installs = m_installs;
+    auto hasSteamVR = false;
 
-    for (const auto &install : std::as_const(m_installs))
+    for (const auto &install : std::as_const(installs))
         AppInfoVDF::load(install.path + "/appcache/appinfo.vdf"_L1);
 
-    const auto parseLibraryFolders = [this](const QString &vdfPath, Install &install) -> bool {
+    const auto parseLibraryFolders = [&games, &hasSteamVR](const QString &vdfPath, Install &install) -> bool {
         qCDebug(SteamLog) << "Parsing libraryfolders.vdf from" << vdfPath;
         std::ifstream vdfFile{vdfPath.toStdString()};
 
@@ -417,19 +418,19 @@ void Steam::scanStore()
                                                QString::fromStdString(folder->attribs["path"]),
                                                install.path,
                                                install.flatpakAppId,
-                                               this};
+                                               nullptr};
                         g->isValid())
                     {
-                        m_games.push_back(g);
+                        games.push_back(g);
                         ++install.count;
                         if (g->id() == "250820"_L1)
                         {
                             install.hasSteamVR = true;
-                            m_hasSteamVR = true;
+                            hasSteamVR = true;
                         }
                     }
                     else
-                        g->deleteLater();
+                        delete g;
                 }
             }
         }
@@ -445,7 +446,7 @@ void Steam::scanStore()
         return true;
     };
 
-    for (auto &install : m_installs)
+    for (auto &install : installs)
     {
         install.count = 0;
         install.hasSteamVR = false;
@@ -461,7 +462,15 @@ void Steam::scanStore()
             qCWarning(SteamLog) << "Could not find libraryfolders.vdf in" << install.path;
     }
 
-    endResetModel();
+    m_scannedInstalls = installs;
+    m_scannedSteamVR = hasSteamVR;
+    return true;
+}
+
+void Steam::finishScan()
+{
+    m_installs = m_scannedInstalls;
+    m_hasSteamVR = m_scannedSteamVR;
     emit hasSteamVRChanged(m_hasSteamVR);
     emit librariesChanged();
 }

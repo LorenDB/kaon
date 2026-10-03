@@ -21,9 +21,12 @@ private:
     explicit Itch(QObject *parent = nullptr);
     ~Itch() = default;
 
-    void scanStore() final;
+    void prepareScan() final;
+    bool readLibrary(QList<Game *> &games) final;
 
     QString m_itchRoot;
+    QString m_defaultWine;
+    QString m_defaultPrefix;
 };
 
 class ItchImageCache : public QQuickAsyncImageProvider

@@ -9,6 +9,7 @@
 #include <QNetworkReply>
 #include <QRandomGenerator64>
 #include <QSettings>
+#include <QThread>
 
 Aptabase::Aptabase()
     : QObject{nullptr}
@@ -50,6 +51,16 @@ void Aptabase::setEnabled(bool state)
 
 void Aptabase::track(const QString &event, const QJsonObject &properties, bool blocking) const
 {
+    // Library scans call this from a worker. QNetworkAccessManager lives on the UI thread.
+    if (QThread::currentThread() != thread())
+    {
+        QMetaObject::invokeMethod(
+            const_cast<Aptabase *>(this),
+            [this, event, properties, blocking] { track(event, properties, blocking); },
+            blocking ? Qt::BlockingQueuedConnection : Qt::QueuedConnection);
+        return;
+    }
+
     if (!m_enabled)
         return;
 

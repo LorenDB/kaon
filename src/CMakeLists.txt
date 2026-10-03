@@ -129,6 +129,7 @@ target_precompile_headers(kaon PUBLIC pch.h)
 
 target_link_libraries(kaon
     PRIVATE
+        Qt6::Concurrent
         Qt6::Core
         Qt6::Quick
         Qt6::Widgets

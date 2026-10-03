@@ -1,6 +1,7 @@
 import QtCore
 import QtQuick
 import QtQuick.Controls.Basic
+import QtQuick.Shapes
 
 import dev.lorendb.kaon
 
@@ -63,6 +64,22 @@ Item {
     }
 
     function regroup() {
+        // Each store publishes on its own. Keep the grid empty until the whole wave has finished.
+        if (GamesFilterModel.scanning) {
+            if (total !== 0 || list.count !== 0) {
+                groups = {
+                    "ready": [],
+                    "setup": [],
+                    "native": [],
+                    "none": []
+                };
+                total = 0;
+                rowsKey = "";
+                list.model = [];
+            }
+            return;
+        }
+
         let g = {
             "ready": [],
             "setup": [],
@@ -102,6 +119,11 @@ Item {
     Connections {
         function onGamesChanged() {
             // Rescans replace the game objects even when the ids stay the same
+            view.rowsKey = "";
+            view.regroup();
+        }
+
+        function onScanningChanged() {
             view.rowsKey = "";
             view.regroup();
         }
@@ -285,29 +307,101 @@ Item {
         readonly property var hiddenGroups: view.order.filter(k => view.groups[k].length > 0 && librarySettings.shownGroups.indexOf(
                                                                        k) < 0)
 
+        function bodyText() {
+            if (GamesFilterModel.scanning)
+                return "Steam, Heroic, and itch are being read. Everything appears together when the last one finishes.";
+            if (view.total === 0)
+                return GamesFilterModel.search !== "" ? "Check the spelling, or clear the search to see your whole library." :
+                                                         "Kaon looks for Steam, Heroic and itch libraries. Add a game by hand with the button below, or check the filters.";
+            return "Turn on a group to see its games.";
+        }
+
+        function titleText() {
+            if (GamesFilterModel.scanning)
+                return "Looking through your libraries";
+            if (view.total === 0)
+                return GamesFilterModel.search !== "" ? "No games match “" + GamesFilterModel.search + "”" : "No games found";
+            return GamesFilterModel.search !== "" ? "Your matches are in a hidden group" : "Every group with games is switched off";
+        }
+
         spacing: 8
         visible: list.count === 0
         width: view.inner
         x: Theme.pad
         y: top.height + 6
 
-        VText {
-            font.pixelSize: 18
-            font.weight: Font.ExtraBold
-            text: view.total === 0 ? (GamesFilterModel.search !== "" ? "No games match “" + GamesFilterModel.search + "”" :
-                                                                       "No games found") : GamesFilterModel.search !== ""
-                                     ? "Your matches are in a hidden group" : "Every group with games is switched off"
+        Row {
+            id: titleRow
+
+            spacing: scanMark.visible ? 10 : 0
             width: parent.width
-            wrapMode: Text.Wrap
+
+            Item {
+                id: scanMark
+
+                // Same arc the notch draws while a game is launching. The slot matches one line of the title.
+                height: 22
+                visible: GamesFilterModel.scanning
+                width: visible ? 16 : 0
+
+                Shape {
+                    anchors.fill: parent
+                    preferredRendererType: Shape.CurveRenderer
+                    visible: scanMark.visible
+
+                    RotationAnimation on rotation {
+                        duration: 1000
+                        from: 0
+                        loops: Animation.Infinite
+                        running: scanMark.visible && emptyState.visible
+                        to: 360
+                    }
+
+                    ShapePath {
+                        fillColor: "transparent"
+                        strokeColor: Theme.glassLine
+                        strokeWidth: 2.5
+
+                        PathAngleArc {
+                            centerX: scanMark.width / 2
+                            centerY: scanMark.height / 2
+                            radiusX: 6.5
+                            radiusY: 6.5
+                            sweepAngle: 360
+                        }
+                    }
+
+                    ShapePath {
+                        capStyle: ShapePath.RoundCap
+                        fillColor: "transparent"
+                        strokeColor: Theme.ledGreen
+                        strokeWidth: 2.5
+
+                        PathAngleArc {
+                            centerX: scanMark.width / 2
+                            centerY: scanMark.height / 2
+                            radiusX: 6.5
+                            radiusY: 6.5
+                            startAngle: -90
+                            sweepAngle: 100
+                        }
+                    }
+                }
+            }
+
+            VText {
+                font.pixelSize: 18
+                font.weight: Font.ExtraBold
+                text: emptyState.titleText()
+                width: titleRow.width - scanMark.width - titleRow.spacing
+                wrapMode: Text.Wrap
+            }
         }
 
         VText {
             color: Theme.glassMuted
             font.pixelSize: 13
-            text: view.total === 0 ? (GamesFilterModel.search !== ""
-                                      ? "Check the spelling, or clear the search to see your whole library." :
-                                        "Kaon looks for Steam, Heroic and itch libraries. Add a game by hand with the button below, or check the filters.") :
-                                     "Turn on a group to see its games."
+            text: emptyState.bodyText()
             width: parent.width
             wrapMode: Text.Wrap
         }

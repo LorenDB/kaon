@@ -416,7 +416,8 @@ ApplicationWindow {
                     if (Launcher.phase === Launcher.Countdown && Launcher.game !== root.game)
                         return "Opening " + Launcher.mod.name + " for " + Launcher.game.name + " in " + Launcher.remaining
                                 + " s";
-
+                    if (GamesFilterModel.scanning)
+                        return "Scanning libraries";
 
                     return root.gameCount === 1 ? "1 game" : root.gameCount + " games";
                 }
@@ -514,12 +515,12 @@ ApplicationWindow {
                 icon: "refresh"
                 shellStyle: true
                 small: true
-                text: "Rescan"
+                text: GamesFilterModel.scanning ? "Scanning" : "Rescan"
                 visible: Nav.view === "library"
 
                 onClicked: {
                     GameStatus.rescanLibraries();
-                    Nav.notify("Rescanned your libraries");
+                    Nav.notify("Scanning your libraries");
                 }
             }
 
@@ -571,7 +572,7 @@ ApplicationWindow {
             if (Nav.view === "addGame")
                 return "Add game";
             if (!root.inGame)
-                return Steam.hasSteamVR ? "Start SteamVR" : "Rescan";
+                return Steam.hasSteamVR ? "Start SteamVR" : GamesFilterModel.scanning ? "Scanning" : "Rescan";
             if (root.launching)
                 return Launcher.phase === Launcher.Countdown ? "Open now" : "Done";
             if (root.group === "setup")
@@ -597,7 +598,7 @@ ApplicationWindow {
                     Nav.notify("Starting SteamVR");
                 } else {
                     GameStatus.rescanLibraries();
-                    Nav.notify("Rescanned your libraries");
+                    Nav.notify("Scanning your libraries");
                 }
             } else if (root.launching)
                 Launcher.phase === Launcher.Countdown ? Launcher.openModNow() : Launcher.stop();

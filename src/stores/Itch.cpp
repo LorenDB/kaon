@@ -2,14 +2,17 @@
 
 #include <QDir>
 #include <QDirIterator>
+#include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QLoggingCategory>
 #include <QProcess>
 #include <QSqlDatabase>
+#include <QSqlError>
 #include <QSqlQuery>
 #include <QStandardPaths>
 #include <QTemporaryDir>
+#include <QThread>
 
 #include "Aptabase.h"
 #include "DownloadManager.h"
@@ -19,15 +22,54 @@ Q_LOGGING_CATEGORY(ItchLog, "itch")
 
 namespace
 {
-    QSqlDatabase ITCH_DB;
-}
+    // The butler database is opened on the scan thread and closed when that scan returns.
+    thread_local QSqlDatabase *ITCH_DB = nullptr;
+
+    class ItchDbSession
+    {
+    public:
+        explicit ItchDbSession(const QString &path)
+        {
+            // Opening a missing file would create an empty database beside the real itch config.
+            if (!QFileInfo::exists(path))
+                return;
+
+            m_name = "itch-"_L1 + QString::number(quintptr(QThread::currentThreadId()));
+            if (QSqlDatabase::contains(m_name))
+                QSqlDatabase::removeDatabase(m_name);
+            m_db = QSqlDatabase::addDatabase("QSQLITE"_L1, m_name);
+            m_db.setDatabaseName(path);
+            if (!m_db.open())
+                qCWarning(ItchLog) << "Could not open" << path << m_db.lastError().text();
+            ITCH_DB = &m_db;
+        }
+
+        ~ItchDbSession()
+        {
+            ITCH_DB = nullptr;
+            if (m_name.isEmpty())
+                return;
+            const auto name = m_name;
+            m_db.close();
+            m_db = QSqlDatabase{};
+            QSqlDatabase::removeDatabase(name);
+        }
+
+        QSqlDatabase &db() { return m_db; }
+        bool isOpen() const { return m_db.isOpen(); }
+
+    private:
+        QString m_name;
+        QSqlDatabase m_db;
+    };
+} // namespace
 
 class ItchGame : public Game
 {
     Q_OBJECT
 
 public:
-    ItchGame(const QString &installPath, QObject *parent)
+    ItchGame(const QString &installPath, const QString &wineBinary, const QString &winePrefix, QObject *parent)
         : Game{parent}
     {
         qCDebug(ItchLog) << "Creating game:" << installPath;
@@ -65,8 +107,8 @@ public:
         m_heroImage = m_cardImage;
         m_icon = m_cardImage;
 
-        m_wineBinary = Wine::instance()->whichWine();
-        m_winePrefix = Wine::instance()->defaultWinePrefix();
+        m_wineBinary = wineBinary;
+        m_winePrefix = winePrefix;
 
         if (const auto type = game["classification"_L1]; type == "game"_L1)
             m_type = Game::AppType::Game;
@@ -76,9 +118,9 @@ public:
         else if (type == "soundtrack"_L1)
             m_type = Game::AppType::Music;
 
-        if (ITCH_DB.isValid())
+        if (ITCH_DB != nullptr && ITCH_DB->isOpen())
         {
-            if (QSqlQuery q; q.exec("SELECT last_touched_at, verdict FROM caves WHERE game_id='%1'"_L1.arg(m_id)))
+            if (QSqlQuery q{*ITCH_DB}; q.exec("SELECT last_touched_at, verdict FROM caves WHERE game_id='%1'"_L1.arg(m_id)))
             {
                 q.first();
                 m_lastPlayed = QDateTime::fromString(q.value(0).toString(), Qt::ISODateWithMs);
@@ -150,7 +192,7 @@ Itch *Itch::instance()
 }
 
 Itch::Itch(QObject *parent)
-    : Store{parent}
+    : Store{parent, Start::AfterLaunchers}
 {
     static const QStringList itchPaths = {
         QDir::homePath() + "/.config/itch"_L1,
@@ -174,36 +216,32 @@ Itch::Itch(QObject *parent)
         qCInfo(ItchLog) << "Found Itch:" << m_itchRoot;
 }
 
-void Itch::scanStore()
+void Itch::prepareScan()
+{
+    m_defaultWine = Wine::instance()->whichWine();
+    m_defaultPrefix = Wine::instance()->defaultWinePrefix();
+}
+
+bool Itch::readLibrary(QList<Game *> &games)
 {
     if (m_itchRoot.isEmpty())
-        return;
+        return false;
 
     qCDebug(ItchLog) << "Scanning Itch library";
-    beginResetModel();
 
     QStringList installLocations;
-
     const auto dbPath = m_itchRoot + "/db/butler.db"_L1;
-    if (!ITCH_DB.isValid() && QFileInfo::exists(dbPath))
-    {
-        ITCH_DB = QSqlDatabase::addDatabase("QSQLITE"_L1);
-        ITCH_DB.setDatabaseName(dbPath);
-        if (ITCH_DB.open())
-            if (QSqlQuery q; q.exec("SELECT path FROM install_locations"_L1))
-                while (q.next())
-                    installLocations.push_back(q.value(0).toString());
-    }
+    ItchDbSession session{dbPath};
+    if (session.isOpen())
+        if (QSqlQuery q{session.db()}; q.exec("SELECT path FROM install_locations"_L1))
+            while (q.next())
+                installLocations.push_back(q.value(0).toString());
 
     if (installLocations.isEmpty())
     {
         qCDebug(ItchLog) << "Could not open butler.db, falling back to scanning %1/apps"_L1.arg(m_itchRoot);
         installLocations.append(m_itchRoot + "/apps"_L1);
     }
-
-    for (const auto game : std::as_const(m_games))
-        game->deleteLater();
-    m_games.clear();
 
     for (const auto &location : installLocations)
     {
@@ -214,14 +252,14 @@ void Itch::scanStore()
             if (apps.fileName() == "downloads"_L1 || apps.fileName() == "."_L1 || apps.fileName() == ".."_L1)
                 continue;
 
-            if (auto g = new ItchGame{apps.filePath(), this}; g->isValid())
-                m_games.push_back(g);
+            if (auto g = new ItchGame{apps.filePath(), m_defaultWine, m_defaultPrefix, nullptr}; g->isValid())
+                games.push_back(g);
             else
-                g->deleteLater();
+                delete g;
         }
     }
 
-    endResetModel();
+    return true;
 }
 
 class ItchImageFetcher : public QQuickImageResponse

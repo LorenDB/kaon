@@ -312,6 +312,7 @@ Heroic::Heroic(QObject *parent)
     : Store{parent}
 {
     discover(true);
+    countAsLauncher();
 }
 
 Heroic *Heroic::instance()
@@ -325,29 +326,28 @@ Heroic *Heroic::create(QQmlEngine *qml, QJSEngine *js)
     return instance();
 }
 
-void Heroic::scanStore()
+void Heroic::prepareScan()
 {
     discover(false);
+}
 
+bool Heroic::readLibrary(QList<Game *> &games)
+{
     qCDebug(HeroicLog) << "Scanning Heroic library";
-    beginResetModel();
 
-    for (const auto game : std::as_const(m_games))
-        game->deleteLater();
-    m_games.clear();
-
-    for (auto &install : m_installs)
+    auto installs = m_installs;
+    for (auto &install : installs)
     {
         install.count = 0;
         const auto &root = install.path;
         const auto add = [&](HeroicGame *game) {
             if (game->isValid())
             {
-                m_games.push_back(game);
+                games.push_back(game);
                 ++install.count;
             }
             else
-                game->deleteLater();
+                delete game;
         };
 
         // Epic, then GOG, then Amazon. The Amazon library cache is per install and has to be
@@ -358,7 +358,7 @@ void Heroic::scanStore()
             qCDebug(HeroicLog) << "Found Epic:" << epicInstalled.fileName();
             const auto epicJson = QJsonDocument::fromJson(epicInstalled.readAll()).object();
             for (const auto &game : epicJson)
-                add(new HeroicGame{HeroicGame::SubStore::Epic, game.toObject(), root, install.flatpakAppId, this});
+                add(new HeroicGame{HeroicGame::SubStore::Epic, game.toObject(), root, install.flatpakAppId, nullptr});
         }
 
         if (QFile gogInstalled{root + "/gog_store/installed.json"_L1}; gogInstalled.open(QIODevice::ReadOnly))
@@ -366,7 +366,7 @@ void Heroic::scanStore()
             qCDebug(HeroicLog) << "Found GOG:" << gogInstalled.fileName();
             const auto gogJson = QJsonDocument::fromJson(gogInstalled.readAll()).object();
             for (const auto &game : gogJson["installed"_L1].toArray())
-                add(new HeroicGame{HeroicGame::SubStore::GOG, game.toObject(), root, install.flatpakAppId, this});
+                add(new HeroicGame{HeroicGame::SubStore::GOG, game.toObject(), root, install.flatpakAppId, nullptr});
         }
 
         if (QFile amazonLibrary{root + "/nile_config/nile/library.json"_L1}; amazonLibrary.open(QIODevice::ReadOnly))
@@ -378,12 +378,18 @@ void Heroic::scanStore()
                 qCDebug(HeroicLog) << "Found Amazon:" << amazonInstalled.fileName();
                 const auto amazonJson = QJsonDocument::fromJson(amazonInstalled.readAll()).array();
                 for (const auto &game : amazonJson)
-                    add(new HeroicGame{HeroicGame::SubStore::Amazon, game.toObject(), root, install.flatpakAppId, this});
+                    add(new HeroicGame{HeroicGame::SubStore::Amazon, game.toObject(), root, install.flatpakAppId, nullptr});
             }
         }
     }
 
-    endResetModel();
+    m_scannedInstalls = installs;
+    return true;
+}
+
+void Heroic::finishScan()
+{
+    m_installs = m_scannedInstalls;
     emit librariesChanged();
 }
 

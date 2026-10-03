@@ -23,6 +23,10 @@ private:
     explicit CustomGames();
     ~CustomGames() = default;
 
-    void scanStore() final;
+    void prepareScan() final;
+    bool readLibrary(QList<Game *> &games) final;
     void writeConfig();
+
+    QString m_defaultWine;
+    QString m_defaultPrefix;
 };

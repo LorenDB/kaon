@@ -57,6 +57,20 @@ GamesFilterModel *GamesFilterModel::create(QQmlEngine *, QJSEngine *)
 void GamesFilterModel::registerStore(Store *store)
 {
     m_models->addSourceModel(store);
+    m_stores.push_back(store);
+    connect(store, &Store::scanningChanged, this, &GamesFilterModel::updateScanning);
+    updateScanning();
+}
+
+void GamesFilterModel::updateScanning()
+{
+    auto scanning = false;
+    for (const auto *store : std::as_const(m_stores))
+        scanning = scanning || store->scanning();
+    if (scanning == m_scanning)
+        return;
+    m_scanning = scanning;
+    emit scanningChanged();
 }
 
 void GamesFilterModel::setSearch(const QString &search)

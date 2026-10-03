@@ -20,7 +20,7 @@ class CustomGame : public Game
     Q_OBJECT
 
 public:
-    CustomGame(const QJsonObject &json, QObject *parent)
+    CustomGame(const QJsonObject &json, const QString &defaultWine, const QString &defaultPrefix, QObject *parent)
         : Game{parent}
     {
         m_id = json["id"_L1].toString();
@@ -28,8 +28,8 @@ public:
 
         m_name = json["name"_L1].toString();
         m_installDir = json["installDir"_L1].toString();
-        m_winePrefix = json["winePrefix"_L1].toString(Wine::instance()->defaultWinePrefix());
-        m_wineBinary = json["wineBinary"_L1].toString(Wine::instance()->whichWine());
+        m_winePrefix = json["winePrefix"_L1].toString(defaultPrefix);
+        m_wineBinary = json["wineBinary"_L1].toString(defaultWine);
         m_cardImage = json["cardImage"_L1].toString();
         m_heroImage = json["heroImage"_L1].toString();
         m_logoImage = json["logoImage"_L1].toString();
@@ -142,6 +142,7 @@ bool CustomGames::addGame(const QString &name, const QString &executable, const 
             m_games.push_back(g);
             endInsertRows();
             writeConfig();
+            scanAgainIfBusy();
             return true;
         }
         else
@@ -162,42 +163,43 @@ void CustomGames::deleteGame(Game *game)
     endRemoveRows();
     game->deleteLater();
     writeConfig();
+    scanAgainIfBusy();
 }
 
 CustomGames::CustomGames()
-    : Store{nullptr}
+    : Store{nullptr, Start::AfterLaunchers}
 {}
 
-void CustomGames::scanStore()
+void CustomGames::prepareScan()
 {
-    QFile m_config{QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) + "/custom_games.json"_L1};
-    if (m_config.exists())
+    m_defaultWine = Wine::instance()->whichWine();
+    m_defaultPrefix = Wine::instance()->defaultWinePrefix();
+}
+
+bool CustomGames::readLibrary(QList<Game *> &games)
+{
+    QFile config{QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) + "/custom_games.json"_L1};
+    if (!config.exists())
+        return false;
+
+    if (!config.open(QIODevice::ReadOnly))
     {
-        if (!m_config.open(QIODevice::ReadOnly))
-        {
-            qCWarning(CustomGameLog) << "Failed to read custom games config";
-            Aptabase::instance()->track("failed-loading-custom-games-bug");
-            return;
-        }
-
-        qCDebug(CustomGameLog) << "Scanning custom library";
-        beginResetModel();
-
-        for (const auto game : std::as_const(m_games))
-            game->deleteLater();
-        m_games.clear();
-
-        const auto arr = QJsonDocument::fromJson(m_config.readAll()).array();
-        for (const auto &game : arr)
-        {
-            if (auto g = new CustomGame{game.toObject(), this}; g->isValid())
-                m_games.push_back(g);
-            else
-                g->deleteLater();
-        }
-
-        endResetModel();
+        qCWarning(CustomGameLog) << "Failed to read custom games config";
+        Aptabase::instance()->track("failed-loading-custom-games-bug");
+        return false;
     }
+
+    qCDebug(CustomGameLog) << "Scanning custom library";
+    const auto arr = QJsonDocument::fromJson(config.readAll()).array();
+    for (const auto &game : arr)
+    {
+        if (auto g = new CustomGame{game.toObject(), m_defaultWine, m_defaultPrefix, nullptr}; g->isValid())
+            games.push_back(g);
+        else
+            delete g;
+    }
+
+    return true;
 }
 
 void CustomGames::writeConfig()

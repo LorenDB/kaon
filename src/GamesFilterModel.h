@@ -18,6 +18,7 @@ class GamesFilterModel : public QSortFilterProxyModel
     Q_PROPERTY(Game::Features featureFilter READ featureFilter NOTIFY typeFilterChanged FINAL)
     Q_PROPERTY(Game::Stores storeFilter READ storeFilter NOTIFY storeFilterChanged FINAL)
     Q_PROPERTY(QString search READ search WRITE setSearch NOTIFY searchChanged FINAL)
+    Q_PROPERTY(bool scanning READ scanning NOTIFY scanningChanged FINAL)
 
     Q_PROPERTY(SortType sortType READ sortType WRITE setSortType NOTIFY sortTypeChanged FINAL)
     Q_PROPERTY(
@@ -48,6 +49,7 @@ public:
     Game::Features featureFilter() const { return m_featureFilter; }
     Game::Stores storeFilter() const { return m_storeFilter; }
     QString search() const { return m_search; }
+    bool scanning() const { return m_scanning; }
 
     SortType sortType() const { return m_sortType; }
     FilterType featureFilterType() const { return m_featureFilterType; }
@@ -75,6 +77,7 @@ signals:
     void featureFilterChanged();
     void storeFilterChanged();
     void searchChanged();
+    void scanningChanged();
     // Emitted whenever games() would return something different
     void gamesChanged();
 
@@ -89,7 +92,11 @@ private:
     explicit GamesFilterModel(QObject *parent = nullptr);
     ~GamesFilterModel() = default;
 
+    void updateScanning();
+
     QConcatenateTablesProxyModel *m_models;
+    QList<Store *> m_stores;
+    bool m_scanning = false;
 
     Game::Engines m_engineFilter;
     Game::AppTypes m_typeFilter;

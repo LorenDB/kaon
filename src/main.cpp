@@ -3,6 +3,8 @@
 #include <QDir>
 #include <QFile>
 #include <QIcon>
+#include <QMutex>
+#include <QMutexLocker>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QSettings>
@@ -42,19 +44,23 @@ namespace
 // adapted from https://doc.qt.io/qt-6/qtlogging.html#qInstallMessageHandler
 void logToFile(QtMsgType type, const QMessageLogContext &context, const QString &msg)
 {
-    QString message = qFormatLogMessage(type, context, msg);
+    const QString message = qFormatLogMessage(type, context, msg);
     static QFile logFile{QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + "/kaon.log"_L1};
-    if (logFile.isOpen() || logFile.open(QIODevice::WriteOnly))
+    static QMutex mutex;
     {
-        logFile.write(message.toLatin1() + '\n');
-        logFile.flush();
-    }
-    else
-    {
-        static bool hasWarned = false;
-        if (!hasWarned)
-            ORIGINAL_HANDLER(QtMsgType::QtCriticalMsg, {}, "Failed to open the log file!"_L1);
-        hasWarned = true;
+        QMutexLocker lock{&mutex};
+        if (logFile.isOpen() || logFile.open(QIODevice::WriteOnly))
+        {
+            logFile.write(message.toLatin1() + '\n');
+            logFile.flush();
+        }
+        else
+        {
+            static bool hasWarned = false;
+            if (!hasWarned)
+                ORIGINAL_HANDLER(QtMsgType::QtCriticalMsg, {}, "Failed to open the log file!"_L1);
+            hasWarned = true;
+        }
     }
 
     if (ORIGINAL_HANDLER && (DEBUG_TO_STDOUT || type != QtMsgType::QtDebugMsg))
@@ -102,8 +108,8 @@ int main(int argc, char *argv[])
     // initialized immediately. This is quite annoying, e.g. when a mod doesn't show up in the mod list since it hasn't been
     // referred to yet.
 
-    // Steam and Heroic come first. This is because we scan them for potential fallback Wine/Proton binaries, but they need
-    // to have loaded that information first. Initializing them first gives them a chance to do that.
+    // Steam and Heroic come first. Itch and custom games can fall back to their Proton binaries, and those scans wait
+    // until both launchers have published. The scans themselves run off the UI thread.
     Steam::instance();
     Heroic::instance();
 

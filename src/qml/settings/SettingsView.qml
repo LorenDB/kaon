@@ -99,11 +99,11 @@ Flickable {
             VButton {
                 icon: "refresh"
                 small: true
-                text: "Rescan"
+                text: GamesFilterModel.scanning ? "Scanning" : "Rescan"
 
                 onClicked: {
                     GameStatus.rescanLibraries();
-                    Nav.notify("Rescanned your libraries");
+                    Nav.notify("Scanning your libraries");
                 }
             }
 

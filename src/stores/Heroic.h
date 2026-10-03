@@ -40,11 +40,14 @@ private:
     explicit Heroic(QObject *parent = nullptr);
     ~Heroic() = default;
 
-    void scanStore() final;
+    void prepareScan() final;
+    bool readLibrary(QList<Game *> &games) final;
+    void finishScan() final;
     void discover(bool report);
 
     QString m_heroicRoot;
     QList<Install> m_installs;
+    QList<Install> m_scannedInstalls;
 };
 
 class HeroicImageCache : public QQuickAsyncImageProvider

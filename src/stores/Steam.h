@@ -41,10 +41,14 @@ private:
     explicit Steam(QObject *parent = nullptr);
     ~Steam() = default;
 
-    void scanStore() final;
+    void prepareScan() final;
+    bool readLibrary(QList<Game *> &games) final;
+    void finishScan() final;
     void discover(bool report);
 
     QString m_steamRoot;
     QList<Install> m_installs;
+    QList<Install> m_scannedInstalls;
     bool m_hasSteamVR = false;
+    bool m_scannedSteamVR = false;
 };
