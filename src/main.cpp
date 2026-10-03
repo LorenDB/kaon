@@ -14,6 +14,7 @@
 #include "GamesFilterModel.h"
 #include "Heroic.h"
 #include "Itch.h"
+#include "Portal1VR.h"
 #include "Portal2VR.h"
 #include "Steam.h"
 #include "UEVR.h"
@@ -110,6 +111,7 @@ int main(int argc, char *argv[])
     Dotnet::instance();
     GamesFilterModel::instance();
     Itch::instance();
+    Portal1VR::instance();
     Portal2VR::instance();
     UEVR::instance();
     UEVRAFW::instance();

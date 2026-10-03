@@ -306,6 +306,13 @@ QVariantList GameStatus::steps(Game *game) const
             out << makeStep(key, release->name(), "Installing"_L1, "busy"_L1);
         else if (isDownloading(mod, release))
             out << makeStep(key, release->name(), "Downloading"_L1, "busy"_L1);
+        else if (const auto hold = mod->installHoldReason(game); installable && !hold.isEmpty())
+        {
+            if (release->downloaded())
+                out << makeStep(key, release->name(), hold, "wait"_L1);
+            else
+                out << makeStep(key, release->name(), hold, "todo"_L1, "download"_L1, "Download"_L1);
+        }
         else if (!release->downloaded())
         {
             QString detail = installable ? "Not installed in this game"_L1 : "Not downloaded yet"_L1;

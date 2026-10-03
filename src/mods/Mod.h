@@ -96,6 +96,8 @@ public:
     virtual bool providesVr() const { return true; }
     // True if installing the mod runs something inside the game's Wine prefix, which therefore has to exist first.
     virtual bool installsIntoPrefix() const { return false; }
+    // Non-empty when the mod fits this game but installation has to wait. Shown instead of the install button.
+    virtual QString installHoldReason(const Game *game) const { return {}; }
 
     // Seconds to wait between starting a game and launching this mod into it
     int launchDelay() const;

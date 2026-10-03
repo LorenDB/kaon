@@ -180,6 +180,16 @@ Item {
     }
 
     Connections {
+        function onInstallFailed(message: string) {
+            messageDialog.title = "Portal 1 VR didn't install";
+            messageDialog.text = message;
+            messageDialog.open();
+        }
+
+        target: Portal1VR
+    }
+
+    Connections {
         function onDownloadFailed(whatWasBeingDownloaded: string) {
             messageDialog.title = "Download failed";
             messageDialog.text = "Kaon couldn't download " + whatWasBeingDownloaded
