@@ -144,7 +144,7 @@ ModRelease *Mod::releaseInstalledForGame(const Game *game)
 
     QSettings settings;
     settings.beginGroup(settingsGroup());
-    settings.beginGroup(game->id());
+    settings.beginGroup(game->settingsId());
     return releaseFromId(settings.value("installedVersion"_L1).toInt());
 }
 
@@ -218,7 +218,7 @@ void Mod::installModImpl(Game *game, const Game::LaunchOption &exe)
 
     QSettings settings;
     settings.beginGroup(settingsGroup());
-    settings.beginGroup(game->id());
+    settings.beginGroup(game->settingsId());
     settings.setValue("installedVersion"_L1, m_currentRelease->id());
 
     emit installedInGameChanged(game);
@@ -357,7 +357,7 @@ void Mod::uninstallMod(Game *game)
 {
     QSettings settings;
     settings.beginGroup(settingsGroup());
-    settings.beginGroup(game->id());
+    settings.beginGroup(game->settingsId());
     settings.remove("installedVersion"_L1);
 
     emit installedInGameChanged(game);

@@ -185,7 +185,7 @@ void GitHubZipExtractorMod::uninstallMod(Game *game)
 {
     QSettings settings;
     settings.beginGroup(settingsGroup());
-    settings.beginGroup(game->id());
+    settings.beginGroup(game->settingsId());
     const auto toRemove = settings.value("installedFiles"_L1).toStringList();
 
     QStringList dirs;
@@ -248,7 +248,7 @@ void GitHubZipExtractorMod::installModImpl(Game *game, const Game::LaunchOption 
 
     QSettings settings;
     settings.beginGroup(settingsGroup());
-    settings.beginGroup(game->id());
+    settings.beginGroup(game->settingsId());
     settings.setValue("installedFiles"_L1, installedFilesListing);
 
     Mod::installModImpl(game, exe);

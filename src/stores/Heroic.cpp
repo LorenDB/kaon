@@ -2,14 +2,17 @@
 
 #include <QDir>
 #include <QDirIterator>
+#include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QLoggingCategory>
 #include <QSettings>
 #include <QStandardPaths>
+#include <QVariant>
 
 #include "DownloadManager.h"
+#include "Flatpak.h"
 
 Q_LOGGING_CATEGORY(HeroicLog, "heroic")
 
@@ -30,14 +33,21 @@ public:
         Amazon,
     };
 
-    HeroicGame(SubStore store, const QJsonObject &json, QObject *parent = nullptr)
+    HeroicGame(SubStore store,
+               const QJsonObject &json,
+               const QString &heroicRoot,
+               const QString &flatpakAppId,
+               QObject *parent = nullptr)
         : Game{parent}
     {
+        m_flatpakAppId = flatpakAppId;
+        const auto toHost = [flatpakAppId](const QString &path) { return Flatpak::hostPath(flatpakAppId, path); };
+
         if (store == SubStore::Epic)
         {
             m_id = json["app_name"_L1].toString();
             m_name = json["title"_L1].toString();
-            m_installDir = json["install_path"_L1].toString();
+            m_installDir = toHost(json["install_path"_L1].toString());
             m_type = AppType::Game;
 
             LaunchOption lo;
@@ -54,8 +64,7 @@ public:
 
             m_executables[m_executables.size()] = lo;
 
-            if (QFile metadataFile{Heroic::instance()->storeRoot() +
-                                   "/legendaryConfig/legendary/metadata/%1.json"_L1.arg(m_id)};
+            if (QFile metadataFile{heroicRoot + "/legendaryConfig/legendary/metadata/%1.json"_L1.arg(m_id)};
                 metadataFile.open(QIODevice::ReadOnly))
             {
                 const auto metadata = QJsonDocument::fromJson(metadataFile.readAll());
@@ -72,7 +81,7 @@ public:
         else if (store == SubStore::GOG)
         {
             m_id = json["appName"_L1].toString();
-            m_installDir = json["install_path"_L1].toString();
+            m_installDir = toHost(json["install_path"_L1].toString());
 
             if (QFile gogGameInfo{"%1/goggame-%2.info"_L1.arg(m_installDir, m_id)}; gogGameInfo.open(QIODevice::ReadOnly))
             {
@@ -103,7 +112,7 @@ public:
                 }
             }
 
-            if (QFile storeCacheFile{Heroic::instance()->storeRoot() + "/store_cache/gog_api_info.json"};
+            if (QFile storeCacheFile{heroicRoot + "/store_cache/gog_api_info.json"};
                 storeCacheFile.open(QIODevice::ReadOnly))
             {
                 auto storeCache = QJsonDocument::fromJson(storeCacheFile.readAll())["gog_%1"_L1.arg(m_id)];
@@ -125,7 +134,7 @@ public:
         else if (store == SubStore::Amazon)
         {
             m_id = json["id"_L1].toString();
-            m_installDir = json["path"_L1].toString();
+            m_installDir = toHost(json["path"_L1].toString());
             m_type = AppType::Game;
 
             if (const auto it =
@@ -159,31 +168,45 @@ public:
         qCDebug(HeroicLog) << "Creating game:" << m_id;
 
         // Common to all substores
-        if (QFile gamesConfig{Heroic::instance()->storeRoot() + "/GamesConfig/%1.json"_L1.arg(m_id)};
-            gamesConfig.open(QIODevice::ReadOnly))
+        if (QFile gamesConfig{heroicRoot + "/GamesConfig/%1.json"_L1.arg(m_id)}; gamesConfig.open(QIODevice::ReadOnly))
         {
             const auto installationInfo = QJsonDocument::fromJson(gamesConfig.readAll())[m_id];
 
-            m_winePrefix = installationInfo["winePrefix"_L1].toString();
-            m_wineBinary = installationInfo["wineVersion"_L1]["bin"_L1].toString();
+            const auto sandboxPrefix = installationInfo["winePrefix"_L1].toString();
+            auto sandboxBinary = installationInfo["wineVersion"_L1]["bin"_L1].toString();
+            m_winePrefix = Flatpak::hostPath(m_flatpakAppId, sandboxPrefix);
+            m_wineBinary = Flatpak::hostPath(m_flatpakAppId, sandboxBinary);
 
             qCDebug(HeroicLog) << "Found Wine prefix for" << m_name << "at" << m_winePrefix;
 
-            // For some reason launching Proton directly doesn't seem to work right, so we'll try to bypass Proton
-            // installations and use the underlying Wine directly
-            if (m_wineBinary.endsWith("/proton"_L1))
+            // Launching Proton's wrapper directly does not work, so use the Wine binary it ships.
+            // The sandbox path keeps the launcher's original spelling; only the host copy is rewritten.
+            if (sandboxBinary.endsWith("/proton"_L1))
             {
-                auto protonBase = m_wineBinary;
+                auto protonBase = sandboxBinary;
                 protonBase.remove("/proton"_L1);
-                if (QFileInfo files{protonBase + "/files"_L1}; files.exists() && files.isDir())
-                    m_wineBinary = protonBase + "/files/bin/wine"_L1;
-                else if (QFileInfo dist{protonBase + "/dist"_L1}; dist.exists() && dist.isDir())
-                    m_wineBinary = protonBase + "/dist/bin/wine"_L1;
+                const auto hostBase = Flatpak::hostPath(m_flatpakAppId, protonBase);
+                QString suffix;
+                if (QFileInfo files{hostBase + "/files"_L1}; files.exists() && files.isDir())
+                    suffix = "/files/bin/wine"_L1;
+                else if (QFileInfo dist{hostBase + "/dist"_L1}; dist.exists() && dist.isDir())
+                    suffix = "/dist/bin/wine"_L1;
+                if (!suffix.isEmpty())
+                {
+                    m_wineBinary = hostBase + suffix;
+                    sandboxBinary = protonBase + suffix;
+                }
+            }
+
+            if (!m_flatpakAppId.isEmpty())
+            {
+                m_sandboxWinePrefix = sandboxPrefix;
+                m_sandboxWineBinary = sandboxBinary;
             }
         }
 
         // Fall back to local icon cache if it exists to avoid loading from the network
-        QDirIterator icons{Heroic::instance()->storeRoot() + "/icons"_L1};
+        QDirIterator icons{heroicRoot + "/icons"_L1};
         while (icons.hasNext())
         {
             icons.next();
@@ -205,28 +228,90 @@ public:
     void launch() const override {}
 };
 
-Heroic::Heroic(QObject *parent)
-    : Store{parent}
+QVariantList Heroic::libraries() const
 {
-    static const QStringList heroicPaths = {
-        QDir::homePath() + "/.config/heroic"_L1,
-        // TODO: sandboxing used in flatpak appears to make UEVR not work, so I'm disabling flatpak detection for now
-        // QDir::homePath() + "/.var/app/com.heroicgameslauncher.hgl/config/heroic"_L1,
+    if (m_installs.isEmpty())
+        return {QVariantMap{{"store"_L1, "Heroic"_L1}, {"path"_L1, QString{}}, {"count"_L1, 0}}};
+
+    QVariantList rows;
+    for (const auto &install : std::as_const(m_installs))
+        rows << QVariantMap{{"store"_L1, install.name}, {"path"_L1, install.path}, {"count"_L1, install.count}};
+    return rows;
+}
+
+QStringList Heroic::roots() const
+{
+    QStringList paths;
+    for (const auto &install : std::as_const(m_installs))
+        paths << install.path;
+    return paths;
+}
+
+void Heroic::discover(bool report)
+{
+    struct Candidate
+    {
+        QString path;
+        QString flatpakAppId;
+        QString name;
+    };
+    const QList<Candidate> candidates = {
+        {QDir::homePath() + "/.config/heroic"_L1, {}, "Heroic"_L1},
+        {QDir::homePath() + "/.var/app/"_L1 + Flatpak::HeroicAppId + "/config/heroic"_L1,
+         Flatpak::HeroicAppId,
+         "Heroic (Flatpak)"_L1},
     };
 
-    for (const auto &path : heroicPaths)
+    QList<Install> found;
+    QStringList seen;
+    for (const auto &candidate : candidates)
     {
-        if (QFileInfo fi{path}; fi.exists() && fi.isDir())
+        const QFileInfo info{candidate.path};
+        if (!info.exists() || !info.isDir())
+            continue;
+        const auto canonical = info.canonicalFilePath();
+        if (canonical.isEmpty() || seen.contains(canonical))
+            continue;
+        seen << canonical;
+
+        Install install;
+        install.path = canonical;
+        install.flatpakAppId = candidate.flatpakAppId;
+        install.name = candidate.name;
+        found << install;
+    }
+
+    m_heroicRoot.clear();
+    for (const auto &install : found)
+    {
+        if (install.flatpakAppId.isEmpty())
         {
-            m_heroicRoot = path;
+            m_heroicRoot = install.path;
             break;
         }
     }
+    if (m_heroicRoot.isEmpty() && !found.isEmpty())
+        m_heroicRoot = found.constFirst().path;
 
-    if (m_heroicRoot.isEmpty())
+    auto changed = found.size() != m_installs.size();
+    for (int i = 0; !changed && i < found.size(); ++i)
+        changed = found.at(i).path != m_installs.at(i).path || found.at(i).flatpakAppId != m_installs.at(i).flatpakAppId;
+    if (changed)
+        m_installs = found;
+
+    if (!report && !changed)
+        return;
+    if (m_installs.isEmpty())
         qCInfo(HeroicLog) << "Heroic not found";
     else
-        qCInfo(HeroicLog) << "Found Heroic:" << m_heroicRoot;
+        for (const auto &install : std::as_const(m_installs))
+            qCInfo(HeroicLog) << "Found" << install.name << "at" << install.path;
+}
+
+Heroic::Heroic(QObject *parent)
+    : Store{parent}
+{
+    discover(true);
 }
 
 Heroic *Heroic::instance()
@@ -242,8 +327,7 @@ Heroic *Heroic::create(QQmlEngine *qml, QJSEngine *js)
 
 void Heroic::scanStore()
 {
-    if (m_heroicRoot.isEmpty())
-        return;
+    discover(false);
 
     qCDebug(HeroicLog) << "Scanning Heroic library";
     beginResetModel();
@@ -252,56 +336,55 @@ void Heroic::scanStore()
         game->deleteLater();
     m_games.clear();
 
-    // Here begins a three-part journey.
-    // Part the first: Epic
-    if (QFile epicInstalled{m_heroicRoot + "/legendaryConfig/legendary/installed.json"_L1};
-        epicInstalled.open(QIODevice::ReadOnly))
+    for (auto &install : m_installs)
     {
-        qCDebug(HeroicLog) << "Found Epic:" << epicInstalled.fileName();
-        const auto epicJson = QJsonDocument::fromJson(epicInstalled.readAll()).object();
-        for (const auto &game : epicJson)
-        {
-            if (auto g = new HeroicGame{HeroicGame::SubStore::Epic, game.toObject(), this}; g->isValid())
-                m_games.push_back(g);
-            else
-                g->deleteLater();
-        }
-    }
-
-    // Part the second: GOG
-    if (QFile gogInstalled{m_heroicRoot + "/gog_store/installed.json"_L1}; gogInstalled.open(QIODevice::ReadOnly))
-    {
-        qCDebug(HeroicLog) << "Found GOG:" << gogInstalled.fileName();
-        const auto gogJson = QJsonDocument::fromJson(gogInstalled.readAll()).object();
-        for (const auto &game : gogJson["installed"_L1].toArray())
-        {
-            if (auto g = new HeroicGame{HeroicGame::SubStore::GOG, game.toObject(), this}; g->isValid())
-                m_games.push_back(g);
-            else
-                g->deleteLater();
-        }
-    }
-
-    // Part the third: Amazon
-    if (QFile amazonLibrary{m_heroicRoot + "/nile_config/nile/library.json"_L1}; amazonLibrary.open(QIODevice::ReadOnly))
-    {
-        amazonLibraryCache = QJsonDocument::fromJson(amazonLibrary.readAll()).array();
-        if (QFile amazonInstalled{m_heroicRoot + "/nile_config/nile/installed.json"_L1};
-            amazonInstalled.open(QIODevice::ReadOnly))
-        {
-            qCDebug(HeroicLog) << "Found Amazon:" << amazonInstalled.fileName();
-            const auto amazonJson = QJsonDocument::fromJson(amazonInstalled.readAll()).array();
-            for (const auto &game : amazonJson)
+        install.count = 0;
+        const auto &root = install.path;
+        const auto add = [&](HeroicGame *game) {
+            if (game->isValid())
             {
-                if (auto g = new HeroicGame{HeroicGame::SubStore::Amazon, game.toObject(), this}; g->isValid())
-                    m_games.push_back(g);
-                else
-                    g->deleteLater();
+                m_games.push_back(game);
+                ++install.count;
+            }
+            else
+                game->deleteLater();
+        };
+
+        // Epic, then GOG, then Amazon. The Amazon library cache is per install and has to be
+        // loaded before that install's games are constructed.
+        if (QFile epicInstalled{root + "/legendaryConfig/legendary/installed.json"_L1};
+            epicInstalled.open(QIODevice::ReadOnly))
+        {
+            qCDebug(HeroicLog) << "Found Epic:" << epicInstalled.fileName();
+            const auto epicJson = QJsonDocument::fromJson(epicInstalled.readAll()).object();
+            for (const auto &game : epicJson)
+                add(new HeroicGame{HeroicGame::SubStore::Epic, game.toObject(), root, install.flatpakAppId, this});
+        }
+
+        if (QFile gogInstalled{root + "/gog_store/installed.json"_L1}; gogInstalled.open(QIODevice::ReadOnly))
+        {
+            qCDebug(HeroicLog) << "Found GOG:" << gogInstalled.fileName();
+            const auto gogJson = QJsonDocument::fromJson(gogInstalled.readAll()).object();
+            for (const auto &game : gogJson["installed"_L1].toArray())
+                add(new HeroicGame{HeroicGame::SubStore::GOG, game.toObject(), root, install.flatpakAppId, this});
+        }
+
+        if (QFile amazonLibrary{root + "/nile_config/nile/library.json"_L1}; amazonLibrary.open(QIODevice::ReadOnly))
+        {
+            amazonLibraryCache = QJsonDocument::fromJson(amazonLibrary.readAll()).array();
+            if (QFile amazonInstalled{root + "/nile_config/nile/installed.json"_L1};
+                amazonInstalled.open(QIODevice::ReadOnly))
+            {
+                qCDebug(HeroicLog) << "Found Amazon:" << amazonInstalled.fileName();
+                const auto amazonJson = QJsonDocument::fromJson(amazonInstalled.readAll()).array();
+                for (const auto &game : amazonJson)
+                    add(new HeroicGame{HeroicGame::SubStore::Amazon, game.toObject(), root, install.flatpakAppId, this});
             }
         }
     }
 
     endResetModel();
+    emit librariesChanged();
 }
 
 class HeroicImageFetcher : public QQuickImageResponse
@@ -311,10 +394,12 @@ class HeroicImageFetcher : public QQuickImageResponse
 public:
     HeroicImageFetcher(const QString &url, const QSize &)
     {
-        QFile heroicCache{Heroic::instance()->storeRoot() + "/images-cache/"_L1 +
-                          QCryptographicHash::hash(url.toLatin1(), QCryptographicHash::Sha256).toHex()};
-        if (heroicCache.exists() && heroicCache.open(QIODevice::ReadOnly))
+        const auto hash = QCryptographicHash::hash(url.toLatin1(), QCryptographicHash::Sha256).toHex();
+        for (const auto &root : Heroic::instance()->roots())
         {
+            QFile heroicCache{root + "/images-cache/"_L1 + hash};
+            if (!heroicCache.exists() || !heroicCache.open(QIODevice::ReadOnly))
+                continue;
             m_image = QImage::fromData(heroicCache.readAll());
             emit finished();
             return;

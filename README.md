@@ -16,7 +16,7 @@ can be disabled in the settings page.
 
 - When you install or delete a Steam game, you must restart Steam before Kaon will properly register the change.
   Otherwise, Steam does not fully flush its configuration to disk, so Kaon cannot read it.
-- Flatpak and Snap installations of stores are not supported at the moment; however, support is planned.
+- Flatpak Steam and Flatpak Heroic are supported, and a native install of the same launcher is listed separately. The Flatpak launcher has to already be running, and user namespaces have to be enabled so Kaon can enter the game sandbox. Snap stores and the Flatpak itch app are still unsupported.
 - Custom games assume you are launching them using your system's wineprefix (i.e. reads the WINEPREFIX environment 
   variable; if not set, falls back to ~/.wine). If you are using custom wineprefixes for your games, UEVR will not
   detect them.

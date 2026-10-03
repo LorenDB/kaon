@@ -17,7 +17,7 @@ Item {
     readonly property var steps: game ? (GameStatus.revision, GameStatus.steps(game)) : []
     readonly property var vrMods: game ? (GameStatus.revision, GameStatus.vrMods(game)) : []
 
-    // "Unreal Engine game on Steam", or "Game on Steam" when the engine wasn't recognized
+    // "Unreal Engine game on Steam", or "Game on Flatpak Steam" for a sandboxed install
     function describe(g) {
         if (!g)
             return "";
@@ -25,8 +25,12 @@ Item {
                                                                                                                   "game";
 
 
-        const where = g.store === Game.Steam ? "on Steam" : g.store === Game.Heroic ? "from Heroic" : g.store === Game.Itch
-                                                                                      ? "from itch" : "added by hand";
+        const flatpak = g.flatpakAppId ? "Flatpak " : "";
+        const where = g.store === Game.Steam ? "on " + flatpak + "Steam" : g.store === Game.Heroic ? "from " + flatpak
+                                                                                                     + "Heroic" : g.store
+                                                                                                     === Game.Itch
+                                                                                                     ? "from itch" :
+                                                                                                       "added by hand";
         const engine = engineName(g);
         return (engine !== "" ? engine + " " + kind : kind.charAt(0).toUpperCase() + kind.slice(1)) + " " + where;
     }

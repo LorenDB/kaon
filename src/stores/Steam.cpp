@@ -3,10 +3,14 @@
 #include <QDesktopServices>
 #include <QDir>
 #include <QDirIterator>
+#include <QFileInfo>
 #include <QLoggingCategory>
+#include <QProcess>
 #include <QSettings>
+#include <QVariant>
 
 #include "Aptabase.h"
+#include "Flatpak.h"
 #include "VDF.h"
 #include "vdf_parser.hpp"
 
@@ -17,12 +21,17 @@ class SteamGame : public Game
     Q_OBJECT
 
 public:
-    SteamGame(const QString &steamId, const QString &steamDrive, QObject *parent)
+    SteamGame(const QString &steamId,
+              const QString &steamDrive,
+              const QString &steamRoot,
+              const QString &flatpakAppId,
+              QObject *parent)
         : Game{parent}
     {
         qCDebug(SteamLog) << "Creating game:" << steamId;
 
         m_id = steamId;
+        m_flatpakAppId = flatpakAppId;
         m_canLaunch = true;
         m_canOpenSettings = true;
 
@@ -44,7 +53,7 @@ public:
             return;
         }
 
-        const auto imageDir = Steam::instance()->storeRoot() + "/appcache/librarycache/"_L1 + m_id;
+        const auto imageDir = steamRoot + "/appcache/librarycache/"_L1 + m_id;
         QDirIterator images{imageDir, QDirIterator::Subdirectories};
         while (images.hasNext())
         {
@@ -81,7 +90,19 @@ public:
             }
         }
 
+        if (!m_flatpakAppId.isEmpty())
+        {
+            // Flatpak Steam records the host spelling, and that spelling is valid inside the sandbox.
+            m_sandboxWinePrefix = m_winePrefix;
+            m_sandboxWineBinary = m_wineBinary;
+        }
+
         auto *info = AppInfoVDF::instance()->game(m_id.toInt());
+        if (!info)
+        {
+            qCWarning(SteamLog) << "No appinfo entry for" << m_id << "under" << steamRoot;
+            return;
+        }
         AppInfoVDF::AppInfo::Section section;
         AppInfoVDF::AppInfo::SectionDesc app_desc{};
 
@@ -200,11 +221,9 @@ public:
                         const QString logoId{static_cast<const char *>(value.second)};
 
                         // We prefer to use the .jpg but will fall back to the .ico if the .jpg is available
-                        if (QFileInfo fi{
-                                u"%1/appcache/librarycache/%2/%3.jpg"_s.arg(Steam::instance()->storeRoot(), m_id, logoId)};
-                            fi.exists())
+                        if (QFileInfo fi{u"%1/appcache/librarycache/%2/%3.jpg"_s.arg(steamRoot, m_id, logoId)}; fi.exists())
                             m_icon = "file://"_L1 + fi.absoluteFilePath();
-                        else if (QFileInfo fi{u"%1/steam/games/%2.ico"_s.arg(Steam::instance()->storeRoot(), logoId)};
+                        else if (QFileInfo fi{u"%1/steam/games/%2.ico"_s.arg(steamRoot, logoId)};
                                  fi.exists() && !m_icon.isEmpty())
                             m_icon = "file://"_L1 + fi.absoluteFilePath();
                     }
@@ -242,39 +261,95 @@ public:
     void launch() const override
     {
         qCInfo(SteamLog) << "Launching" << m_id;
-        QDesktopServices::openUrl("steam://launch/"_L1 + m_id);
+        const auto url = "steam://launch/"_L1 + m_id;
+        if (m_flatpakAppId.isEmpty())
+            QDesktopServices::openUrl(url);
+        else if (!QProcess::startDetached("flatpak"_L1, {"run"_L1, m_flatpakAppId, url}))
+            qCWarning(SteamLog) << "Could not launch" << m_id << "through Flatpak Steam";
     }
 };
+
+QVariantList Steam::libraries() const
+{
+    if (m_installs.isEmpty())
+        return {QVariantMap{{"store"_L1, "Steam"_L1}, {"path"_L1, QString{}}, {"count"_L1, 0}}};
+
+    QVariantList rows;
+    for (const auto &install : std::as_const(m_installs))
+        rows << QVariantMap{{"store"_L1, install.name}, {"path"_L1, install.path}, {"count"_L1, install.count}};
+    return rows;
+}
+
+void Steam::discover(bool report)
+{
+    struct Candidate
+    {
+        QString path;
+        QString flatpakAppId;
+        QString name;
+    };
+    const QList<Candidate> candidates = {
+        // ~/.steam comes first since it *should* point to the active native install
+        {QDir::homePath() + "/.steam/steam"_L1, {}, "Steam"_L1},
+        {QDir::homePath() + "/.local/share/Steam"_L1, {}, "Steam"_L1},
+        // Debian ships a Steam installer script that uses this path for some weird reason
+        {QDir::homePath() + "/.steam/debian-installation"_L1, {}, "Steam"_L1},
+        {QDir::homePath() + "/.var/app/"_L1 + Flatpak::SteamAppId + "/data/Steam"_L1,
+         Flatpak::SteamAppId,
+         "Steam (Flatpak)"_L1},
+        // Snap Steam stays unsupported: there is no unprivileged way to enter its sandbox.
+    };
+
+    QList<Install> found;
+    QStringList seen;
+    for (const auto &candidate : candidates)
+    {
+        const QFileInfo info{candidate.path};
+        if (!info.exists() || !info.isDir())
+            continue;
+        const auto canonical = info.canonicalFilePath();
+        if (canonical.isEmpty() || seen.contains(canonical))
+            continue;
+        seen << canonical;
+
+        Install install;
+        install.path = canonical;
+        install.flatpakAppId = candidate.flatpakAppId;
+        install.name = candidate.name;
+        found << install;
+    }
+
+    m_steamRoot.clear();
+    for (const auto &install : found)
+    {
+        if (install.flatpakAppId.isEmpty())
+        {
+            m_steamRoot = install.path;
+            break;
+        }
+    }
+    if (m_steamRoot.isEmpty() && !found.isEmpty())
+        m_steamRoot = found.constFirst().path;
+
+    auto changed = found.size() != m_installs.size();
+    for (int i = 0; !changed && i < found.size(); ++i)
+        changed = found.at(i).path != m_installs.at(i).path || found.at(i).flatpakAppId != m_installs.at(i).flatpakAppId;
+    if (changed)
+        m_installs = found;
+
+    if (!report && !changed)
+        return;
+    if (m_installs.isEmpty())
+        qCInfo(SteamLog) << "Steam not found";
+    else
+        for (const auto &install : std::as_const(m_installs))
+            qCInfo(SteamLog) << "Found" << install.name << "at" << install.path;
+}
 
 Steam::Steam(QObject *parent)
     : Store{parent}
 {
-    static const QStringList steamPaths = {
-        // ~/.steam comes first since it *should* point to the active Steam install
-        QDir::homePath() + "/.steam/steam"_L1,
-        QDir::homePath() + "/.local/share/Steam"_L1,
-        // Debian ships a Steam installer script that uses this path for some weird reason
-        QDir::homePath() + "/.steam/debian-installation"_L1,
-        // TODO: sandboxing used in flatpak appears to make UEVR not work, so I'm disabling flatpak detection for now
-        // QDir::homePath() + "/.var/app/com.valvesoftware.Steam/data/Steam"_L1,
-        // TODO: Snap appears to be broken as well. This should get fixed eventually.
-        // QDir::homePath() + "/snap/steam/common/.local/share/Steam"_L1,
-        // QDir::homePath() + "/.snap/data/steam/common/.local/share/Steam"_L1,
-    };
-
-    for (const auto &path : steamPaths)
-    {
-        if (QFileInfo fi{path}; fi.exists() && fi.isDir())
-        {
-            m_steamRoot = path;
-            break;
-        }
-    }
-
-    if (m_steamRoot.isEmpty())
-        qCInfo(SteamLog) << "Steam not found";
-    else
-        qCInfo(SteamLog) << "Found Steam:" << m_steamRoot;
+    discover(true);
 }
 
 Steam *Steam::instance()
@@ -290,13 +365,30 @@ Steam *Steam::create(QQmlEngine *qml, QJSEngine *js)
 
 void Steam::launchSteamVR()
 {
+    const Install *flatpakOnly = nullptr;
+    for (const auto &install : std::as_const(m_installs))
+    {
+        if (!install.hasSteamVR)
+            continue;
+        if (install.flatpakAppId.isEmpty())
+        {
+            QDesktopServices::openUrl({"steam://run/250820"_L1});
+            return;
+        }
+        flatpakOnly = &install;
+    }
+    if (flatpakOnly != nullptr)
+    {
+        if (!QProcess::startDetached("flatpak"_L1, {"run"_L1, flatpakOnly->flatpakAppId, "steam://run/250820"_L1}))
+            qCWarning(SteamLog) << "Could not launch SteamVR through Flatpak Steam";
+        return;
+    }
     QDesktopServices::openUrl({"steam://run/250820"_L1});
 }
 
 void Steam::scanStore()
 {
-    if (m_steamRoot.isEmpty())
-        return;
+    discover(false);
 
     qCDebug(SteamLog) << "Scanning Steam library";
     beginResetModel();
@@ -306,7 +398,10 @@ void Steam::scanStore()
     m_games.clear();
     m_hasSteamVR = false;
 
-    const auto parseLibraryFolders = [this](const QString &vdfPath) -> bool {
+    for (const auto &install : std::as_const(m_installs))
+        AppInfoVDF::load(install.path + "/appcache/appinfo.vdf"_L1);
+
+    const auto parseLibraryFolders = [this](const QString &vdfPath, Install &install) -> bool {
         qCDebug(SteamLog) << "Parsing libraryfolders.vdf from" << vdfPath;
         std::ifstream vdfFile{vdfPath.toStdString()};
 
@@ -320,12 +415,18 @@ void Steam::scanStore()
                 {
                     if (auto g = new SteamGame{QString::fromStdString(appId),
                                                QString::fromStdString(folder->attribs["path"]),
+                                               install.path,
+                                               install.flatpakAppId,
                                                this};
                         g->isValid())
                     {
                         m_games.push_back(g);
+                        ++install.count;
                         if (g->id() == "250820"_L1)
+                        {
+                            install.hasSteamVR = true;
                             m_hasSteamVR = true;
+                        }
                     }
                     else
                         g->deleteLater();
@@ -344,16 +445,25 @@ void Steam::scanStore()
         return true;
     };
 
-    bool parsed{false};
-    if (const QFileInfo fi{m_steamRoot + "/steamapps/libraryfolders.vdf"_L1}; fi.exists() && fi.isFile())
-        parsed = parseLibraryFolders({fi.absoluteFilePath()});
-    if (const QFileInfo fi{m_steamRoot + "/config/libraryfolders.vdf"_L1}; !parsed && fi.exists() && fi.isFile())
-        parseLibraryFolders({fi.absoluteFilePath()});
-    if (!parsed)
-        qCWarning(SteamLog) << "Could not find libraryfolders.vdf";
+    for (auto &install : m_installs)
+    {
+        install.count = 0;
+        install.hasSteamVR = false;
+        bool parsed = false;
+        if (const QFileInfo fi{install.path + "/steamapps/libraryfolders.vdf"_L1}; fi.exists() && fi.isFile())
+            parsed = parseLibraryFolders(fi.absoluteFilePath(), install);
+        if (!parsed)
+        {
+            if (const QFileInfo fi{install.path + "/config/libraryfolders.vdf"_L1}; fi.exists() && fi.isFile())
+                parsed = parseLibraryFolders(fi.absoluteFilePath(), install);
+        }
+        if (!parsed)
+            qCWarning(SteamLog) << "Could not find libraryfolders.vdf in" << install.path;
+    }
 
     endResetModel();
     emit hasSteamVRChanged(m_hasSteamVR);
+    emit librariesChanged();
 }
 
 #include "Steam.moc"

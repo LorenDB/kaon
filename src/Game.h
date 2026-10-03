@@ -15,6 +15,7 @@ class Game : public QObject
     Q_PROPERTY(QDateTime lastPlayed READ lastPlayed CONSTANT)
     Q_PROPERTY(QString winePrefix READ winePrefix CONSTANT)
     Q_PROPERTY(QString wineBinary READ wineBinary NOTIFY wineBinaryChanged FINAL)
+    Q_PROPERTY(QString flatpakAppId READ flatpakAppId CONSTANT)
     Q_PROPERTY(AppType type READ type CONSTANT)
     Q_PROPERTY(Engine engine READ engine CONSTANT FINAL)
     Q_PROPERTY(Store store READ store CONSTANT FINAL)
@@ -104,6 +105,14 @@ public:
     QDateTime lastPlayed() const { return m_lastPlayed; }
     QString winePrefix() const { return m_winePrefix; }
     QString wineBinary() const { return m_wineBinary; }
+    // Empty for a native install. Flatpak Steam and Heroic set this to the app id.
+    QString flatpakAppId() const { return m_flatpakAppId; }
+    // Settings key. Native games stay keyed by id so existing installs are unchanged.
+    QString settingsId() const { return m_flatpakAppId.isEmpty() ? m_id : m_flatpakAppId + QLatin1Char('/') + m_id; }
+    // Prefix and wine binary as the running game sees them. Host paths stay in winePrefix()
+    // and wineBinary() so prefix checks and the .NET installer can run outside the sandbox.
+    QString sandboxWinePrefix() const { return m_sandboxWinePrefix.isEmpty() ? m_winePrefix : m_sandboxWinePrefix; }
+    QString sandboxWineBinary() const { return m_sandboxWineBinary.isEmpty() ? m_wineBinary : m_sandboxWineBinary; }
     Engine engine() const { return m_engine; }
     AppType type() const { return m_type; }
     Features features() const { return m_features; }
@@ -171,6 +180,9 @@ protected:
     QDateTime m_lastPlayed;
     QString m_winePrefix;
     QString m_wineBinary;
+    QString m_flatpakAppId;
+    QString m_sandboxWinePrefix;
+    QString m_sandboxWineBinary;
     AppType m_type = AppType::Other;
     Features m_features = Feature::Flatscreen;
 

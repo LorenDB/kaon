@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QQmlEngine>
+#include <QVariant>
 
 #include "Store.h"
 
@@ -11,25 +12,39 @@ class Steam : public Store
     QML_SINGLETON
 
     Q_PROPERTY(bool hasSteamVR READ hasSteamVR NOTIFY hasSteamVRChanged FINAL)
+    Q_PROPERTY(QVariantList libraries READ libraries NOTIFY librariesChanged FINAL)
 
 public:
     static Steam *instance();
     static Steam *create(QQmlEngine *qml, QJSEngine *js);
 
     QString storeRoot() const final { return m_steamRoot; }
+    QVariantList libraries() const;
     bool hasSteamVR() const { return m_hasSteamVR; }
 
     Q_INVOKABLE void launchSteamVR();
 
 signals:
     void hasSteamVRChanged(bool state);
+    void librariesChanged();
 
 private:
+    struct Install
+    {
+        QString path;
+        QString flatpakAppId;
+        QString name;
+        int count = 0;
+        bool hasSteamVR = false;
+    };
+
     explicit Steam(QObject *parent = nullptr);
     ~Steam() = default;
 
     void scanStore() final;
+    void discover(bool report);
 
     QString m_steamRoot;
+    QList<Install> m_installs;
     bool m_hasSteamVR = false;
 };

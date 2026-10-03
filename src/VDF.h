@@ -44,6 +44,8 @@ class AppInfoVDF
 {
 public:
     static AppInfoVDF *instance();
+    // Load one install's appinfo.vdf. The same canonical path returns the library already loaded.
+    static AppInfoVDF *load(const QString &path);
 
     struct AppInfo27
     {
@@ -119,7 +121,7 @@ public:
     void dumpAppInfo();
 
 private:
-    AppInfoVDF();
+    explicit AppInfoVDF(const QString &path);
     ~AppInfoVDF() {}
 
     static uint32_t vdf_version;
@@ -131,5 +133,7 @@ private:
     Header *base = nullptr;
     AppInfo *root = nullptr;
     StringTable *table = nullptr;
+    // This file's version. The static vdf_version follows whichever library is being parsed.
+    uint32_t m_fileVersion = 0x27;
 };
 #pragma pack(pop)

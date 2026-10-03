@@ -5,6 +5,8 @@
 #include <QFileInfo>
 #include <QGuiApplication>
 #include <QLocale>
+#include <QLoggingCategory>
+#include <QProcess>
 #include <QSettings>
 #include <QTimer>
 #include <QUrl>
@@ -16,6 +18,8 @@
 #include "Itch.h"
 #include "ModsFilterModel.h"
 #include "Steam.h"
+
+Q_LOGGING_CATEGORY(GameStatusLog, "gamestatus")
 
 namespace
 {
@@ -40,11 +44,11 @@ namespace
         switch (game->store())
         {
         case Game::Store::Steam:
-            return "Steam"_L1;
+            return game->flatpakAppId().isEmpty() ? "Steam"_L1 : "Flatpak Steam"_L1;
         case Game::Store::Heroic:
-            return "Heroic"_L1;
+            return game->flatpakAppId().isEmpty() ? "Heroic"_L1 : "Flatpak Heroic"_L1;
         case Game::Store::Itch:
-            return "the itch app"_L1;
+            return "Itch"_L1;
         default:
             return "its launcher"_L1;
         }
@@ -86,7 +90,7 @@ namespace
     QString gameKey(const Game *game)
     {
         return QString::fromLatin1(QMetaEnum::fromType<Game::Store>().valueToKey(static_cast<quint64>(game->store()))) +
-               '/' + game->id();
+               '/' + game->settingsId();
     }
 } // namespace
 
@@ -453,7 +457,13 @@ void GameStatus::runStep(Game *game, const QString &key, bool secondary)
     if (action == "launchOnce"_L1)
         game->launch();
     else if (action == "steamSettings"_L1)
-        QDesktopServices::openUrl(QUrl{"steam://gameproperties/"_L1 + game->id()});
+    {
+        const auto url = "steam://gameproperties/"_L1 + game->id();
+        if (game->flatpakAppId().isEmpty())
+            QDesktopServices::openUrl(QUrl{url});
+        else if (!QProcess::startDetached("flatpak"_L1, {"run"_L1, game->flatpakAppId(), url}))
+            qCWarning(GameStatusLog) << "Could not open Flatpak Steam properties for" << game->id();
+    }
     else if (action == "rescan"_L1)
         rescanLibraries();
     else if (const auto mod = modForKey(key))

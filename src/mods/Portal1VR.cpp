@@ -150,7 +150,7 @@ void Portal1VR::installModImpl(Game *game, const Game::LaunchOption &exe)
 
     QSettings settings;
     settings.beginGroup(settingsGroup());
-    settings.beginGroup(game->id());
+    settings.beginGroup(game->settingsId());
     QSet<QString> tracked{installed.cbegin(), installed.cend()};
     for (const auto &old : settings.value("installedFiles"_L1).toStringList())
     {

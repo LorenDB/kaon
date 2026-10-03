@@ -122,7 +122,7 @@ void UEVR::deleteRelease(ModRelease *release)
 void UEVR::launchMod(Game *game)
 {
     Aptabase::instance()->track("launch-uevr"_L1, {{"version"_L1, currentRelease()->name()}, {"game"_L1, game->name()}});
-    Wine::instance()->runInWine(currentRelease()->name(), game, path(Paths::CurrentUEVRInjector));
+    Wine::instance()->runInWine(currentRelease()->name(), game, path(Paths::CurrentUEVRInjector), true);
 }
 
 QMap<int, Game::LaunchOption> UEVR::acceptableInstallCandidates(const Game *game) const

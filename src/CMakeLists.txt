@@ -66,6 +66,8 @@ qt_add_qml_module(kaon
         VDF.h
         Wine.cpp
         Wine.h
+        Flatpak.cpp
+        Flatpak.h
 
         mods/Dotnet.cpp
         mods/Dotnet.h

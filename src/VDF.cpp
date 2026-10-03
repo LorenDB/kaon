@@ -41,23 +41,40 @@ Q_LOGGING_CATEGORY(VDFLog, "vdf")
 namespace
 {
     constexpr uint32_t LAST_STEAM_APP = 0;
-}
+
+    // Which library's string table Section::parse should read. appinfo.vdf v0x29 keeps
+    // strings in a table that belongs to that file, and two Steam installs can differ.
+    AppInfoVDF *g_parsing = nullptr;
+    QList<AppInfoVDF *> g_libraries;
+
+    AppInfoVDF *currentLibrary()
+    {
+        return g_parsing != nullptr ? g_parsing : AppInfoVDF::instance();
+    }
+} // namespace
 
 uint32_t AppInfoVDF::vdf_version = 0x27; // Default to Pre-December 2022
 
-AppInfoVDF::AppInfoVDF()
-    : m_appInfoPath{Steam::instance()->storeRoot() + "/appcache/appinfo.vdf"_L1}
+AppInfoVDF::AppInfoVDF(const QString &path)
+    : m_appInfoPath{path}
 {
-    if (!QFileInfo::exists(m_appInfoPath))
+    if (path.isEmpty() || !QFileInfo::exists(m_appInfoPath))
         return;
 
     QFile dataFile{m_appInfoPath};
     if (dataFile.open(QIODevice::ReadOnly))
     {
         m_data = dataFile.readAll();
+        if (m_data.size() < static_cast<qsizetype>(sizeof(Header)))
+        {
+            qCWarning(VDFLog) << "appinfo.vdf is too small:" << m_appInfoPath;
+            m_data.clear();
+            return;
+        }
         base = reinterpret_cast<Header *>(m_data.data());
 
-        vdf_version = (reinterpret_cast<uint8_t *>(&base->version))[0];
+        m_fileVersion = (reinterpret_cast<uint8_t *>(&base->version))[0];
+        vdf_version = m_fileVersion;
         root = &base->head;
 
         // A string table was added in June of 2024 (0x29)
@@ -95,11 +112,20 @@ AppInfoVDF::AppInfoVDF()
         }
     }
 
-    QTimer::singleShot(0, [this] { dumpAppInfo(); });
+    // Dumping clears the cache directory, so only the first library schedules it.
+    static bool dumpScheduled = false;
+    if (!dumpScheduled)
+    {
+        dumpScheduled = true;
+        QTimer::singleShot(0, [this] { dumpAppInfo(); });
+    }
 }
 
 void AppInfoVDF::dumpAppInfo()
 {
+    g_parsing = this;
+    vdf_version = m_fileVersion;
+
     qCInfo(VDFLog) << "Dumping app info to"
                    << QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + "/appinfo/"_L1;
 
@@ -169,9 +195,9 @@ void AppInfoVDF::AppInfo::Section::parse(SectionDesc &desc)
             {
                 // String Table Lookup (June 2024+)
                 //
-                if (AppInfoVDF::instance()->vdf_version >= 0x29)
+                if (currentLibrary()->vdf_version >= 0x29)
                 {
-                    name = (char *)AppInfoVDF::instance()->table->strings;
+                    name = (char *)currentLibrary()->table->strings;
 
                     const auto str_idx = *(uint32_t *)(cur + 1);
 
@@ -179,9 +205,9 @@ void AppInfoVDF::AppInfo::Section::parse(SectionDesc &desc)
                     qCDebug(VDFLog) << "String Table Index:  " << str_idx << ", op=" << op;
 #endif
 
-                    if (str_idx < AppInfoVDF::instance()->table->num_strings)
+                    if (str_idx < currentLibrary()->table->num_strings)
                     {
-                        name = AppInfoVDF::instance()->m_strs[str_idx];
+                        name = currentLibrary()->m_strs[str_idx];
 #ifdef DEBUG
                         qCDebug(VDFLog) << "String=" << name;
 #endif
@@ -299,20 +325,55 @@ AppInfoVDF::AppInfo *AppInfoVDF::AppInfo::getNextApp(void)
     return (pNext->appid == LAST_STEAM_APP) ? nullptr : pNext;
 }
 
+AppInfoVDF *AppInfoVDF::load(const QString &path)
+{
+    if (path.isEmpty() || !QFileInfo::exists(path))
+        return nullptr;
+
+    const auto canonical = QFileInfo{path}.canonicalFilePath();
+    if (canonical.isEmpty())
+        return nullptr;
+
+    for (auto *library : g_libraries)
+        if (library->m_appInfoPath == canonical)
+            return library;
+
+    auto *library = new AppInfoVDF{canonical};
+    if (library->base == nullptr)
+    {
+        delete library;
+        return nullptr;
+    }
+
+    g_libraries.push_back(library);
+    qCInfo(VDFLog) << "Loaded appinfo" << canonical << "version" << library->m_fileVersion;
+    return library;
+}
+
 AppInfoVDF *AppInfoVDF::instance()
 {
-    static auto vdf = new AppInfoVDF;
-    return vdf;
+    if (const auto rootPath = Steam::instance()->storeRoot(); !rootPath.isEmpty())
+        if (auto *library = load(rootPath + "/appcache/appinfo.vdf"_L1))
+            return library;
+    if (!g_libraries.isEmpty())
+        return g_libraries.constFirst();
+
+    static auto *empty = new AppInfoVDF{QString{}};
+    return empty;
 }
 
 AppInfoVDF::AppInfo *AppInfoVDF::game(int steamId)
 {
-    AppInfoVDF::AppInfo *info = root;
-    while (info && info->appid != LAST_STEAM_APP)
+    if (g_libraries.isEmpty())
+        instance();
+
+    for (auto *library : g_libraries)
     {
-        if (info->appid == steamId)
-            return info;
-        info = info->getNextApp();
+        g_parsing = library;
+        vdf_version = library->m_fileVersion;
+        for (auto *info = library->root; info && info->appid != LAST_STEAM_APP; info = info->getNextApp())
+            if (info->appid == static_cast<AppId_t>(steamId))
+                return info;
     }
     return nullptr;
 }

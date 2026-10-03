@@ -149,7 +149,7 @@ void UEVRAFW::launchMod(Game *game)
         return;
 
     Mod::launchMod(game);
-    Wine::instance()->runInWine(currentRelease()->name(), game, path(Paths::CurrentInjector));
+    Wine::instance()->runInWine(currentRelease()->name(), game, path(Paths::CurrentInjector), true);
 }
 
 QMap<int, Game::LaunchOption> UEVRAFW::acceptableInstallCandidates(const Game *game) const

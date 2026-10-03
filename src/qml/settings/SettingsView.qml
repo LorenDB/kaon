@@ -10,6 +10,20 @@ Flickable {
     readonly property real colW: wide ? (width - 2 * Theme.pad - 40) / 2 : width - 2 * Theme.pad
     readonly property bool wide: width > 900
 
+    function libraryRows() {
+        const rows = [];
+        for (const lib of Steam.libraries)
+            rows.push(lib);
+        for (const lib of Heroic.libraries)
+            rows.push(lib);
+        rows.push({
+                      "store": "itch",
+                      "path": Itch.storeRoot,
+                      "count": Itch.count
+                  });
+        return rows;
+    }
+
     boundsBehavior: Flickable.StopAtBounds
     clip: true
     contentHeight: Math.max(left.height, right.y + right.height) + Theme.notchHeight + 50
@@ -29,23 +43,7 @@ Flickable {
         }
 
         Repeater {
-            model: [
-                {
-                    "store": "Steam",
-                    "path": Steam.storeRoot,
-                    "count": Steam.count
-                },
-                {
-                    "store": "Heroic",
-                    "path": Heroic.storeRoot,
-                    "count": Heroic.count
-                },
-                {
-                    "store": "itch",
-                    "path": Itch.storeRoot,
-                    "count": Itch.count
-                }
-            ]
+            model: view.libraryRows()
 
             Item {
                 required property var modelData
@@ -60,6 +58,8 @@ Flickable {
                 }
 
                 VText {
+                    id: storeName
+
                     anchors.verticalCenter: parent.verticalCenter
                     font.pixelSize: 14
                     font.weight: Font.Bold
@@ -77,7 +77,7 @@ Flickable {
                                                                                                                + " apps" :
                                                                                                                "") : "Not found"
                     width: parent.width - x
-                    x: 100
+                    x: storeName.x + storeName.implicitWidth + 16
                 }
             }
         }

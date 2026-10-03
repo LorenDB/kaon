@@ -154,7 +154,8 @@ Itch::Itch(QObject *parent)
 {
     static const QStringList itchPaths = {
         QDir::homePath() + "/.config/itch"_L1,
-        // TODO: sandboxing used in flatpak appears to make UEVR not work, so I'm disabling flatpak detection for now
+        // Flatpak itch is still unsupported: those games are assumed to use the system Wine prefix,
+        // which does not match the sandbox. Snap stores stay unsupported as well.
         // QDir::homePath() + "/.var/app/io.itch.itch/config/itch"_L1,
     };
 
