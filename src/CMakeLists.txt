@@ -4,22 +4,45 @@ qt_add_executable(kaon
     main.cpp
 )
 
+# Theme and Nav are QML singletons
+set_source_files_properties(qml/Theme.qml qml/Nav.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
+
 qt_add_qml_module(kaon
     URI dev.lorendb.kaon
     VERSION 1.0
 
     QML_FILES
-        qml/AddCustomGame.qml
         qml/Dialogs.qml
-        qml/GameDetails.qml
-        qml/GamesView.qml
         qml/Main.qml
-        qml/ModsList.qml
-        qml/SettingsPage.qml
+        qml/Nav.qml
+        qml/Theme.qml
 
-        qml/components/GameGridDelegate.qml
-        qml/components/GameListDelegate.qml
-        qml/components/Tag.qml
+        qml/components/Chip.qml
+        qml/components/GlassDialog.qml
+        qml/components/GlassScrollBar.qml
+        qml/components/Icon.qml
+        qml/components/Led.qml
+        qml/components/NotchButton.qml
+        qml/components/RoundedImage.qml
+        qml/components/Segmented.qml
+        qml/components/TextBox.qml
+        qml/components/ToggleSwitch.qml
+        qml/components/VButton.qml
+        qml/components/VisorFrame.qml
+        qml/components/VText.qml
+
+        qml/game/GameView.qml
+        qml/game/LensView.qml
+        qml/game/VersionMenu.qml
+
+        qml/library/FilterPopup.qml
+        qml/library/GameCard.qml
+        qml/library/LibraryView.qml
+
+        qml/mods/ModsView.qml
+
+        qml/settings/AddGameView.qml
+        qml/settings/SettingsView.qml
 
     SOURCES
         Aptabase.cpp
@@ -70,15 +93,12 @@ qt_add_qml_module(kaon
         stores/Store.h
 
     RESOURCES
-        qml/icons/delete.svg
-        qml/icons/download.svg
-        qml/icons/draw-arrow-back.svg
-        qml/icons/folder.svg
+        qml/fonts/MPLUSRounded1c-Bold.ttf
+        qml/fonts/MPLUSRounded1c-ExtraBold.ttf
+        qml/fonts/MPLUSRounded1c-Medium.ttf
+        qml/fonts/MPLUSRounded1c-Regular.ttf
+        qml/fonts/OFL.txt
         qml/icons/kaon.svg
-        qml/icons/list-add.svg
-        qml/icons/media-playback-start.svg
-        qml/icons/settings-configure.svg
-        qml/icons/view-refresh.svg
 )
 
 if (EXPERIMENTAL_UUVR_SUPPORT)

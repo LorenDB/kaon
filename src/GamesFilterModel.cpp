@@ -34,7 +34,6 @@ GamesFilterModel::GamesFilterModel(QObject *parent)
 
     QSettings settings;
     settings.beginGroup("GamesFilterModel"_L1);
-    m_viewType = settings.value("viewType"_L1, ViewType::Grid).value<ViewType>();
     m_sortType = settings.value("sortType"_L1, SortType::LastPlayed).value<SortType>();
 
     connect(this, &QAbstractItemModel::rowsInserted, this, &GamesFilterModel::gamesChanged);
@@ -66,16 +65,6 @@ void GamesFilterModel::setSearch(const QString &search)
     m_search = search;
     emit searchChanged();
     endFilterChange();
-}
-
-void GamesFilterModel::setViewType(ViewType viewType)
-{
-    m_viewType = viewType;
-    emit viewTypeChanged(m_viewType);
-
-    QSettings settings;
-    settings.beginGroup("GamesFilterModel"_L1);
-    settings.setValue("viewType"_L1, m_viewType);
 }
 
 void GamesFilterModel::setSortType(SortType sortType)

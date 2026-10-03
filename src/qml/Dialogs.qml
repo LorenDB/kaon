@@ -1,83 +1,187 @@
 import QtQuick
-import QtQuick.Controls
+import QtQuick.Controls.Basic
 
 import dev.lorendb.kaon
 
+// Every popup Kaon shows: confirmations, failures, updates, and picking an executable.
 Item {
-    Dialog {
-        id: downloadFailedDialog
+    GlassDialog {
+        id: confirmDialog
 
-        property string whatWasBeingDownloaded: "<null>"
+        property string actionLabel
+        property var onConfirm: null
 
-        closePolicy: Popup.CloseOnEscape
-        modal: true
-        standardButtons: Dialog.Ok
-        title: "Download failed"
+        buttons: [
+            VButton {
+                small: true
+                text: "Cancel"
 
-        Label {
-            anchors.fill: parent
-            text: "Downloading " + downloadFailedDialog.whatWasBeingDownloaded
-                  + " failed. Please check your network connection."
-            wrapMode: Text.WordWrap
-        }
+                onClicked: confirmDialog.close()
+            },
+            VButton {
+                small: true
+                solid: true
+                text: confirmDialog.actionLabel
+
+                onClicked: {
+                    confirmDialog.close();
+                    if (confirmDialog.onConfirm)
+                        confirmDialog.onConfirm();
+                }
+            }
+        ]
     }
 
-    Dialog {
-        id: updateAvailableDialog
+    GlassDialog {
+        id: messageDialog
 
-        property string updateUrl
-        property string updateVersion
+        buttons: [
+            VButton {
+                small: true
+                solid: true
+                text: "OK"
 
-        closePolicy: Popup.CloseOnEscape
-        modal: true
-        title: "Update available"
-
-        footer: DialogButtonBox {
-            Button {
-                DialogButtonBox.buttonRole: DialogButtonBox.AcceptRole
-                text: qsTr("OK")
+                onClicked: messageDialog.close()
             }
-
-            Button {
-                DialogButtonBox.buttonRole: DialogButtonBox.RejectRole
-                text: qsTr("Ignore this release")
-            }
-        }
-
-        onRejected: UpdateChecker.ignore = updateVersion
-
-        Label {
-            anchors.fill: parent
-            text: "Kaon " + updateAvailableDialog.updateVersion
-                  + " is now available. Find out more and download the update at <a href=\""
-                  + updateAvailableDialog.updateUrl + "\">the release page</a>."
-            wrapMode: Text.WordWrap
-
-            onLinkActivated: link => Qt.openUrlExternally(link)
-        }
+        ]
     }
 
-    Dialog {
-        id: wineFailedDialog
+    GlassDialog {
+        id: updateDialog
 
-        property string prettyName
+        property string url
+        property string version
 
-        closePolicy: Popup.CloseOnEscape
-        modal: true
-        standardButtons: Dialog.Ok
-        title: prettyName === "" ? "Failure during process execution" : prettyName
+        text: "Kaon " + version + " is out. The release page has the download and what changed."
+        title: "A new version of Kaon is available"
 
-        Label {
-            anchors.fill: parent
-            text: (wineFailedDialog.prettyName === "" ? "An unknown process" : wineFailedDialog.prettyName) + " failed!"
-            wrapMode: Text.WordWrap
+        buttons: [
+            VButton {
+                small: true
+                text: "Skip this version"
+
+                onClicked: {
+                    UpdateChecker.ignore = updateDialog.version;
+                    updateDialog.close();
+                }
+            },
+            VButton {
+                small: true
+                text: "Later"
+
+                onClicked: updateDialog.close()
+            },
+            VButton {
+                small: true
+                solid: true
+                text: "Open release page"
+
+                onClicked: {
+                    Qt.openUrlExternally(updateDialog.url);
+                    updateDialog.close();
+                }
+            }
+        ]
+    }
+
+    GlassDialog {
+        id: exeDialog
+
+        property int choice: 0
+        property GameExecutablePickerModel model: null
+
+        text: model ? model.game.name + " has more than one executable. Pick the one the mod should go into." : ""
+        title: "Choose an executable"
+
+        buttons: [
+            VButton {
+                small: true
+                text: "Cancel"
+
+                onClicked: exeDialog.close()
+            },
+            VButton {
+                small: true
+                solid: true
+                text: "Use this one"
+
+                onClicked: {
+                    const m = exeDialog.model;
+                    exeDialog.model = null;
+                    m.select(exeDialog.choice);
+                    m.destroySelf();
+                    exeDialog.close();
+                }
+            }
+        ]
+
+        onClosed: {
+            if (model) {
+                model.destroySelf();
+                model = null;
+            }
+        }
+
+        Repeater {
+            model: exeDialog.model
+
+            Rectangle {
+                id: option
+
+                required property int index
+                required property string text
+
+                border.color: exeDialog.choice === index ? Theme.glassMuted : Theme.glassLine
+                border.width: 1.5
+                color: exeDialog.choice === index ? Theme.glassRaised : "transparent"
+                height: 40
+                radius: 12
+                width: parent.width
+
+                Led {
+                    anchors.verticalCenter: parent.verticalCenter
+                    color: exeDialog.choice === option.index ? Theme.ledGreen : Theme.ledOff
+                    size: 8
+                    x: 14
+                }
+
+                VText {
+                    anchors.verticalCenter: parent.verticalCenter
+                    elide: Text.ElideMiddle
+                    font.pixelSize: 13
+                    text: option.text
+                    width: parent.width - 50
+                    x: 34
+                }
+
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+
+                    onClicked: exeDialog.choice = option.index
+                }
+            }
         }
     }
 
     Connections {
+        function onConfirmRequested(title, text, actionLabel, onConfirm) {
+            confirmDialog.title = title;
+            confirmDialog.text = text;
+            confirmDialog.actionLabel = actionLabel;
+            confirmDialog.onConfirm = onConfirm;
+            confirmDialog.open();
+        }
+
+        target: Nav
+    }
+
+    Connections {
         function onDownloadFailed(whatWasBeingDownloaded: string) {
-            downloadFailedDialog.whatWasBeingDownloaded = whatWasBeingDownloaded;
-            downloadFailedDialog.open();
+            messageDialog.title = "Download failed";
+            messageDialog.text = "Kaon couldn't download " + whatWasBeingDownloaded
+                    + ". Check your network connection and try again.";
+            messageDialog.open();
         }
 
         target: DownloadManager
@@ -85,9 +189,9 @@ Item {
 
     Connections {
         function onUpdateAvailable(version: string, url: string) {
-            updateAvailableDialog.updateVersion = version;
-            updateAvailableDialog.updateUrl = url;
-            updateAvailableDialog.open();
+            updateDialog.version = version;
+            updateDialog.url = url;
+            updateDialog.open();
         }
 
         target: UpdateChecker
@@ -95,10 +199,21 @@ Item {
 
     Connections {
         function onProcessFailed(prettyName: string) {
-            wineFailedDialog.prettyName = prettyName;
-            wineFailedDialog.open();
+            messageDialog.title = (prettyName !== "" ? prettyName : "A program") + " stopped with an error";
+            messageDialog.text = "Kaon's log has the details: ~/.cache/LorenDB/Kaon/kaon.log";
+            messageDialog.open();
         }
 
         target: Wine
+    }
+
+    Connections {
+        function onChooseExecutable(model: GameExecutablePickerModel) {
+            exeDialog.choice = 0;
+            exeDialog.model = model;
+            exeDialog.open();
+        }
+
+        target: GameStatus
     }
 }

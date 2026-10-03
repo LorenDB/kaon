@@ -19,7 +19,6 @@ class GamesFilterModel : public QSortFilterProxyModel
     Q_PROPERTY(Game::Stores storeFilter READ storeFilter NOTIFY storeFilterChanged FINAL)
     Q_PROPERTY(QString search READ search WRITE setSearch NOTIFY searchChanged FINAL)
 
-    Q_PROPERTY(ViewType viewType READ viewType WRITE setViewType NOTIFY viewTypeChanged FINAL)
     Q_PROPERTY(SortType sortType READ sortType WRITE setSortType NOTIFY sortTypeChanged FINAL)
     Q_PROPERTY(
         FilterType featureFilterType READ featureFilterType WRITE setFeatureFilterType NOTIFY featureFilterTypeChanged FINAL)
@@ -29,13 +28,6 @@ public:
     static GamesFilterModel *create(QQmlEngine *, QJSEngine *);
 
     void registerStore(Store *store);
-
-    enum ViewType
-    {
-        Grid,
-        List,
-    };
-    Q_ENUM(ViewType)
 
     enum SortType
     {
@@ -57,12 +49,10 @@ public:
     Game::Stores storeFilter() const { return m_storeFilter; }
     QString search() const { return m_search; }
 
-    ViewType viewType() const { return m_viewType; }
     SortType sortType() const { return m_sortType; }
     FilterType featureFilterType() const { return m_featureFilterType; }
 
     void setSearch(const QString &search);
-    void setViewType(ViewType viewType);
     void setSortType(SortType sortType);
     void setFeatureFilterType(FilterType type);
 
@@ -88,7 +78,6 @@ signals:
     // Emitted whenever games() would return something different
     void gamesChanged();
 
-    void viewTypeChanged(GamesFilterModel::ViewType viewType);
     void sortTypeChanged(GamesFilterModel::SortType sortType);
     void featureFilterTypeChanged(GamesFilterModel::FilterType type);
 
@@ -107,7 +96,6 @@ private:
     Game::Features m_featureFilter;
     Game::Stores m_storeFilter;
     QString m_search;
-    ViewType m_viewType;
     SortType m_sortType;
 
     FilterType m_featureFilterType = FilterType::HasAnyFilter;
