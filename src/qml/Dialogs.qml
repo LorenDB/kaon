@@ -4,7 +4,10 @@ import QtQuick.Controls.Basic
 import dev.lorendb.kaon
 
 // Every popup Kaon shows: confirmations, failures, updates, and picking an executable.
+// Fill the window. These popups are parented here, and a zero-size parent collapses them.
 Item {
+    anchors.fill: parent
+
     GlassDialog {
         id: confirmDialog
 

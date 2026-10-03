@@ -22,7 +22,7 @@ public:
     QString description() const final { return "Windows runtime that UEVR needs inside each game's Proton prefix."_L1; }
     const QLoggingCategory &logger() const final;
 
-    bool hasRepairOption() const override { return true; }
+    bool hasRepairOption() const override { return false; }
     bool providesVr() const override { return false; }
     bool installsIntoPrefix() const override { return true; }
 
@@ -47,6 +47,8 @@ private:
 
     virtual QList<ModRelease *> releases() const override;
     bool hasDotnetCached() const;
+    // The installer's own window fails under Proton (WiX theme manager, exit 0x583). Quiet mode skips that UI.
+    void runInstaller(Game *game, const Game::LaunchOption &exe, const QStringList &args, bool install);
 
     QString m_dotnetInstallerCache;
 };

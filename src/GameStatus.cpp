@@ -261,11 +261,7 @@ QVariantList GameStatus::steps(Game *game) const
             const auto key = dep->settingsGroup();
             const auto release = dep->currentRelease();
             if (dep->isBusyForGame(game))
-                out << makeStep(key,
-                                dep->displayName(),
-                                dep->installsIntoPrefix() ? "Finish the installer window that just opened."_L1 :
-                                                            "Installing"_L1,
-                                "busy"_L1);
+                out << makeStep(key, dep->displayName(), "Installing"_L1, "busy"_L1);
             else if (dep->isInstalledForGame(game))
             {
                 auto step = makeStep(key,
@@ -468,7 +464,6 @@ void GameStatus::runStep(Game *game, const QString &key, bool secondary)
                 mod->installMod(game);
         }
         else if (action == "uninstall"_L1 || action == "repair"_L1)
-            // For the .NET runtime, "uninstall" runs its installer, which offers repair and removal
             mod->uninstallMod(game);
     }
 

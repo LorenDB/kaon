@@ -93,11 +93,15 @@ void Dotnet::deleteRelease(ModRelease *release)
 
 void Dotnet::uninstallMod(Game *game)
 {
-    // Installer and uninstaller are the same
-    installModImpl(game, {});
+    runInstaller(game, {}, {"/uninstall"_L1, "/quiet"_L1, "/norestart"_L1}, false);
 }
 
 void Dotnet::installModImpl(Game *game, const Game::LaunchOption &exe)
+{
+    runInstaller(game, exe, {"/install"_L1, "/quiet"_L1, "/norestart"_L1}, true);
+}
+
+void Dotnet::runInstaller(Game *game, const Game::LaunchOption &exe, const QStringList &args, bool install)
 {
     if (!hasDotnetCached())
         return;
@@ -107,10 +111,13 @@ void Dotnet::installModImpl(Game *game, const Game::LaunchOption &exe)
         ".NET Desktop Runtime installer"_L1,
         game,
         m_dotnetInstallerCache,
-        {},
-        [this, game, exe] {
+        args,
+        [this, game, exe, install] {
             setBusyForGame(game, false);
-            Mod::installModImpl(game, exe);
+            if (install)
+                Mod::installModImpl(game, exe);
+            else
+                Mod::uninstallMod(game);
         },
         [this, game] { setBusyForGame(game, false); });
 }

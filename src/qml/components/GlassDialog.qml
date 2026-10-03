@@ -17,7 +17,8 @@ Popup {
     focus: true
     modal: true
     padding: 24
-    width: Math.min(460, (parent ? parent.width : 460) - 40)
+    // Popup.parent stays the declaring item, which may have no size of its own. Size from the overlay.
+    width: Math.min(460, Math.max(280, (Overlay.overlay ? Overlay.overlay.width : 460) - 40))
 
     Overlay.modal: Rectangle {
         color: "#99050608"

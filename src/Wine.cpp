@@ -70,20 +70,23 @@ void Wine::runInWine(const QString &prettyName,
     process->setProcessEnvironment(env);
 
     connect(process, &QProcess::finished, this, [=, this] {
-        if (process->exitCode() == 0)
+        const auto code = process->exitCode();
+        // Wine keeps only the low 8 bits of a Windows exit code. For the .NET installer,
+        // 0x42 is 1602 (closed by the user), 0x69 is 1641 and 0xC2 is 3010 (installed, reboot wanted).
+        const bool dotnetAccepted = command.endsWith("windowsdesktop-runtime-6.0.36-win-x64.exe"_L1) &&
+                                    (code == 0x42 || code == 0x69 || code == 0xC2);
+        if (code == 0 || dotnetAccepted)
             successCallback();
         else
         {
-            // Special case for .NET installer being canceled
-            if (command.endsWith("windowsdesktop-runtime-6.0.36-win-x64.exe"_L1) && process->exitCode() == 66)
-            {
-                successCallback();
-                return;
-            }
-
             emit processFailed(prettyName);
             qCWarning(WineLog) << "Running" << command << "with Wine" << wineRoot->wineBinary() << "failed with exit code"
-                               << process->exitCode() << "and error" << process->error();
+                               << code;
+            if (process->exitStatus() == QProcess::CrashExit)
+                qCWarning(WineLog) << "Wine process crashed:" << process->errorString();
+            const auto err = process->readAllStandardError().trimmed();
+            if (!err.isEmpty())
+                qCWarning(WineLog) << "Wine stderr:" << err;
             failureCallback();
         }
     });
