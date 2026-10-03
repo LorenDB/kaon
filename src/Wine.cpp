@@ -36,6 +36,7 @@ void Wine::runInWine(const QString &prettyName,
     {
         Aptabase::instance()->track("null-wine-game-bug"_L1, {{"command"_L1, command}});
         emit processFailed(prettyName);
+        failureCallback();
         return;
     }
     else if (!wineRoot->hasValidWine())
@@ -46,11 +47,15 @@ void Wine::runInWine(const QString &prettyName,
              {"game"_L1, wineRoot->id()},
              {"store"_L1, QMetaEnum::fromType<Game::Store>().valueToKey(static_cast<quint64>(wineRoot->store()))}});
         emit processFailed(prettyName);
+        failureCallback();
         return;
     }
 
     if (command.isEmpty())
+    {
+        failureCallback();
         return;
+    }
 
     QString commandLog = command;
     if (!args.empty())

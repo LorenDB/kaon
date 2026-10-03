@@ -17,6 +17,7 @@ public:
     Mod::Type type() const override { return Mod::Type::Installable; }
     QString displayName() const override { return "Portal 2 VR"_L1; }
     QString settingsGroup() const override { return "portal2vr"_L1; }
+    QString description() const override { return "Full VR conversion for Portal 2 and Portal Stories: Mel."_L1; }
     QString info() const final;
     const QLoggingCategory &logger() const final;
 

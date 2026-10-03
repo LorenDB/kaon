@@ -14,7 +14,9 @@ public:
 
     Mod::Type type() const override { return Mod::Type::Installable; }
     QString displayName() const final { return "BepInEx Config Manager"_L1; }
+    bool providesVr() const override { return false; }
     QString settingsGroup() const final { return "bepinex-config-manager"_L1; }
+    QString description() const final { return "In-game settings window for BepInEx plugins."_L1; }
     const QLoggingCategory &logger() const final;
 
     Game::Engines compatibleEngines() const override { return Game::Engine::Unity; }

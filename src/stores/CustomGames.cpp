@@ -160,6 +160,8 @@ void CustomGames::deleteGame(Game *game)
     beginRemoveRows({}, idx, idx);
     m_games.removeAt(idx);
     endRemoveRows();
+    game->deleteLater();
+    writeConfig();
 }
 
 CustomGames::CustomGames()

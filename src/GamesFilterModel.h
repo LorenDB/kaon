@@ -76,12 +76,17 @@ public:
     Q_INVOKABLE void setFeatureFilter(Game::Feature feature, bool state);
     Q_INVOKABLE void setStoreFilter(Game::Store store, bool state);
 
+    // The games that pass the filters, in display order
+    Q_INVOKABLE QList<Game *> games() const;
+
 signals:
     void engineFilterChanged();
     void typeFilterChanged();
     void featureFilterChanged();
     void storeFilterChanged();
     void searchChanged();
+    // Emitted whenever games() would return something different
+    void gamesChanged();
 
     void viewTypeChanged(GamesFilterModel::ViewType viewType);
     void sortTypeChanged(GamesFilterModel::SortType sortType);

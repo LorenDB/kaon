@@ -17,6 +17,7 @@ public:
     Mod::Type type() const override { return Mod::Type::Installable; }
     QString displayName() const override { return "UUVR"_L1; }
     QString settingsGroup() const final { return "uuvr"_L1; }
+    QString description() const override { return "Experimental VR mod for Unity games."_L1; }
     const QLoggingCategory &logger() const final;
 
     Game::Engines compatibleEngines() const override { return Game::Engine::Unity; }

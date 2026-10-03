@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QAbstractListModel>
+#include <QSet>
 #include <QSortFilterProxyModel>
 
 #include "Game.h"
@@ -18,6 +19,7 @@ class ModRelease : public QObject
     Q_PROPERTY(QDateTime timestamp READ timestamp CONSTANT)
     Q_PROPERTY(bool nightly READ nightly CONSTANT)
     Q_PROPERTY(bool downloaded READ downloaded NOTIFY downloadedChanged)
+    Q_PROPERTY(qint64 size READ size CONSTANT FINAL)
 
 public:
     struct Asset
@@ -43,6 +45,8 @@ public:
     bool nightly() const { return m_nightly; }
     bool downloaded() const { return m_downloaded; }
     QList<Asset> assets() const { return m_assets; }
+    // Total download size in bytes, or 0 if GitHub didn't say
+    qint64 size() const;
 
     virtual void setDownloaded(bool state);
 
@@ -69,8 +73,11 @@ class Mod : public QAbstractListModel
     Q_PROPERTY(Type type READ type CONSTANT FINAL)
     Q_PROPERTY(ModRelease *currentRelease READ currentRelease NOTIFY currentReleaseChanged FINAL)
     Q_PROPERTY(QString info READ info CONSTANT FINAL)
+    Q_PROPERTY(QString description READ description CONSTANT FINAL)
 
     Q_PROPERTY(bool hasRepairOption READ hasRepairOption CONSTANT FINAL)
+    Q_PROPERTY(bool providesVr READ providesVr CONSTANT FINAL)
+    Q_PROPERTY(int launchDelay READ launchDelay WRITE setLaunchDelay NOTIFY launchDelayChanged FINAL)
 
 public:
     Mod(QObject *parent = nullptr);
@@ -78,9 +85,21 @@ public:
     virtual QString displayName() const = 0;
     virtual QString settingsGroup() const = 0;
     virtual QString info() const { return {}; }
+    // One plain sentence saying what the mod does
+    virtual QString description() const { return {}; }
     virtual const QLoggingCategory &logger() const = 0;
 
     virtual bool hasRepairOption() const = 0;
+
+    // False for mods that only exist to support other mods, like the .NET runtime. Those aren't offered as a way to play
+    // in VR; they show up as a setup step of the mod that needs them.
+    virtual bool providesVr() const { return true; }
+    // True if installing the mod runs something inside the game's Wine prefix, which therefore has to exist first.
+    virtual bool installsIntoPrefix() const { return false; }
+
+    // Seconds to wait between starting a game and launching this mod into it
+    int launchDelay() const;
+    void setLaunchDelay(int seconds);
 
     enum class Type
     {
@@ -95,11 +114,21 @@ public:
 
     Q_INVOKABLE virtual bool isInstalledForGame(const Game *game) const = 0;
     Q_INVOKABLE bool dependenciesSatisfied(const Game *game) const;
+    Q_INVOKABLE bool isCompatibleWith(const Game *game) const
+    {
+        return game && !acceptableInstallCandidates(game).isEmpty();
+    }
+    Q_INVOKABLE bool hasNightlies() const;
+
+    // Set while something asynchronous, like an installer running in Wine, is working on this mod for a game.
+    Q_INVOKABLE bool isBusyForGame(const Game *game) const;
+    void setBusyForGame(const Game *game, bool busy);
 
     Q_INVOKABLE QString missingDependencies(const Game *game) const;
 
     ModRelease *currentRelease() const;
-    ModRelease *releaseFromId(const int id) const;
+    Q_INVOKABLE ModRelease *releaseFromId(const int id) const;
+    Q_INVOKABLE int downloadedCount() const;
     Q_INVOKABLE ModRelease *releaseInstalledForGame(const Game *game);
 
     // Override this to apply filters to both the entire game and individual executables
@@ -131,6 +160,9 @@ signals:
     void currentReleaseChanged(ModRelease *);
     void installedInGameChanged(Game *game);
     void requestChooseLaunchOption(GameExecutablePickerModel *m);
+    void releaseDownloadedChanged(ModRelease *release);
+    void busyChanged();
+    void launchDelayChanged();
 
 protected:
     // Override this to implement the actual installation logic. Your implementation must call this base function at its end!
@@ -143,6 +175,7 @@ protected:
 private:
     virtual QList<ModRelease *> releases() const = 0;
     ModRelease *m_currentRelease{nullptr};
+    QSet<const Game *> m_busyGames;
 };
 
 class ModReleaseFilter : public QSortFilterProxyModel
@@ -172,6 +205,6 @@ protected:
     bool lessThan(const QModelIndex &left, const QModelIndex &right) const override;
 
 private:
-    Mod *m_mod;
+    Mod *m_mod{nullptr};
     bool m_showNightlies{false};
 };

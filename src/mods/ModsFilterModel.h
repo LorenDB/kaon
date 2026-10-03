@@ -18,6 +18,7 @@ class ModsFilterModel : public QSortFilterProxyModel
 public:
     explicit ModsFilterModel(QObject *parent = nullptr);
     static void registerMod(Mod *mod);
+    static QList<Mod *> allMods();
 
     Game *game() const { return m_game; }
     QString search() const { return m_search; }

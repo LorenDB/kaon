@@ -102,9 +102,17 @@ void Dotnet::installModImpl(Game *game, const Game::LaunchOption &exe)
     if (!hasDotnetCached())
         return;
 
-    Wine::instance()->runInWine(".NET Desktop Runtime installer"_L1, game, m_dotnetInstallerCache, {}, [this, game, exe] {
-        Mod::installModImpl(game, exe);
-    });
+    setBusyForGame(game, true);
+    Wine::instance()->runInWine(
+        ".NET Desktop Runtime installer"_L1,
+        game,
+        m_dotnetInstallerCache,
+        {},
+        [this, game, exe] {
+            setBusyForGame(game, false);
+            Mod::installModImpl(game, exe);
+        },
+        [this, game] { setBusyForGame(game, false); });
 }
 
 QMap<int, Game::LaunchOption> Dotnet::acceptableInstallCandidates(const Game *game) const
@@ -131,6 +139,8 @@ QList<ModRelease *> Dotnet::releases() const
                 {"https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/6.0.36/windowsdesktop-runtime-6.0.36-win-x64.exe"_L1},
             .timestamp = QDateTime{{2024, 11, 12}, {0, 0, 0}},
             .size = 57380656,
-        }}}};
+        }},
+        // parented to the mod so downloads of it are reported like any other release
+        const_cast<Dotnet *>(this)}};
     return l;
 }

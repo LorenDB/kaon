@@ -10,8 +10,12 @@ GamesFilterModel::GamesFilterModel(QObject *parent)
 {
     setSourceModel(m_models);
 
+    // Every engine is shown. The library groups games by what Kaon can do for them instead of hiding engines.
+    m_engineFilter.setFlag(Game::Engine::UnknownEngine);
     m_engineFilter.setFlag(Game::Engine::Unreal);
     m_engineFilter.setFlag(Game::Engine::Unity);
+    m_engineFilter.setFlag(Game::Engine::Godot);
+    m_engineFilter.setFlag(Game::Engine::Source);
 
     m_typeFilter.setFlag(Game::AppType::Game);
     m_typeFilter.setFlag(Game::AppType::Demo);
@@ -32,6 +36,12 @@ GamesFilterModel::GamesFilterModel(QObject *parent)
     settings.beginGroup("GamesFilterModel"_L1);
     m_viewType = settings.value("viewType"_L1, ViewType::Grid).value<ViewType>();
     m_sortType = settings.value("sortType"_L1, SortType::LastPlayed).value<SortType>();
+
+    connect(this, &QAbstractItemModel::rowsInserted, this, &GamesFilterModel::gamesChanged);
+    connect(this, &QAbstractItemModel::rowsRemoved, this, &GamesFilterModel::gamesChanged);
+    connect(this, &QAbstractItemModel::rowsMoved, this, &GamesFilterModel::gamesChanged);
+    connect(this, &QAbstractItemModel::modelReset, this, &GamesFilterModel::gamesChanged);
+    connect(this, &QAbstractItemModel::layoutChanged, this, &GamesFilterModel::gamesChanged);
 }
 
 GamesFilterModel *GamesFilterModel::instance()
@@ -138,6 +148,16 @@ void GamesFilterModel::setStoreFilter(Game::Store store, bool state)
     m_storeFilter.setFlag(store, state);
     emit storeFilterChanged();
     endFilterChange();
+}
+
+QList<Game *> GamesFilterModel::games() const
+{
+    QList<Game *> list;
+    list.reserve(rowCount());
+    for (int i = 0; i < rowCount(); ++i)
+        if (auto g = data(index(i, 0), Store::Roles::GameObject).value<Game *>())
+            list.push_back(g);
+    return list;
 }
 
 bool GamesFilterModel::filterAcceptsRow(int row, const QModelIndex &parent) const

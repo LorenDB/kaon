@@ -158,7 +158,7 @@ public:
                         QString posStr = static_cast<char *>(value.second);
                         if (posStr.startsWith("Center"_L1))
                             m_logoVPosition = LogoPosition::Center;
-                        else if (posStr.startsWith("Top"_L1))
+                        else if (posStr.startsWith("Top"_L1) || posStr.startsWith("Upper"_L1))
                             m_logoVPosition = LogoPosition::Top;
                         else if (posStr.startsWith("Bottom"_L1))
                             m_logoVPosition = LogoPosition::Bottom;

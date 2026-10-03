@@ -32,6 +32,10 @@ qt_add_qml_module(kaon
         GameExecutablePickerModel.h
         GamesFilterModel.cpp
         GamesFilterModel.h
+        GameStatus.cpp
+        GameStatus.h
+        Launcher.cpp
+        Launcher.h
         UpdateChecker.cpp
         UpdateChecker.h
         VDF.cpp

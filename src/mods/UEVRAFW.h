@@ -17,6 +17,7 @@ public:
     Mod::Type type() const override { return Mod::Type::Launchable; }
     QString displayName() const final { return "UEVR AFW"_L1; }
     QString settingsGroup() const final { return "uevr-afw"_L1; }
+    QString description() const final { return "UEVR fork with alternate frame warp for smoother DX12 games."_L1; }
     QString info() const final;
     const QLoggingCategory &logger() const final;
 

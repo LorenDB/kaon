@@ -1,5 +1,7 @@
 #include "ModsFilterModel.h"
 
+#include "GameStatus.h"
+
 class ModsModel : public QAbstractListModel
 {
     Q_OBJECT
@@ -20,6 +22,8 @@ public:
             endInsertRows();
         }
     }
+
+    QList<Mod *> mods() const { return m_mods; }
 
     enum Roles
     {
@@ -67,6 +71,12 @@ ModsFilterModel::ModsFilterModel(QObject *parent)
 void ModsFilterModel::registerMod(Mod *mod)
 {
     ModsModel::instance()->registerMod(mod);
+    GameStatus::instance()->watch(mod);
+}
+
+QList<Mod *> ModsFilterModel::allMods()
+{
+    return ModsModel::instance()->mods();
 }
 
 void ModsFilterModel::setGame(Game *game)

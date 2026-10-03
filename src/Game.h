@@ -16,11 +16,13 @@ class Game : public QObject
     Q_PROPERTY(QString winePrefix READ winePrefix CONSTANT)
     Q_PROPERTY(QString wineBinary READ wineBinary NOTIFY wineBinaryChanged FINAL)
     Q_PROPERTY(AppType type READ type CONSTANT)
+    Q_PROPERTY(Engine engine READ engine CONSTANT FINAL)
     Q_PROPERTY(Store store READ store CONSTANT FINAL)
     Q_PROPERTY(bool supportsVr READ supportsVr CONSTANT FINAL)
     Q_PROPERTY(bool vrOnly READ vrOnly CONSTANT FINAL)
     Q_PROPERTY(bool hasMultiplePlatforms READ hasMultiplePlatforms CONSTANT FINAL)
     Q_PROPERTY(bool noWindowsSupport READ noWindowsSupport CONSTANT FINAL)
+    Q_PROPERTY(bool hasLinuxBuild READ hasLinuxBuild CONSTANT FINAL)
     Q_PROPERTY(bool hasAnticheat READ hasAnticheat CONSTANT FINAL)
 
     Q_PROPERTY(QString cardImage READ cardImage CONSTANT)
@@ -33,8 +35,8 @@ class Game : public QObject
     Q_PROPERTY(LogoPosition logoVPosition READ logoVPosition CONSTANT)
 
     // We can't always perform actions depending on what store the games are from.
-    Q_PROPERTY(bool canLaunch MEMBER m_canLaunch CONSTANT FINAL)
-    Q_PROPERTY(bool canOpenSettings MEMBER m_canOpenSettings CONSTANT FINAL)
+    Q_PROPERTY(bool canLaunch READ canLaunch CONSTANT FINAL)
+    Q_PROPERTY(bool canOpenSettings READ canOpenSettings CONSTANT FINAL)
 
 public:
     enum Engine
@@ -109,7 +111,11 @@ public:
     bool vrOnly() const { return supportsVr() && !m_features.testFlag(Feature::Flatscreen); }
     bool hasMultiplePlatforms() const;
     bool noWindowsSupport() const;
+    // Unlike hasMultiplePlatforms(), this ignores macOS builds, which Steam on Linux never runs.
+    bool hasLinuxBuild() const;
     bool hasAnticheat() const { return m_features.testFlag(Feature::Anticheat); }
+    bool canLaunch() const { return m_canLaunch; }
+    bool canOpenSettings() const { return m_canOpenSettings; }
 
     virtual Store store() const = 0;
 
@@ -174,8 +180,8 @@ protected:
     QString m_icon;
     double m_logoWidth{0};
     double m_logoHeight{0};
-    LogoPosition m_logoHPosition;
-    LogoPosition m_logoVPosition;
+    LogoPosition m_logoHPosition{LogoPosition::Left};
+    LogoPosition m_logoVPosition{LogoPosition::Bottom};
 
     QMap<int, LaunchOption> m_executables;
 

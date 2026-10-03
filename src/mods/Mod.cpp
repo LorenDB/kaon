@@ -24,6 +24,16 @@ void ModRelease::setDownloaded(bool state)
 {
     m_downloaded = state;
     emit downloadedChanged(state);
+    if (auto mod = qobject_cast<Mod *>(parent()))
+        emit mod->releaseDownloadedChanged(this);
+}
+
+qint64 ModRelease::size() const
+{
+    qint64 total = 0;
+    for (const auto &asset : m_assets)
+        total += asset.size;
+    return total;
 }
 
 Mod::Mod(QObject *parent)
@@ -44,6 +54,49 @@ Mod::Mod(QObject *parent)
             setCurrentRelease(id);
         }
     });
+}
+
+int Mod::launchDelay() const
+{
+    QSettings settings;
+    settings.beginGroup(settingsGroup());
+    return settings.value("launchDelay"_L1, 30).toInt();
+}
+
+void Mod::setLaunchDelay(int seconds)
+{
+    QSettings settings;
+    settings.beginGroup(settingsGroup());
+    settings.setValue("launchDelay"_L1, seconds);
+    emit launchDelayChanged();
+}
+
+int Mod::downloadedCount() const
+{
+    const auto list = releases();
+    return std::count_if(list.cbegin(), list.cend(), [](const auto r) { return r->downloaded(); });
+}
+
+bool Mod::hasNightlies() const
+{
+    const auto list = releases();
+    return std::any_of(list.cbegin(), list.cend(), [](const auto r) { return r->nightly(); });
+}
+
+bool Mod::isBusyForGame(const Game *game) const
+{
+    return m_busyGames.contains(game);
+}
+
+void Mod::setBusyForGame(const Game *game, bool busy)
+{
+    if (busy == m_busyGames.contains(game))
+        return;
+    if (busy)
+        m_busyGames.insert(game);
+    else
+        m_busyGames.remove(game);
+    emit busyChanged();
 }
 
 bool Mod::dependenciesSatisfied(const Game *game) const
@@ -205,6 +258,8 @@ void ModReleaseFilter::setMod(Mod *mod)
     m_mod = mod;
     setSourceModel(mod);
     emit modChanged(mod);
+    if (!m_mod)
+        return;
 
     QSettings settings;
     settings.beginGroup(m_mod->settingsGroup());
@@ -235,9 +290,9 @@ bool ModReleaseFilter::filterAcceptsRow(int row, const QModelIndex &parent) cons
     const auto release =
         m_mod->releaseFromId(sourceModel()->data(sourceModel()->index(row, 0, parent), Mod::Roles::Id).toInt());
 
-    if (release->assets().isEmpty())
+    if (!release || release->assets().isEmpty())
         return false;
-    if (!m_showNightlies && (!release || release->nightly()))
+    if (!m_showNightlies && release->nightly())
         return false;
 
     return QSortFilterProxyModel::filterAcceptsRow(row, parent);
@@ -274,7 +329,7 @@ void Mod::installMod(Game *game)
     case 0:
         // TODO: show error to user
         qCWarning(logger()) << "No acceptable executables found for installing mod "_L1 + displayName()
-                           << " for game "_L1 + game->name();
+                            << " for game "_L1 + game->name();
         Aptabase::instance()->track("no-executable-mod-install-bug", {{"mod"_L1, displayName()}, {"game"_L1, game->name()}});
         break;
     case 1:

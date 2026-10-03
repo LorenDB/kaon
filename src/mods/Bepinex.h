@@ -16,7 +16,9 @@ public:
 
     Mod::Type type() const override { return Mod::Type::Installable; }
     QString displayName() const final { return "BepInEx"_L1; }
+    bool providesVr() const override { return false; }
     QString settingsGroup() const final { return "bepinex"_L1; }
+    QString description() const final { return "Plugin loader for Unity games that UUVR runs on."_L1; }
     QString info() const final;
     const QLoggingCategory &logger() const final;
 
