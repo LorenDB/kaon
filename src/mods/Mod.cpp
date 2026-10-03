@@ -1,6 +1,7 @@
 #include "Mod.h"
 
 #include <QFileInfo>
+#include <QJSEngine>
 #include <QLoggingCategory>
 #include <QSettings>
 #include <QTimer>
@@ -39,6 +40,11 @@ qint64 ModRelease::size() const
 Mod::Mod(QObject *parent)
     : QAbstractListModel{parent}
 {
+    // These singletons live for the whole process and have no parent. QML assumes it owns a QObject returned from an
+    // invokable, and the garbage collector deletes a parentless one once the UI drops it. preferredMod() hands mods to
+    // QML that way; the next group() then crashes in vrMods() on the freed object.
+    QJSEngine::setObjectOwnership(this, QJSEngine::CppOwnership);
+
     // This HAS to be called later, or else the vtable won't have been built and therefore calling any virtual functions from
     // the mods model will crash
     QTimer::singleShot(0, this, [this] { ModsFilterModel::registerMod(this); });
