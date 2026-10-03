@@ -27,10 +27,15 @@ Portal1VR *Portal1VR::create(QQmlEngine *, QJSEngine *)
 
 QString Portal1VR::info() const
 {
+    return "Start SteamVR first. Paste the launch options below into Steam so Proton loads this mod's d3d9.dll. "
+           "See [GitHub](https://github.com/BowmanFox/portal1vr#installation)."_L1;
+}
+
+QString Portal1VR::launchOptions() const
+{
     // The shipped d3d9.dll is a patched DXVK, so Proton has to load that file instead of its own.
-    return "Set Steam's launch options to WINEDLLOVERRIDES=\"d3d9=n,b\" %command% -insecure -fullscreen -novid "
-           "+mat_queue_mode 0 +mat_vsync 0 +mat_antialias 0, and start SteamVR first. See "
-           "[GitHub](https://github.com/BowmanFox/portal1vr#installation)."_L1;
+    return "WINEDLLOVERRIDES=\"d3d9=n,b\" %command% -insecure -fullscreen -novid "
+           "+mat_queue_mode 0 +mat_vsync 0 +mat_antialias 0"_L1;
 }
 
 const QLoggingCategory &Portal1VR::logger() const

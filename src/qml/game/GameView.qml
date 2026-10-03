@@ -401,6 +401,9 @@ Item {
                             x: 14
                             y: 11
 
+                            // Above the card's click target, so the launch-option text can be selected.
+                            z: 1
+
                             Item {
                                 height: 32
                                 width: parent.width
@@ -442,6 +445,10 @@ Item {
                                 HoverHandler {
                                     cursorShape: parent.hoveredLink !== "" ? Qt.PointingHandCursor : Qt.ArrowCursor
                                 }
+                            }
+
+                            LaunchOptions {
+                                options: modRow.modelData.launchOptions
                             }
 
                             VButton {

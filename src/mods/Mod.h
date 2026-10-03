@@ -74,6 +74,8 @@ class Mod : public QAbstractListModel
     Q_PROPERTY(ModRelease *currentRelease READ currentRelease NOTIFY currentReleaseChanged FINAL)
     Q_PROPERTY(QString info READ info CONSTANT FINAL)
     Q_PROPERTY(QString description READ description CONSTANT FINAL)
+    // Steam (or another launcher) options to paste in. Empty when the mod doesn't need any.
+    Q_PROPERTY(QString launchOptions READ launchOptions CONSTANT FINAL)
 
     Q_PROPERTY(bool hasRepairOption READ hasRepairOption CONSTANT FINAL)
     Q_PROPERTY(bool providesVr READ providesVr CONSTANT FINAL)
@@ -87,6 +89,7 @@ public:
     virtual QString info() const { return {}; }
     // One plain sentence saying what the mod does
     virtual QString description() const { return {}; }
+    virtual QString launchOptions() const { return {}; }
     virtual const QLoggingCategory &logger() const = 0;
 
     virtual bool hasRepairOption() const = 0;
@@ -112,6 +115,7 @@ public:
 
     virtual Type type() const = 0;
     virtual Game::Engines compatibleEngines() const = 0;
+    Q_INVOKABLE bool supportsEngine(Game::Engine engine) const { return compatibleEngines().testFlag(engine); }
     virtual QList<Mod *> dependencies() const { return {}; }
 
     Q_INVOKABLE virtual bool isInstalledForGame(const Game *game) const = 0;

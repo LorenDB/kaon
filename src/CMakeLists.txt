@@ -21,6 +21,7 @@ qt_add_qml_module(kaon
         qml/components/GlassDialog.qml
         qml/components/GlassScrollBar.qml
         qml/components/Icon.qml
+        qml/components/LaunchOptions.qml
         qml/components/Led.qml
         qml/components/NotchButton.qml
         qml/components/RoundedImage.qml

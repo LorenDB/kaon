@@ -19,6 +19,20 @@ ApplicationWindow {
     readonly property bool launching: inGame && Launcher.game === game && Launcher.phase !== Launcher.Idle
     readonly property var openStep: inGame ? (GameStatus.revision, GameStatus.steps(game).find(s => s.state !== "ok" && s.state
                                                                                                     !== "warn")) : undefined
+    // An Installable VR mod is copied into the game, so launching the game still runs it. A Launchable mod injects
+    // afterwards, and the game itself can still be started flat.
+    readonly property bool staticVrInstalled: inGame && (GameStatus.revision, flatLaunchBlocked(game))
+
+    // vrMods() does not notify, so callers pass GameStatus.revision through the comma expression above.
+    function flatLaunchBlocked(game) {
+        if (!game)
+            return false;
+        const mods = GameStatus.vrMods(game);
+        for (let i = 0; i < mods.length; ++i)
+            if (mods[i].type === Mod.Installable && mods[i].isInstalledForGame(game))
+                return true;
+        return false;
+    }
 
     color: Theme.shell
     height: 720
@@ -425,7 +439,7 @@ ApplicationWindow {
                 shellStyle: true
                 small: true
                 text: root.compact ? "" : "Play without VR"
-                visible: root.inGame && root.game.canLaunch && root.group !== "none"
+                visible: root.inGame && root.game.canLaunch && root.group !== "none" && !root.staticVrInstalled
 
                 onClicked: {
                     root.game.launch();
