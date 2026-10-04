@@ -10,6 +10,22 @@ Popup {
     readonly property bool manyStores: [Steam.count, Heroic.count, Itch.count, CustomGames.count].filter(c => c > 0).length
     > 1
 
+    function focusFirst() {
+        const stack = [contentItem];
+        while (stack.length) {
+            const item = stack.shift();
+            if (!item || item.visible === false)
+                continue;
+            if (item.activeFocusOnTab && item.enabled !== false && item.width > 1) {
+                item.forceActiveFocus();
+                return;
+            }
+            const kids = item.children;
+            for (let i = 0; kids && i < kids.length; ++i)
+                stack.push(kids[i]);
+        }
+    }
+
     margins: 8
     padding: 16
     width: 330
@@ -173,4 +189,6 @@ Popup {
             }
         }
     }
+
+    onOpened: Qt.callLater(pop.focusFirst)
 }

@@ -12,6 +12,23 @@ Popup {
     property string text
     property string title
 
+    function focusDefaultButton() {
+        let fallback = null;
+        const buttons = buttonRow.children;
+        for (let i = 0; i < buttons.length; ++i) {
+            const button = buttons[i];
+            if (!button.visible || button.enabled === false || button.width < 2)
+                continue;
+            fallback = button;
+            if (button.solid) {
+                button.forceActiveFocus();
+                return;
+            }
+        }
+        if (fallback)
+            fallback.forceActiveFocus();
+    }
+
     anchors.centerIn: Overlay.overlay
     closePolicy: Popup.CloseOnEscape
     focus: true
@@ -70,4 +87,7 @@ Popup {
             topPadding: 6
         }
     }
+
+    // A gamepad (and the keyboard) lands on the action that confirms, which is the solid button.
+    onOpened: Qt.callLater(dialog.focusDefaultButton)
 }

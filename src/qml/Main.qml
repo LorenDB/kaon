@@ -278,6 +278,7 @@ ApplicationWindow {
             TextInput {
                 id: search
 
+                activeFocusOnTab: true
                 anchors.left: parent.left
                 anchors.leftMargin: 40
                 anchors.right: parent.right
@@ -416,6 +417,7 @@ ApplicationWindow {
                     if (Launcher.phase === Launcher.Countdown && Launcher.game !== root.game)
                         return "Opening " + Launcher.mod.name + " for " + Launcher.game.name + " in " + Launcher.remaining
                                 + " s";
+
                     if (GamesFilterModel.scanning)
                         return "Scanning libraries";
 
@@ -547,6 +549,8 @@ ApplicationWindow {
 
     // ------------------------------------------------------------ the button in the notch
     NotchButton {
+        id: notch
+
         readonly property bool busy: root.openStep !== undefined && root.openStep.state === "busy"
 
         enabled: {
@@ -616,5 +620,10 @@ ApplicationWindow {
     }
 
     Dialogs {
+    }
+
+    GamepadNav {
+        notch: notch
+        searchField: search
     }
 }

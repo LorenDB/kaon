@@ -13,6 +13,7 @@ qt_add_qml_module(kaon
 
     QML_FILES
         qml/Dialogs.qml
+        qml/GamepadNav.qml
         qml/Main.qml
         qml/Nav.qml
         qml/Theme.qml
@@ -52,6 +53,8 @@ qt_add_qml_module(kaon
         DownloadManager.h
         Game.cpp
         Game.h
+        Gamepad.cpp
+        Gamepad.h
         GameExecutablePickerModel.cpp
         GameExecutablePickerModel.h
         GamesFilterModel.cpp

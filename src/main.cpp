@@ -13,6 +13,7 @@
 #include "Aptabase.h"
 #include "CustomGames.h"
 #include "Dotnet.h"
+#include "Gamepad.h"
 #include "GamesFilterModel.h"
 #include "Heroic.h"
 #include "Itch.h"
@@ -115,6 +116,7 @@ int main(int argc, char *argv[])
 
     CustomGames::instance();
     Dotnet::instance();
+    Gamepad::instance();
     GamesFilterModel::instance();
     Itch::instance();
     Portal1VR::instance();

@@ -134,12 +134,28 @@ Item {
                 required property int index
                 required property string text
 
+                activeFocusOnTab: true
                 border.color: exeDialog.choice === index ? Theme.glassMuted : Theme.glassLine
                 border.width: 1.5
-                color: exeDialog.choice === index ? Theme.glassRaised : "transparent"
+                color: exeDialog.choice === index || activeFocus ? Theme.glassRaised : "transparent"
                 height: 40
                 radius: 12
                 width: parent.width
+
+                Keys.onReturnPressed: exeDialog.choice = index
+                Keys.onSpacePressed: exeDialog.choice = index
+                onActiveFocusChanged: if (activeFocus)
+                                          exeDialog.choice = index
+
+                Rectangle {
+                    anchors.fill: parent
+                    anchors.margins: -3
+                    border.color: Theme.ledBlue
+                    border.width: 2
+                    color: "transparent"
+                    radius: 14
+                    visible: option.activeFocus
+                }
 
                 Led {
                     anchors.verticalCenter: parent.verticalCenter

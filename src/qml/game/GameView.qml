@@ -412,13 +412,37 @@ Item {
                                 height: 32
                                 width: parent.width
 
-                                VText {
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    elide: Text.ElideRight
-                                    font.pixelSize: 15
-                                    font.weight: Font.ExtraBold
-                                    text: modRow.modelData.name
-                                    width: parent.width - versions.width - 10
+                                // The name picks this mod. The version menu beside it is its own control.
+                                Item {
+                                    id: modName
+
+                                    activeFocusOnTab: view.vrMods.length > 1
+                                    anchors.left: parent.left
+                                    anchors.right: versions.left
+                                    anchors.rightMargin: 8
+                                    height: 32
+
+                                    Keys.onReturnPressed: GameStatus.setPreferredMod(view.game, modRow.modelData)
+                                    Keys.onSpacePressed: GameStatus.setPreferredMod(view.game, modRow.modelData)
+
+                                    Rectangle {
+                                        anchors.fill: parent
+                                        anchors.margins: -4
+                                        border.color: Theme.ledBlue
+                                        border.width: 2
+                                        color: "transparent"
+                                        radius: height / 2
+                                        visible: modName.activeFocus
+                                    }
+
+                                    VText {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        elide: Text.ElideRight
+                                        font.pixelSize: 15
+                                        font.weight: Font.ExtraBold
+                                        text: modRow.modelData.name
+                                        width: parent.width
+                                    }
                                 }
 
                                 VersionMenu {

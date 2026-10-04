@@ -27,9 +27,15 @@ Item {
     ToolTip.delay: 500
     ToolTip.text: "Uninstall it from this game to change the version"
     ToolTip.visible: picker.locked && mouse.containsMouse
+    activeFocusOnTab: !locked
     implicitHeight: 32
     implicitWidth: Math.min(260, label.implicitWidth + 46)
     opacity: locked ? 0.6 : 1
+
+    Keys.onReturnPressed: if (!picker.locked)
+                              pop.open()
+    Keys.onSpacePressed: if (!picker.locked)
+                             pop.open()
 
     ModReleaseFilter {
         id: releases
@@ -43,6 +49,16 @@ Item {
         border.width: 1.5
         color: "transparent"
         radius: height / 2
+    }
+
+    Rectangle {
+        anchors.fill: parent
+        anchors.margins: -4
+        border.color: Theme.ledBlue
+        border.width: 2
+        color: "transparent"
+        radius: height / 2
+        visible: picker.activeFocus
     }
 
     VText {
@@ -103,6 +119,8 @@ Item {
             spacing: 2
 
             ListView {
+                id: releaseList
+
                 clip: true
                 height: Math.min(contentHeight, 320)
                 interactive: contentHeight > height
@@ -119,13 +137,29 @@ Item {
                     readonly property ModRelease release: picker.mod.releaseFromId(model.id)
                     readonly property bool selected: picker.current !== null && picker.current.id === model.id
 
+                    activeFocusOnTab: true
                     height: 46
                     width: 324
 
+                    Keys.onReturnPressed: picker.mod.setCurrentRelease(row.model.id)
+                    Keys.onSpacePressed: picker.mod.setCurrentRelease(row.model.id)
+
                     Rectangle {
                         anchors.fill: parent
-                        color: row.selected ? Theme.glassRaised : rowMouse.containsMouse ? Theme.glassHover : "transparent"
+                        color: row.selected || row.activeFocus ? Theme.glassRaised : rowMouse.containsMouse ? Theme.glassHover :
+                                                                                                              "transparent"
                         radius: 12
+                    }
+
+                    Rectangle {
+                        anchors.fill: parent
+                        anchors.margins: -2
+                        border.color: Theme.ledBlue
+                        border.width: 2
+                        color: "transparent"
+                        radius: 12
+                        visible: row.activeFocus
+                        z: 2
                     }
 
                     Led {
@@ -215,6 +249,8 @@ Item {
                 }
 
                 ToggleSwitch {
+                    id: nightlySwitch
+
                     anchors.right: parent.right
                     anchors.rightMargin: 12
                     anchors.verticalCenter: parent.verticalCenter
@@ -243,5 +279,13 @@ Item {
                 }
             }
         }
+
+        onOpened: Qt.callLater(() => {
+            const first = releaseList.itemAtIndex(0);
+            if (first)
+                first.forceActiveFocus();
+            else if (nightlySwitch.visible)
+                nightlySwitch.forceActiveFocus();
+        })
     }
 }
