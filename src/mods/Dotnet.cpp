@@ -3,27 +3,66 @@
 #include <QDir>
 #include <QFileInfo>
 #include <QLoggingCategory>
+#include <QProcess>
 #include <QStandardPaths>
 
 #include "Aptabase.h"
 #include "DownloadManager.h"
-#include "Wine.h"
 
 Q_LOGGING_CATEGORY(DotNetLog, "dotnet")
 
+namespace
+{
+    const QUrl runtimeUrl{"https://builds.dotnet.microsoft.com/dotnet/Runtime/6.0.36/dotnet-runtime-6.0.36-win-x64.zip"_L1};
+    const QUrl desktopUrl{
+        "https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/6.0.36/windowsdesktop-runtime-6.0.36-win-x64.zip"_L1};
+
+    QString dotnetDir(const Game *game)
+    {
+        return game->winePrefix() + "/drive_c/Program Files/dotnet"_L1;
+    }
+
+    bool extractZip(const QString &zip, const QString &target)
+    {
+        if (!QFileInfo::exists(target))
+            QDir().mkpath(target);
+
+        QProcess unzip;
+        unzip.setWorkingDirectory(target);
+        unzip.start("unzip"_L1, {"-o"_L1, "-qq"_L1, zip, "-d"_L1, target});
+        unzip.waitForFinished(-1);
+        if (unzip.exitCode() != 0)
+        {
+            qCWarning(DotNetLog) << "Unzip" << zip << "failed:" << unzip.errorString();
+            qCWarning(DotNetLog) << unzip.readAllStandardError();
+            return false;
+        }
+        return true;
+    }
+
+    void removeIfEmpty(const QString &path)
+    {
+        if (QDir d{path}; d.exists() && d.isEmpty())
+            d.removeRecursively();
+    }
+} // namespace
+
 Dotnet::Dotnet(QObject *parent)
     : Mod{parent},
-      m_dotnetInstallerCache{QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) +
-                             "/windowsdesktop-runtime-6.0.36-win-x64.exe"_L1}
+      m_runtimeZip{QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) +
+                   "/dotnet-runtime-6.0.36-win-x64.zip"_L1},
+      m_desktopZip{QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) +
+                   "/windowsdesktop-runtime-6.0.36-win-x64.zip"_L1}
 {
+    // The old .exe installer cannot run under Proton (WiX Burn always initializes
+    // its theme manager, even for /quiet, and that fails with 0x80070583). Delete
+    // stale caches; the zips below replace them.
     // TODO: migration, remove me before 0.4.0
-    if (QFile cache(QStandardPaths::writableLocation(QStandardPaths::CacheLocation) +
-                    "/windowsdesktop-runtime-6.0.36-win-x64.exe"_L1);
-        cache.exists())
-    {
-        cache.copy(m_dotnetInstallerCache);
-        cache.remove();
-    }
+    QFile{QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) +
+          "/windowsdesktop-runtime-6.0.36-win-x64.exe"_L1}
+        .remove();
+    QFile{QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + "/windowsdesktop-runtime-6.0.36-win-x64.exe"_L1}
+        .remove();
 
     setCurrentRelease(42);
 }
@@ -48,78 +87,106 @@ bool Dotnet::isInstalledForGame(const Game *game) const
 {
     if (!game || !game->hasValidWine())
         return false;
-    const auto basepath = game->winePrefix() + "/drive_c/Program Files/dotnet"_L1;
-    return QFileInfo::exists(basepath + "/dotnet.exe"_L1) && QFileInfo::exists(basepath + "/host/fxr/6.0.36"_L1);
+    const auto basepath = dotnetDir(game);
+    return QFileInfo::exists(basepath + "/dotnet.exe"_L1) && QFileInfo::exists(basepath + "/host/fxr/6.0.36"_L1) &&
+           QFileInfo::exists(basepath + "/shared/Microsoft.NETCore.App/6.0.36"_L1) &&
+           QFileInfo::exists(basepath + "/shared/Microsoft.WindowsDesktop.App/6.0.36"_L1);
 }
 
 bool Dotnet::hasDotnetCached() const
 {
-    return QFileInfo::exists(m_dotnetInstallerCache);
+    return QFileInfo::exists(m_runtimeZip) && QFileInfo::exists(m_desktopZip);
 }
 
 void Dotnet::downloadRelease(ModRelease *)
 {
-    QUrl url{
-        "https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/6.0.36/windowsdesktop-runtime-6.0.36-win-x64.exe"_L1};
     Aptabase::instance()->track("download-"_L1 + settingsGroup(), {{"version"_L1, currentRelease()->name()}});
 
-    DownloadManager::instance()->download(
-        QNetworkRequest{url},
-        ".NET Desktop Runtime 6.0.36"_L1,
-        true,
-        [this](const QByteArray &data) {
-            QFile file{m_dotnetInstallerCache};
+    const auto saveTo = [](const QString &path, const char *what) {
+        return [path, what](const QByteArray &data) {
+            QFile file{path};
             if (file.open(QIODevice::WriteOnly))
             {
                 file.write(data);
                 file.close();
             }
             else
-                qCWarning(DotNetLog) << "Failed to save downloaded .NET desktop runtime";
-        },
-        [this](const QNetworkReply::NetworkError error, const QString &errorMessage) {
-            qCWarning(DotNetLog) << ".NET desktop runtime download failed:" << errorMessage;
-        },
-        [this] { releases().constFirst()->setDownloaded(hasDotnetCached()); });
+                qCWarning(DotNetLog) << "Failed to save downloaded" << what;
+        };
+    };
+
+    const auto fail = [](const QNetworkReply::NetworkError, const QString &errorMessage) {
+        qCWarning(DotNetLog) << ".NET desktop runtime download failed:" << errorMessage;
+    };
+
+    const auto refresh = [this] { releases().constFirst()->setDownloaded(hasDotnetCached()); };
+
+    // The queue runs these one at a time; the second refresh flips downloaded to true.
+    DownloadManager::instance()->download(
+        QNetworkRequest{runtimeUrl}, ".NET Runtime 6.0.36"_L1, true, saveTo(m_runtimeZip, ".NET runtime"), fail, refresh);
+    DownloadManager::instance()->download(QNetworkRequest{desktopUrl},
+                                          ".NET Desktop Runtime 6.0.36"_L1,
+                                          true,
+                                          saveTo(m_desktopZip, ".NET desktop runtime"),
+                                          fail,
+                                          refresh);
 }
 
 void Dotnet::deleteRelease(ModRelease *release)
 {
     if (!release->downloaded())
         return;
-    if (QFile{m_dotnetInstallerCache}.remove())
+    if (QFile{m_runtimeZip}.remove() && QFile{m_desktopZip}.remove())
         release->setDownloaded(false);
+    else
+        release->setDownloaded(hasDotnetCached());
 }
 
 void Dotnet::uninstallMod(Game *game)
 {
-    runInstaller(game, {}, {"/uninstall"_L1, "/quiet"_L1, "/norestart"_L1}, false);
+    if (game && game->hasValidWine())
+    {
+        const auto base = dotnetDir(game);
+        QDir{base + "/shared/Microsoft.WindowsDesktop.App/6.0.36"_L1}.removeRecursively();
+        QDir{base + "/shared/Microsoft.NETCore.App/6.0.36"_L1}.removeRecursively();
+        QDir{base + "/host/fxr/6.0.36"_L1}.removeRecursively();
+        removeIfEmpty(base + "/shared/Microsoft.WindowsDesktop.App"_L1);
+        removeIfEmpty(base + "/shared/Microsoft.NETCore.App"_L1);
+        removeIfEmpty(base + "/shared"_L1);
+        removeIfEmpty(base + "/host/fxr"_L1);
+        removeIfEmpty(base + "/host"_L1);
+        if (!QDir{base + "/shared"_L1}.exists() && !QDir{base + "/host"_L1}.exists())
+        {
+            // We laid down the only version; take the muxer with us. If something
+            // else lives here, leave it alone.
+            QFile::remove(base + "/dotnet.exe"_L1);
+            QFile::remove(base + "/LICENSE.txt"_L1);
+            QFile::remove(base + "/ThirdPartyNotices.txt"_L1);
+            removeIfEmpty(base);
+        }
+    }
+    Mod::uninstallMod(game);
 }
 
 void Dotnet::installModImpl(Game *game, const Game::LaunchOption &exe)
 {
-    runInstaller(game, exe, {"/install"_L1, "/quiet"_L1, "/norestart"_L1}, true);
-}
-
-void Dotnet::runInstaller(Game *game, const Game::LaunchOption &exe, const QStringList &args, bool install)
-{
-    if (!hasDotnetCached())
+    if (!hasDotnetCached() || !game || !game->hasValidWine())
         return;
 
-    setBusyForGame(game, true);
-    Wine::instance()->runInWine(
-        ".NET Desktop Runtime installer"_L1,
-        game,
-        m_dotnetInstallerCache,
-        args,
-        [this, game, exe, install] {
-            setBusyForGame(game, false);
-            if (install)
-                Mod::installModImpl(game, exe);
-            else
-                Mod::uninstallMod(game);
-        },
-        [this, game] { setBusyForGame(game, false); });
+    const auto target = dotnetDir(game);
+    if (!extractZip(m_runtimeZip, target) || !extractZip(m_desktopZip, target))
+    {
+        qCWarning(DotNetLog) << "Failed to extract .NET desktop runtime for" << game->name();
+        return;
+    }
+
+    if (!isInstalledForGame(game))
+    {
+        qCWarning(DotNetLog) << "Extraction finished but .NET is still missing for" << game->name();
+        return;
+    }
+
+    Mod::installModImpl(game, exe);
 }
 
 QMap<int, Game::LaunchOption> Dotnet::acceptableInstallCandidates(const Game *game) const
@@ -133,21 +200,27 @@ QMap<int, Game::LaunchOption> Dotnet::acceptableInstallCandidates(const Game *ga
 
 QList<ModRelease *> Dotnet::releases() const
 {
-    static QList<ModRelease *> l = {new ModRelease{
-        42,
-        ".NET Desktop Runtime 6.0.36"_L1,
-        QDateTime{{2024, 11, 12}, {0, 0, 0}},
-        false,
-        hasDotnetCached(),
-        {ModRelease::Asset{
-            .id = 42,
-            .name = ".NET Desktop Runtime 6.0.36"_L1,
-            .url =
-                {"https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/6.0.36/windowsdesktop-runtime-6.0.36-win-x64.exe"_L1},
-            .timestamp = QDateTime{{2024, 11, 12}, {0, 0, 0}},
-            .size = 57380656,
-        }},
-        // parented to the mod so downloads of it are reported like any other release
-        const_cast<Dotnet *>(this)}};
+    static QList<ModRelease *> l = {new ModRelease{42,
+                                                   ".NET Desktop Runtime 6.0.36"_L1,
+                                                   QDateTime{{2024, 11, 12}, {0, 0, 0}},
+                                                   false,
+                                                   hasDotnetCached(),
+                                                   {ModRelease::Asset{
+                                                        .id = 420,
+                                                        .name = ".NET Runtime 6.0.36"_L1,
+                                                        .url = {runtimeUrl},
+                                                        .timestamp = QDateTime{{2024, 11, 12}, {0, 0, 0}},
+                                                        .size = 33057872,
+                                                    },
+                                                    ModRelease::Asset{
+                                                        .id = 421,
+                                                        .name = ".NET Desktop Runtime 6.0.36"_L1,
+                                                        .url = {desktopUrl},
+                                                        .timestamp = QDateTime{{2024, 11, 12}, {0, 0, 0}},
+                                                        .size = 36315065,
+                                                    }},
+                                                   // parented to the mod so downloads of it are reported like any other
+                                                   // release
+                                                   const_cast<Dotnet *>(this)}};
     return l;
 }

@@ -36,10 +36,16 @@ void Wine::startWineProcess(const QString &program,
                             const QString &command,
                             const QString &wineBinary,
                             const std::function<void()> &successCallback,
-                            const std::function<void()> &failureCallback)
+                            const std::function<void()> &failureCallback,
+                            const std::function<bool()> &verifySuccess)
 {
     auto process = new QProcess;
     process->setProcessEnvironment(environment);
+    // Like winetricks' w_try_cd, run installers from their own directory so
+    // companion payloads and relative paths resolve even when Wine is handed
+    // an absolute Unix path.
+    if (QFileInfo cmdInfo{command}; cmdInfo.isAbsolute() && cmdInfo.dir().exists())
+        process->setWorkingDirectory(cmdInfo.absolutePath());
     auto settled = std::make_shared<bool>(false);
 
     connect(process, &QProcess::finished, this, [=, this] {
@@ -48,21 +54,32 @@ void Wine::startWineProcess(const QString &program,
         *settled = true;
 
         const auto code = process->exitCode();
-        // Wine keeps only the low 8 bits of a Windows exit code. For the .NET installer,
-        // 0x42 is 1602 (closed by the user), 0x69 is 1641 and 0xC2 is 3010 (installed, reboot wanted).
-        const bool dotnetAccepted = command.endsWith("windowsdesktop-runtime-6.0.36-win-x64.exe"_L1) &&
-                                    (code == 0x42 || code == 0x69 || code == 0xC2);
-        if (code == 0 || dotnetAccepted)
+        // Wine keeps only the low 8 bits of a Windows exit code, so e.g. 0x83 here
+        // may be a truncated 0x583 rather than a literal 131.
+        if (code == 0)
             successCallback();
+        else if (verifySuccess && verifySuccess())
+        {
+            // Some installers report failure (truncated codes, reboot quirks) after
+            // they already laid down their files. Trust the verification over the exit code.
+            qCInfo(WineLog) << "Running" << command << "exited with" << code
+                            << "but verification passed; treating as success";
+            successCallback();
+        }
         else
         {
             emit processFailed(prettyName);
             qCWarning(WineLog) << "Running" << command << "with Wine" << wineBinary << "failed with exit code" << code;
+            if (const auto overrides = environment.value("WINEDLLOVERRIDES"); !overrides.isEmpty())
+                qCWarning(WineLog) << "WINEDLLOVERRIDES is set:" << overrides;
             if (program == "flatpak"_L1)
                 qCWarning(WineLog) << "flatpak enter failed. Injection needs a running game sandbox and working user "
                                       "namespaces";
             if (process->exitStatus() == QProcess::CrashExit)
                 qCWarning(WineLog) << "Wine process crashed:" << process->errorString();
+            const auto out = process->readAllStandardOutput().trimmed();
+            if (!out.isEmpty())
+                qCWarning(WineLog) << "Wine stdout:" << out;
             const auto err = process->readAllStandardError().trimmed();
             if (!err.isEmpty())
                 qCWarning(WineLog) << "Wine stderr:" << err;
@@ -91,7 +108,8 @@ void Wine::enterGameSandbox(qint64 pid,
                             const QString &command,
                             const QStringList &args,
                             const std::function<void()> &successCallback,
-                            const std::function<void()> &failureCallback)
+                            const std::function<void()> &failureCallback,
+                            const std::function<bool()> &verifySuccess)
 {
     const QFileInfo injector{command};
     const auto stagedDir = Flatpak::stageTree(appId, injector.absolutePath());
@@ -135,7 +153,8 @@ void Wine::enterGameSandbox(qint64 pid,
                      command,
                      sandboxWine,
                      successCallback,
-                     failureCallback);
+                     failureCallback,
+                     verifySuccess);
 }
 
 void Wine::runInWine(const QString &prettyName,
@@ -144,7 +163,8 @@ void Wine::runInWine(const QString &prettyName,
                      const QStringList &args,
                      std::function<void()> successCallback,
                      std::function<void()> failureCallback,
-                     bool inLauncherSandbox)
+                     bool inLauncherSandbox,
+                     std::function<bool()> verifySuccess)
 {
     if (!wineRoot)
     {
@@ -193,8 +213,16 @@ void Wine::runInWine(const QString &prettyName,
                 *done = true;
                 timer->stop();
                 pending->deleteLater();
-                enterGameSandbox(
-                    pid, appId, sandboxPrefix, sandboxWine, prettyName, command, args, successCallback, failureCallback);
+                enterGameSandbox(pid,
+                                 appId,
+                                 sandboxPrefix,
+                                 sandboxWine,
+                                 prettyName,
+                                 command,
+                                 args,
+                                 successCallback,
+                                 failureCallback,
+                                 verifySuccess);
                 return;
             }
             if (++(*attempts) >= 40)
@@ -217,7 +245,7 @@ void Wine::runInWine(const QString &prettyName,
 
     QString commandLog = command;
     if (!args.empty())
-        commandLog += args.join(' ');
+        commandLog += ' '_L1 + args.join(' ');
     qCInfo(WineLog) << "Executing command" << commandLog << "via Wine" << wineRoot->wineBinary();
 
     QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
@@ -231,7 +259,8 @@ void Wine::runInWine(const QString &prettyName,
                      command,
                      wineRoot->wineBinary(),
                      successCallback,
-                     failureCallback);
+                     failureCallback,
+                     verifySuccess);
 }
 
 QString Wine::whichWine() const

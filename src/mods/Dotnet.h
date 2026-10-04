@@ -47,8 +47,7 @@ private:
 
     virtual QList<ModRelease *> releases() const override;
     bool hasDotnetCached() const;
-    // The installer's own window fails under Proton (WiX theme manager, exit 0x583). Quiet mode skips that UI.
-    void runInstaller(Game *game, const Game::LaunchOption &exe, const QStringList &args, bool install);
 
-    QString m_dotnetInstallerCache;
+    QString m_runtimeZip;
+    QString m_desktopZip;
 };

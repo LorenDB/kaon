@@ -23,7 +23,8 @@ public:
         const QStringList &args = {},
         std::function<void()> successCallback = [] {},
         std::function<void()> failureCallback = [] {},
-        bool inLauncherSandbox = false);
+        bool inLauncherSandbox = false,
+        std::function<bool()> verifySuccess = {});
 
     // Injectors pass true so a Flatpak game is started with `flatpak enter`. Host games ignore the flag.
     void runInWine(const QString &prettyName, const Game *wineRoot, const QString &command, bool inLauncherSandbox)
@@ -48,7 +49,8 @@ private:
                           const QString &command,
                           const QString &wineBinary,
                           const std::function<void()> &successCallback,
-                          const std::function<void()> &failureCallback);
+                          const std::function<void()> &failureCallback,
+                          const std::function<bool()> &verifySuccess = {});
     void enterGameSandbox(qint64 pid,
                           const QString &appId,
                           const QString &sandboxPrefix,
@@ -57,5 +59,6 @@ private:
                           const QString &command,
                           const QStringList &args,
                           const std::function<void()> &successCallback,
-                          const std::function<void()> &failureCallback);
+                          const std::function<void()> &failureCallback,
+                          const std::function<bool()> &verifySuccess = {});
 };
