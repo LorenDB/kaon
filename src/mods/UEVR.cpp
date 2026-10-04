@@ -4,11 +4,12 @@
 #include <QJsonDocument>
 #include <QLoggingCategory>
 #include <QProcess>
-#include <QSemaphore>
 #include <QSettings>
 #include <QStandardPaths>
 #include <QTemporaryDir>
 #include <QTimer>
+
+#include <memory>
 
 #include "Aptabase.h"
 #include "Dotnet.h"
@@ -157,18 +158,25 @@ QString UEVR::path(const Paths path) const
 
 void UEVR::updateAvailableReleases()
 {
-    auto semaphore = new QSemaphore{2};
-    semaphore->acquire(2);
+    auto settled = std::make_shared<int>(0);
+    auto anyFailed = std::make_shared<bool>(false);
 
-    const auto impl = [this, semaphore](QUrl url, const QString cachePath) {
+    const auto impl = [this, settled, anyFailed](QUrl url, const QString cachePath) {
         QNetworkRequest req{url};
         req.setRawHeader("X-GitHub-Api-Version"_ba, "2022-11-28"_ba);
+
+        const auto done = [this, settled, anyFailed] {
+            if (++(*settled) < 2)
+                return;
+            if (!*anyFailed)
+                parseReleaseInfoJson();
+        };
 
         DownloadManager::instance()->download(
             req,
             "UEVR release information"_L1,
             true,
-            [this, cachePath, semaphore](const QByteArray &data) {
+            [this, cachePath, done](const QByteArray &data) {
                 QFile cache{cachePath};
                 if (cache.open(QFile::WriteOnly))
                 {
@@ -176,16 +184,12 @@ void UEVR::updateAvailableReleases()
                     cache.close();
                 }
 
-                semaphore->release();
-                if (semaphore->available() == 2)
-                {
-                    parseReleaseInfoJson();
-                    delete semaphore;
-                }
+                done();
             },
-            [](const QNetworkReply::NetworkError error, const QString &errorMessage) {
+            [anyFailed, done](const QNetworkReply::NetworkError, const QString &errorMessage) {
                 qCInfo(UEVRLog) << "Error while fetching releases:" << errorMessage;
-                return;
+                *anyFailed = true;
+                done();
             });
     };
 

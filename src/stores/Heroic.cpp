@@ -429,6 +429,7 @@ public:
             storePart = '.';
 
         auto file = new QFile{"%1/%2/%3"_L1.arg(cache.path(), storePart, url.split('/').last())};
+        connect(this, &HeroicImageFetcher::finished, file, &QFile::deleteLater);
         if (file->exists() && file->fileTime(QFileDevice::FileModificationTime).daysTo(QDateTime::currentDateTime()) < 30)
         {
             if (file->open(QIODevice::ReadOnly))
@@ -465,8 +466,6 @@ public:
                 },
                 [this] { emit finished(); });
         }
-
-        connect(this, &HeroicImageFetcher::finished, file, &QFile::deleteLater);
     }
 
     QQuickTextureFactory *textureFactory() const override { return QQuickTextureFactory::textureFactoryForImage(m_image); }

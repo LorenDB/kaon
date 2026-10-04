@@ -100,8 +100,8 @@ void Aptabase::track(const QString &event, const QJsonObject &properties, bool b
 
     if (blocking)
     {
-        auto loop = new QEventLoop;
-        connect(rep, &QNetworkReply::finished, loop, &QEventLoop::quit);
-        loop->exec();
+        QEventLoop loop;
+        connect(rep, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+        loop.exec();
     }
 }

@@ -273,6 +273,7 @@ public:
         if (!cache.exists("itch_cache"_L1))
             cache.mkdir("itch_cache"_L1);
         auto file = new QFile{cache.path() + "/itch_cache/"_L1 + url.split('/').last()};
+        connect(this, &ItchImageFetcher::finished, file, &QFile::deleteLater);
         if (file->exists() && file->fileTime(QFileDevice::FileModificationTime).daysTo(QDateTime::currentDateTime()) < 30)
         {
             if (file->open(QIODevice::ReadOnly))
@@ -309,8 +310,6 @@ public:
                 },
                 [this] { emit finished(); });
         }
-
-        connect(this, &ItchImageFetcher::finished, file, &QFile::deleteLater);
     }
 
     QQuickTextureFactory *textureFactory() const override { return QQuickTextureFactory::textureFactoryForImage(m_image); }
