@@ -128,6 +128,36 @@ Item {
                     z: -1
                 }
             }
+
+            Row {
+                anchors.margins: 14
+                anchors.right: parent.right
+                anchors.top: parent.top
+                spacing: 4
+
+                Repeater {
+                    model: view.game ? [view.game.type === Game.Demo ? "Demo" : "", view.game.vrOnly ? "VR only" : ""].filter(
+                                           t => t !== "") : []
+
+                    Rectangle {
+                        required property string modelData
+
+                        color: "#d9050608"
+                        height: 20
+                        radius: 10
+                        width: tagText.implicitWidth + 14
+
+                        VText {
+                            id: tagText
+
+                            anchors.centerIn: parent
+                            font.pixelSize: 11
+                            font.weight: Font.Bold
+                            text: parent.modelData
+                        }
+                    }
+                }
+            }
         }
 
         Column {
