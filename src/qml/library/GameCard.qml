@@ -12,6 +12,29 @@ Item {
     readonly property bool hot: mouse.containsMouse || activeFocus
     required property var modelData
 
+    // The bundled rounded font draws U+2026 vertically centered (Japanese-style), so Qt's built-in eliding floats
+    // mid-line. Truncate manually with three baseline periods instead.
+    function dotsElided(fontMetrics, source, availWidth) {
+        if (!source || availWidth <= 0)
+            return "";
+        if (fontMetrics.advanceWidth(source) <= availWidth)
+            return source;
+        const dots = "...";
+        const dotsWidth = fontMetrics.advanceWidth(dots);
+        if (dotsWidth >= availWidth)
+            return "";
+        let lo = 0;
+        let hi = source.length;
+        while (lo < hi) {
+            const mid = (lo + hi + 1) >> 1;
+            if (fontMetrics.advanceWidth(source.slice(0, mid)) + dotsWidth <= availWidth)
+                lo = mid;
+            else
+                hi = mid - 1;
+        }
+        return source.slice(0, lo) + dots;
+    }
+
     activeFocusOnTab: true
     height: cardWidth * 1.5 + 50
     width: cardWidth
@@ -103,12 +126,22 @@ Item {
     }
 
     VText {
-        elide: Text.ElideRight
+        id: titleText
+
+        clip: true
         font.pixelSize: 13
         font.weight: Font.Bold
-        text: card.game ? card.game.name : ""
+        maximumLineCount: 1
+        text: (titleFontMetrics.font, dotsElided(titleFontMetrics, card.game ? card.game.name : "", width))
         width: parent.width
+        wrapMode: Text.NoWrap
         y: cover.height + 10
+    }
+
+    FontMetrics {
+        id: titleFontMetrics
+
+        font: titleText.font
     }
 
     Row {
@@ -124,13 +157,24 @@ Item {
         }
 
         VText {
+            id: statusText
+
             anchors.verticalCenter: parent.verticalCenter
+            clip: true
             color: Theme.glassMuted
-            elide: Text.ElideRight
             font.pixelSize: 12
-            text: card.game ? (GameStatus.revision, GameStatus.summary(card.game)) : ""
+            maximumLineCount: 1
+            text: (statusFontMetrics.font, dotsElided(statusFontMetrics, card.game ? (GameStatus.revision, GameStatus.summary(
+                                                                                          card.game)) : "", width))
             width: parent.width - 14
+            wrapMode: Text.NoWrap
         }
+    }
+
+    FontMetrics {
+        id: statusFontMetrics
+
+        font: statusText.font
     }
 
     MouseArea {
