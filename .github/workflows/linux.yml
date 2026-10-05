@@ -5,10 +5,18 @@ on:
 
 jobs:
   linux:
-    name: AppImage
-    runs-on: ubuntu-latest
+    name: AppImage-${{ matrix.arch }}
+    runs-on: ${{ matrix.runs-on }}
     strategy:
       fail-fast: false
+      matrix:
+        include:
+          - arch: x86_64
+            runs-on: ubuntu-latest
+            linuxdeploy-arch: x64
+          - arch: aarch64
+            runs-on: ubuntu-24.04-arm
+            linuxdeploy-arch: arm64
 
     steps:
       - name: Install Qt
@@ -28,10 +36,12 @@ jobs:
           cmake --build build --config RelWithDebInfo -j $(nproc)
 
       - name: Install LinuxDeploy
+        id: install-linuxdeploy
         uses: miurahr/install-linuxdeploy-action@v1.8.0
         with:
           plugins: qt appimage
           dir: ${{ github.workspace }}
+          arch: ${{ matrix.linuxdeploy-arch }}
 
       - name: Install packages
         run: |
@@ -41,11 +51,10 @@ jobs:
       - name: Build release package
         run: |
           # remove problematic QSql drivers
-          # TODO: use variable instead of /home/runner/work/kaon
-          rm -f /home/runner/work/kaon/Qt/6.*/gcc_64/plugins/sqldrivers/libqsqlmimer.so
-          rm -f /home/runner/work/kaon/Qt/6.*/gcc_64/plugins/sqldrivers/libqsqloci.so
+          rm -f "$QT_ROOT_DIR/plugins/sqldrivers/libqsqlmimer.so"
+          rm -f "$QT_ROOT_DIR/plugins/sqldrivers/libqsqloci.so"
 
-          QML_SOURCES_PATHS=src linuxdeploy-x86_64.AppImage \
+          QML_SOURCES_PATHS=src ${{ steps.install-linuxdeploy.outputs.linuxdeploy }} \
               --plugin qt \
               --output appimage \
               --desktop-file dev.lorendb.kaon.desktop \
@@ -56,6 +65,6 @@ jobs:
       - name: Upload release package
         uses: actions/upload-artifact@v4
         with:
-          name: AppImage
-          path: Kaon-x86_64.AppImage
+          name: AppImage-${{ matrix.arch }}
+          path: Kaon-${{ matrix.arch }}.AppImage
           retention-days: 1
