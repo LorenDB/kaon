@@ -4,9 +4,12 @@
 #include <QDir>
 #include <QDirIterator>
 #include <QFileInfo>
+#include <QHash>
 #include <QLoggingCategory>
 #include <QProcess>
+#include <QRegularExpression>
 #include <QSettings>
+#include <QSysInfo>
 #include <QVariant>
 
 #include "Aptabase.h"
@@ -16,6 +19,134 @@
 
 Q_LOGGING_CATEGORY(SteamLog, "steam")
 
+namespace
+{
+    // What Steam runs a game with when that isn't simply the game's own Linux build. The player's choices are in
+    // config.vdf; the list of tools and Valve's per-game defaults are in the appinfo of the Steam Play manifests app.
+    struct CompatTools
+    {
+        struct Tool
+        {
+            QString displayName;
+            // False for the Steam Linux Runtime containers, which run a game's Linux build
+            bool runsWindows = true;
+        };
+
+        // Keyed by lowercased internal name, aliases included
+        QHash<QString, Tool> tools;
+        // App id to internal tool name or alias
+        QHash<QString, QString> chosen;
+        QHash<QString, QString> valveDefaults;
+
+        Tool tool(const QString &name) const
+        {
+            if (const auto it = tools.constFind(name.toLower()); it != tools.cend())
+                return *it;
+            // Not one of Valve's, so a custom build such as GE-Proton
+            return {name, !name.startsWith("steamlinuxruntime"_L1, Qt::CaseInsensitive)};
+        }
+    };
+
+    constexpr int SteamPlayManifests = 891390;
+
+    CompatTools readValveCompatTools()
+    {
+        CompatTools compat;
+        auto *info = AppInfoVDF::instance()->game(SteamPlayManifests);
+        if (!info)
+        {
+            qCWarning(SteamLog) << "No Steam Play manifests in appinfo.vdf. Only compatibility tools chosen in a game's"
+                                << "Steam properties will be detected";
+            return compat;
+        }
+
+        AppInfoVDF::AppInfo::Section section;
+        AppInfoVDF::AppInfo::SectionDesc desc{};
+        desc.blob = info->getRootSection(&desc.size);
+        section.parse(desc);
+
+        const auto toolsPrefix = "appinfo.extended.compat_tools."_L1;
+        const auto mappingsPrefix = "appinfo.extended.app_mappings."_L1;
+        for (const auto &finished : std::as_const(section.finished_sections))
+        {
+            if (finished.name.startsWith(toolsPrefix))
+            {
+                QStringList names{finished.name.sliced(toolsPrefix.size())};
+                CompatTools::Tool tool{names.constFirst()};
+                for (const auto &[key, value] : std::as_const(finished.keys))
+                {
+                    if (value.first != AppInfoVDF::AppInfo::Section::String)
+                        continue;
+                    const QString text = static_cast<const char *>(value.second);
+                    if (key == "display_name"_L1)
+                        tool.displayName = text;
+                    else if (key == "from_oslist"_L1)
+                        tool.runsWindows = text.contains("windows"_L1);
+                    else if (key == "aliases"_L1)
+                        names += text.split(','_L1, Qt::SkipEmptyParts);
+                }
+                for (const auto &name : std::as_const(names))
+                    compat.tools.insert(name.toLower(), tool);
+            }
+            else if (finished.name.startsWith(mappingsPrefix))
+            {
+                for (const auto &[key, value] : std::as_const(finished.keys))
+                {
+                    if (key != "tool"_L1 || value.first != AppInfoVDF::AppInfo::Section::String)
+                        continue;
+                    // Valve leaves entries with an empty tool behind when it withdraws a mapping
+                    if (const QString tool = static_cast<const char *>(value.second); !tool.isEmpty())
+                        compat.valveDefaults.insert(finished.name.sliced(mappingsPrefix.size()), tool);
+                }
+            }
+        }
+
+        qCInfo(SteamLog) << "Steam Play manifests list" << compat.tools.size() << "compatibility tool names and"
+                         << compat.valveDefaults.size() << "per-game defaults";
+        return compat;
+    }
+
+    void readChosenCompatTools(const QString &steamRoot, CompatTools &compat)
+    {
+        const auto path = steamRoot + "/config/config.vdf"_L1;
+        std::ifstream file{path.toStdString()};
+        bool parsed = false;
+        const auto config = file.is_open() ? tyti::vdf::read(file, &parsed) : tyti::vdf::object{};
+        if (!parsed)
+        {
+            qCWarning(SteamLog) << "Could not read" << path << "- compatibility tools chosen in Steam will not be detected";
+            return;
+        }
+
+        // The capitalization of these keys differs between Steam installs
+        const auto *node = &config;
+        for (const auto name : {"Software"_L1, "Valve"_L1, "Steam"_L1, "CompatToolMapping"_L1})
+        {
+            const auto child = std::find_if(node->childs.cbegin(), node->childs.cend(), [name](const auto &entry) {
+                return QString::fromStdString(entry.first).compare(name, Qt::CaseInsensitive) == 0;
+            });
+            if (child == node->childs.cend())
+            {
+                qCWarning(SteamLog) << "No" << name << "section in" << path
+                                    << "- compatibility tools chosen in Steam will not be detected";
+                return;
+            }
+            node = child->second.get();
+        }
+
+        for (const auto &[appId, mapping] : node->childs)
+        {
+            // Turning the override off again can leave an entry with an empty name
+            if (const auto name = mapping->attribs.find("name"); name != mapping->attribs.cend() && !name->second.empty())
+                compat.chosen.insert(QString::fromStdString(appId), QString::fromStdString(name->second));
+        }
+
+        // App 0 is the tool for every game that has no entry of its own and no Linux build
+        qCInfo(SteamLog) << path << "sets a compatibility tool for" << compat.chosen.size() - compat.chosen.contains("0"_L1)
+                         << "games, default" << compat.chosen.value("0"_L1, "unset"_L1);
+    }
+} // namespace
+
 class SteamGame : public Game
 {
     Q_OBJECT
@@ -23,8 +154,10 @@ class SteamGame : public Game
 public:
     SteamGame(const QString &steamId,
               const QString &steamDrive,
+              const QStringList &libraries,
               const QString &steamRoot,
               const QString &flatpakAppId,
+              const CompatTools &compat,
               QObject *parent)
         : Game{parent}
     {
@@ -67,28 +200,7 @@ public:
                 m_logoImage = "file://"_L1 + images.filePath();
         }
 
-        QString compatdata = steamDrive + "/steamapps/compatdata/"_L1 + m_id;
-        m_winePrefix = compatdata + "/pfx"_L1;
-        if (QFileInfo fi{compatdata}; fi.exists() && fi.isDir())
-        {
-            qCDebug(SteamLog) << "Found Proton prefix for" << m_name << "at" << m_winePrefix;
-            QFile file{compatdata + "/config_info"_L1};
-            if (file.open(QIODevice::ReadOnly | QIODevice::Text))
-            {
-                QTextStream compatInfo(&file);
-                compatInfo.readLine(); // first line is useless for now
-                QString proton = compatInfo.readLine();
-                static const QRegularExpression re("/(files|dist)/share/fonts/$");
-                if (proton.contains(re))
-                {
-                    QString protonBase = proton.remove(re);
-                    if (QFileInfo files{protonBase + "/files"_L1}; files.exists() && files.isDir())
-                        m_wineBinary = protonBase + "/files/bin/wine"_L1;
-                    else
-                        m_wineBinary = protonBase + "/dist/bin/wine"_L1;
-                }
-            }
-        }
+        findPrefix(steamDrive, libraries);
 
         if (!m_flatpakAppId.isEmpty())
         {
@@ -249,6 +361,7 @@ public:
             }
         }
 
+        detectWindowsBuild(compat);
         detectGameEngine();
         detectArchitectures();
         detectAnticheat();
@@ -266,6 +379,133 @@ public:
             QDesktopServices::openUrl(url);
         else if (!QProcess::startDetached("flatpak"_L1, {"run"_L1, m_flatpakAppId, url}))
             qCWarning(SteamLog) << "Could not launch" << m_id << "through Flatpak Steam";
+    }
+
+private:
+    void findPrefix(const QString &steamDrive, const QStringList &libraries)
+    {
+        // The prefix is normally in the library the game is installed to, but that isn't guaranteed. Search every library
+        // and take the prefix Proton ran in most recently; it rewrites the version file on each launch.
+        QStringList drives{steamDrive};
+        for (const auto &library : libraries)
+            if (!drives.contains(library))
+                drives << library;
+
+        QString compatdata;
+        QDateTime lastUsed;
+        QStringList looked;
+        for (const auto &drive : std::as_const(drives))
+        {
+            const auto dir = drive + "/steamapps/compatdata/"_L1 + m_id;
+            if (!QFileInfo{dir + "/pfx"_L1}.isDir())
+            {
+                // Steam also makes an empty compatdata folder for games that never ran through Proton
+                looked << dir + (QFileInfo::exists(dir) ? " (no pfx inside)"_L1 : " (missing)"_L1);
+                continue;
+            }
+            const auto used = QFileInfo{dir + "/version"_L1}.lastModified();
+            if (compatdata.isEmpty() || used > lastUsed)
+            {
+                compatdata = dir;
+                lastUsed = used;
+            }
+        }
+
+        if (compatdata.isEmpty())
+        {
+            m_winePrefix = steamDrive + "/steamapps/compatdata/"_L1 + m_id + "/pfx"_L1;
+            qCDebug(SteamLog) << "No Proton prefix for" << m_name << "- looked in" << looked;
+            return;
+        }
+        m_winePrefix = compatdata + "/pfx"_L1;
+
+        // Proton records what it set the prefix up with in config_info. The second line is the fonts directory of that
+        // Proton build, and a later one is the default prefix it started from.
+        QFile file{compatdata + "/config_info"_L1};
+        if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+        {
+            // Steam's install scripts can start a prefix before Proton has ever run in it
+            if (!QFileInfo::exists(m_winePrefix + "/system.reg"_L1))
+                qCDebug(SteamLog) << "Proton has not set up the prefix for" << m_name << "at" << m_winePrefix << "yet";
+            else
+                qCWarning(SteamLog) << "Proton prefix for" << m_name << "at" << m_winePrefix
+                                    << "has no Wine to go with it: could not read config_info:" << file.errorString();
+            return;
+        }
+        const auto lines = QString::fromUtf8(file.readAll()).split('\n'_L1);
+        static const QRegularExpression re("/(files|dist)/share/fonts/$");
+        auto proton = lines.value(1);
+        if (!proton.contains(re))
+        {
+            qCWarning(SteamLog) << "Proton prefix for" << m_name << "at" << m_winePrefix
+                                << "has no Wine to go with it: config_info does not name a Proton build, it starts with"
+                                << lines.first(qMin(3, lines.size()));
+            return;
+        }
+        proton.remove(re);
+
+        // On arm64 (the Steam Frame), Proton runs files/bin-arm64/wine when it ships one and then starts the prefix from
+        // default_pfx_arm64. See Proton.__init__ in its proton script. Use the Wine the prefix was made for.
+        const auto defaultPrefix = std::find_if(
+            lines.cbegin(), lines.cend(), [](const QString &line) { return line.contains("/share/default_pfx"_L1); });
+        const bool arm64 = defaultPrefix != lines.cend() ? defaultPrefix->endsWith("/default_pfx_arm64/"_L1) :
+                                                           QSysInfo::currentCpuArchitecture() == "arm64"_L1;
+
+        QStringList candidates{proton + "/files/bin/wine"_L1, proton + "/dist/bin/wine"_L1};
+        if (arm64)
+            candidates.prepend(proton + "/files/bin-arm64/wine"_L1);
+        for (const auto &candidate : std::as_const(candidates))
+        {
+            if (QFileInfo{candidate}.isFile())
+            {
+                m_wineBinary = candidate;
+                break;
+            }
+        }
+
+        if (m_wineBinary.isEmpty())
+            qCWarning(SteamLog) << "Proton prefix for" << m_name << "at" << m_winePrefix
+                                << "has no Wine to go with it: config_info names" << proton
+                                << "but none of these exist:" << candidates;
+        else
+            qCDebug(SteamLog) << "Found Proton prefix for" << m_name << "at" << m_winePrefix << "with Wine" << m_wineBinary;
+    }
+
+    // Steam starts a game's Linux build unless a compatibility tool is set for that game, by the player in its properties
+    // or by Valve. Steam then swaps the installed files where the two builds don't share them.
+    void detectWindowsBuild(const CompatTools &compat)
+    {
+        if (!hasLinuxBuild() || noWindowsSupport())
+            return;
+
+        const auto installed = [this](Platform platform) {
+            return std::any_of(m_executables.cbegin(), m_executables.cend(), [platform](const LaunchOption &exe) {
+                // appinfo writes some Windows paths with backslashes
+                return exe.platform == platform && QFileInfo::exists(QString{exe.executable}.replace('\\'_L1, '/'_L1));
+            });
+        };
+        const bool windowsBuild = installed(Platform::Windows);
+        const bool linuxBuild = installed(Platform::Linux);
+
+        // The player's choice wins. Valve's default only settles it when the installed files don't.
+        auto name = compat.chosen.value(m_id);
+        const bool byPlayer = !name.isEmpty();
+        if (!byPlayer && windowsBuild == linuxBuild)
+            name = compat.valveDefaults.value(m_id);
+
+        if (!name.isEmpty())
+        {
+            if (const auto tool = compat.tool(name); tool.runsWindows)
+                m_windowsBuildReason = "Steam is set to use %1 instead of the Linux build."_L1.arg(tool.displayName);
+        }
+        else if (windowsBuild && !linuxBuild)
+            m_windowsBuildReason = "Steam installed the Windows build instead of the Linux one."_L1;
+
+        if (!name.isEmpty())
+            name += byPlayer ? " (Steam properties)"_L1 : " (Valve default)"_L1;
+        qCDebug(SteamLog) << m_name << "has a Linux build. Compatibility tool:" << (name.isEmpty() ? "none"_L1 : name)
+                          << "Windows build installed:" << windowsBuild << "Linux build installed:" << linuxBuild
+                          << (m_windowsBuildReason.isEmpty() ? "-> runs the Linux build" : "-> runs the Windows build");
     }
 };
 
@@ -402,13 +642,19 @@ bool Steam::readLibrary(QList<Game *> &games)
     for (const auto &install : std::as_const(installs))
         AppInfoVDF::load(install.path + "/appcache/appinfo.vdf"_L1);
 
-    const auto parseLibraryFolders = [&games, &hasSteamVR](const QString &vdfPath, Install &install) -> bool {
+    const auto valveCompat = readValveCompatTools();
+
+    const auto parseLibraryFolders =
+        [&games, &hasSteamVR](const QString &vdfPath, Install &install, const CompatTools &compat) -> bool {
         qCDebug(SteamLog) << "Parsing libraryfolders.vdf from" << vdfPath;
         std::ifstream vdfFile{vdfPath.toStdString()};
 
         try
         {
             auto libraryFolders = tyti::vdf::read(vdfFile);
+            QStringList libraries;
+            for (const auto &[_, folder] : libraryFolders.childs)
+                libraries << QString::fromStdString(folder->attribs["path"]);
             for (const auto &[_, folder] : libraryFolders.childs)
             {
                 qCDebug(SteamLog) << "Scanning Steam drive:" << folder->attribs["path"];
@@ -416,8 +662,10 @@ bool Steam::readLibrary(QList<Game *> &games)
                 {
                     if (auto g = new SteamGame{QString::fromStdString(appId),
                                                QString::fromStdString(folder->attribs["path"]),
+                                               libraries,
                                                install.path,
                                                install.flatpakAppId,
+                                               compat,
                                                nullptr};
                         g->isValid())
                     {
@@ -450,13 +698,15 @@ bool Steam::readLibrary(QList<Game *> &games)
     {
         install.count = 0;
         install.hasSteamVR = false;
+        auto compat = valveCompat;
+        readChosenCompatTools(install.path, compat);
         bool parsed = false;
         if (const QFileInfo fi{install.path + "/steamapps/libraryfolders.vdf"_L1}; fi.exists() && fi.isFile())
-            parsed = parseLibraryFolders(fi.absoluteFilePath(), install);
+            parsed = parseLibraryFolders(fi.absoluteFilePath(), install, compat);
         if (!parsed)
         {
             if (const QFileInfo fi{install.path + "/config/libraryfolders.vdf"_L1}; fi.exists() && fi.isFile())
-                parsed = parseLibraryFolders(fi.absoluteFilePath(), install);
+                parsed = parseLibraryFolders(fi.absoluteFilePath(), install, compat);
         }
         if (!parsed)
             qCWarning(SteamLog) << "Could not find libraryfolders.vdf in" << install.path;

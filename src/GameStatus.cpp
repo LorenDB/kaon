@@ -77,12 +77,12 @@ namespace
     }
 
     // The Proton or Wine build a game runs with, named the way a person would. Proton keeps its Wine binary at
-    // <tool>/files/bin/wine or <tool>/dist/bin/wine; anything else is shown as a path.
+    // <tool>/files/bin/wine, <tool>/files/bin-arm64/wine or <tool>/dist/bin/wine; anything else is shown as a path.
     QString compatToolName(const Game *game)
     {
         QDir dir = QFileInfo{game->wineBinary()}.dir();
-        if (dir.dirName() == "bin"_L1 && dir.cdUp() && (dir.dirName() == "files"_L1 || dir.dirName() == "dist"_L1) &&
-            dir.cdUp())
+        if ((dir.dirName() == "bin"_L1 || dir.dirName() == "bin-arm64"_L1) && dir.cdUp() &&
+            (dir.dirName() == "files"_L1 || dir.dirName() == "dist"_L1) && dir.cdUp())
             return dir.dirName();
         return game->wineBinary();
     }
@@ -205,6 +205,8 @@ QVariantList GameStatus::steps(Game *game) const
                         "Linux-only build"_L1,
                         "VR mods attach to a game's Windows build, and this game doesn't ship one."_L1,
                         "block"_L1);
+    else if (game->hasLinuxBuild() && game->runsWindowsBuild())
+        out << makeStep("platform"_L1, "Runs through Proton"_L1, game->windowsBuildReason(), "ok"_L1);
     else if (game->hasLinuxBuild())
     {
         auto step = makeStep("platform"_L1,
@@ -235,9 +237,15 @@ QVariantList GameStatus::steps(Game *game) const
                             "todo"_L1);
         else
         {
+            // A prefix that Wine has set up can be there without the Proton build that made it, e.g. once Steam has
+            // removed that version
+            const bool prefixOnly = QFileInfo::exists(game->winePrefix() + "/system.reg"_L1);
+            const auto detail = prefixOnly ? "This game has a prefix, but Kaon can't find the Proton build it belongs to. "
+                                             "Launch the game once from %1, then rescan."_L1 :
+                                             "Launch the game once from %1 so it creates one, then rescan."_L1;
             auto step = makeStep("proton"_L1,
-                                 "No Proton prefix yet"_L1,
-                                 "Launch the game once from %1 so it creates one, then rescan."_L1.arg(launcherName(game)),
+                                 prefixOnly ? "Proton build not found"_L1 : "No Proton prefix yet"_L1,
+                                 detail.arg(launcherName(game)),
                                  "todo"_L1);
             if (game->canLaunch())
             {

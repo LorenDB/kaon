@@ -122,6 +122,11 @@ public:
     bool noWindowsSupport() const;
     // Unlike hasMultiplePlatforms(), this ignores macOS builds, which Steam on Linux never runs.
     bool hasLinuxBuild() const;
+    // Whether the launcher starts the Windows build. Without a Linux build there is nothing else to start; with one, only
+    // when the store knows the launcher was told to use Proton anyway.
+    bool runsWindowsBuild() const;
+    // How the store knows that, as a sentence for the checklist. Empty unless a Linux build was passed over.
+    QString windowsBuildReason() const { return m_windowsBuildReason; }
     bool hasAnticheat() const { return m_features.testFlag(Feature::Anticheat); }
     bool canLaunch() const { return m_canLaunch; }
     bool canOpenSettings() const { return m_canOpenSettings; }
@@ -183,6 +188,7 @@ protected:
     QString m_flatpakAppId;
     QString m_sandboxWinePrefix;
     QString m_sandboxWineBinary;
+    QString m_windowsBuildReason;
     AppType m_type = AppType::Other;
     Features m_features = Feature::Flatscreen;
 

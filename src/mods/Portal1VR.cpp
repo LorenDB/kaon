@@ -61,6 +61,8 @@ QString Portal1VR::installHoldReason(const Game *game) const
         std::any_of(exes.cbegin(), exes.cend(), [](const auto &exe) { return QFileInfo::exists(exe.executable); });
     if (exes.isEmpty() || ready)
         return {};
+    if (game->runsWindowsBuild())
+        return "Needs Portal's Windows build. Wait for Steam to finish installing it, then rescan."_L1;
     return "Needs Portal's Windows build. Force Proton in this game's Steam properties and wait for Steam to finish."_L1;
 }
 

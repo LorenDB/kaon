@@ -43,6 +43,13 @@ bool Game::hasLinuxBuild() const
         m_executables.begin(), m_executables.end(), [](const auto &exe) { return exe.platform == Platform::Linux; });
 }
 
+bool Game::runsWindowsBuild() const
+{
+    if (noWindowsSupport())
+        return false;
+    return !hasLinuxBuild() || !m_windowsBuildReason.isEmpty();
+}
+
 bool Game::noWindowsSupport() const
 {
     return std::all_of(

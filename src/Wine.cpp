@@ -175,6 +175,8 @@ void Wine::runInWine(const QString &prettyName,
     }
     else if (!wineRoot->hasValidWine())
     {
+        qCWarning(WineLog) << "Cannot run" << command << "for" << wineRoot->name() << "- Wine binary"
+                           << wineRoot->wineBinary() << "or prefix" << wineRoot->winePrefix() << "does not exist";
         Aptabase::instance()->track(
             "empty-wine-binary-bug"_L1,
             {{"command"_L1, command},

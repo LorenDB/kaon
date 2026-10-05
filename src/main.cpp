@@ -9,6 +9,7 @@
 #include <QQmlContext>
 #include <QSettings>
 #include <QStandardPaths>
+#include <QSysInfo>
 
 #include "Aptabase.h"
 #include "CustomGames.h"
@@ -96,6 +97,8 @@ int main(int argc, char *argv[])
         DEBUG_TO_STDOUT = true;
 
     qInfo() << "This log only represents the most recent run of Kaon!";
+    qInfo() << "Kaon" << KAON_APP_VERSION << "built for" << QSysInfo::buildCpuArchitecture() << "running on"
+            << QSysInfo::prettyProductName() << QSysInfo::currentCpuArchitecture() << "kernel" << QSysInfo::kernelVersion();
 
     Aptabase::init("aptabase.lorendb.dev"_L1, "A-SH-5394792661"_L1);
     Aptabase::instance()->track("startup"_L1);
