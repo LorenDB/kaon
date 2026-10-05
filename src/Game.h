@@ -165,6 +165,9 @@ public:
     bool isValid() const { return m_valid; }
 
     Q_INVOKABLE bool hasValidWine() const;
+    // Whether the Wine binary is an arm64 build. x64 Windows programs are emulated under one, and some then look for
+    // their files somewhere else.
+    bool hasArm64Wine() const;
 
     Q_INVOKABLE virtual void launch() const = 0;
 
@@ -174,6 +177,10 @@ signals:
 
 protected:
     explicit Game(QObject *parent = nullptr);
+
+    // Launchers made for Windows record paths with backslashes and without minding case. Returns the file that relative
+    // names below root, or the two joined with forward slashes when there is no such file.
+    static QString resolveWindowsPath(const QString &root, const QString &relative);
 
     void detectGameEngine();
     void detectArchitectures();

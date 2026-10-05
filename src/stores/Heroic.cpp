@@ -51,7 +51,7 @@ public:
             m_type = AppType::Game;
 
             LaunchOption lo;
-            lo.executable = m_installDir + '/' + json["executable"_L1].toString();
+            lo.executable = resolveWindowsPath(m_installDir, json["executable"_L1].toString());
 
             // Platform detection code at Heroic:
             // https://github.com/Heroic-Games-Launcher/HeroicGamesLauncher/blob/d2f0ed1c3929c78fc35b58e54bad1ccdfd5d8ed8/src/common/types/legendary.ts#L6
@@ -99,7 +99,7 @@ public:
                 for (const auto &entry : info["playTasks"_L1].toArray())
                 {
                     LaunchOption lo;
-                    lo.executable = m_installDir + '/' + entry["path"_L1].toString();
+                    lo.executable = resolveWindowsPath(m_installDir, entry["path"_L1].toString());
                     lo.platform = platform;
 
                     if (entry["isPrimary"_L1].toBool())
@@ -159,7 +159,7 @@ public:
 
                 LaunchOption lo;
                 lo.platform = Platform::Windows;
-                lo.executable = m_installDir + '/' + fuel["Main"_L1]["Command"_L1].toString();
+                lo.executable = resolveWindowsPath(m_installDir, fuel["Main"_L1]["Command"_L1].toString());
                 m_executables[0] = lo;
             }
         }

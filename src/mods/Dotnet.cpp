@@ -19,7 +19,10 @@ namespace
 
     QString dotnetDir(const Game *game)
     {
-        return game->winePrefix() + "/drive_c/Program Files/dotnet"_L1;
+        const auto dir = game->winePrefix() + "/drive_c/Program Files/dotnet"_L1;
+        // An x64 program like UEVR's injector runs emulated under an arm64 Wine, and the .NET host then looks for its
+        // runtime in an x64 subfolder, the same as on Windows on Arm. See pal::get_default_installation_dir in the host.
+        return game->hasArm64Wine() ? dir + "/x64"_L1 : dir;
     }
 
     bool extractZip(const QString &zip, const QString &target)

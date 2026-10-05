@@ -6,9 +6,78 @@
 
 #include "Aptabase.h"
 
+namespace
+{
+    // e_machine from the header of an ELF file, or 0 if it isn't one
+    quint16 elfMachine(QFile &raw)
+    {
+        QDataStream ds(&raw);
+        ds.setByteOrder(QDataStream::LittleEndian); // Initial read is fixed
+
+        // Verify ELF magic number
+        raw.seek(0);
+        quint32 magic;
+        ds >> magic;
+        if (magic != 0x464C457F)
+            return 0;
+
+        // Read class (32/64 bit)
+        raw.seek(4);
+        quint8 elfClass;
+        ds >> elfClass;
+        if (elfClass != 1 && elfClass != 2)
+            return 0;
+
+        // Read data encoding (endianness)
+        quint8 data;
+        ds >> data;
+        if (data == 1)
+            ds.setByteOrder(QDataStream::LittleEndian);
+        else if (data == 2)
+            ds.setByteOrder(QDataStream::BigEndian);
+        else
+            return 0; // invalid encoding
+
+        // Skip to e_machine (offset 18)
+        raw.seek(18);
+        quint16 machine;
+        ds >> machine;
+        return machine;
+    }
+} // namespace
+
 Game::Game(QObject *parent)
     : QObject{parent}
 {}
+
+QString Game::resolveWindowsPath(const QString &root, const QString &relative)
+{
+    auto path = root;
+    for (const auto &part : QString{relative}.replace('\\'_L1, '/'_L1).split('/'_L1, Qt::SkipEmptyParts))
+    {
+        // Only look for another spelling when this one isn't there
+        if (!QFileInfo::exists(path + '/' + part))
+        {
+            const auto entries = QDir{path}.entryList(QDir::AllEntries | QDir::Hidden | QDir::System | QDir::NoDotAndDotDot);
+            const auto match = std::find_if(entries.cbegin(), entries.cend(), [&part](const QString &entry) {
+                return entry.compare(part, Qt::CaseInsensitive) == 0;
+            });
+            if (match != entries.cend())
+            {
+                path += '/' + *match;
+                continue;
+            }
+        }
+        path += '/' + part;
+    }
+    return path;
+}
+
+bool Game::hasArm64Wine() const
+{
+    QFile wine{m_wineBinary};
+    return wine.open(QFile::ReadOnly) && elfMachine(wine) == 183; // EM_AARCH64
+}
 
 bool Game::hasValidWine() const
 {
@@ -58,13 +127,19 @@ bool Game::noWindowsSupport() const
 
 void Game::detectGameEngine()
 {
-    QString binaryDir{m_installDir};
+    // The game's own files can start below the install directory: itch unpacks many games into a single subfolder, and a
+    // launch option can point several folders down. Any folder from an executable up to the install directory may be the
+    // one the engine's layout is relative to.
+    const auto installDir = QDir::cleanPath(m_installDir);
+    QStringList roots{installDir};
     for (const auto &exe : std::as_const(m_executables))
     {
-        if (QFileInfo fi{exe.executable}; fi.absolutePath() != m_installDir)
+        for (auto dir = QFileInfo{exe.executable}.absolutePath(); !roots.contains(dir); dir = QFileInfo{dir}.absolutePath())
         {
-            binaryDir = fi.absolutePath();
-            break;
+            roots << dir;
+            // An executable outside the install directory has no path back up to it
+            if (!dir.startsWith(installDir + '/'))
+                break;
         }
     }
 
@@ -73,17 +148,20 @@ void Game::detectGameEngine()
     //
     // Detection method sourced from Rai Pal
     // https://github.com/Raicuparta/rai-pal/blob/51157fdae6b1d87760580d85082ccd5026bb0320/backend/core/src/game_engines/unreal.rs
-    const QStringList signsOfUnreal = {
-        binaryDir + "/Engine/Binaries/Win64"_L1,
-        binaryDir + "/Engine/Binaries/Win32"_L1,
-        binaryDir + "/Engine/Binaries/ThirdParty"_L1,
-    };
-    for (const auto &sign : signsOfUnreal)
+    for (const auto &root : std::as_const(roots))
     {
-        if (QFileInfo fi{sign}; fi.exists() && fi.isDir())
+        const QStringList signsOfUnreal = {
+            root + "/Engine/Binaries/Win64"_L1,
+            root + "/Engine/Binaries/Win32"_L1,
+            root + "/Engine/Binaries/ThirdParty"_L1,
+        };
+        for (const auto &sign : signsOfUnreal)
         {
-            m_engine = Engine::Unreal;
-            return;
+            if (QFileInfo fi{sign}; fi.exists() && fi.isDir())
+            {
+                m_engine = Engine::Unreal;
+                return;
+            }
         }
     }
 
@@ -93,9 +171,9 @@ void Game::detectGameEngine()
     // Regex sourced from SteamDB
     // https://github.com/SteamDatabase/FileDetectionRuleSets/blob/ac27c7cfc0a63dc07cc9e65157841857d82f347b/rules.ini#L191
     static const QRegularExpression signsOfSource{R"((?:^|/)(?:vphysics|bsppack)\.(?:dylib|dll|so)$)"_L1};
-    for (QDirIterator gameDirIterator{binaryDir, QDirIterator::Subdirectories}; gameDirIterator.hasNext();)
+    for (QDirIterator gameDirIterator{m_installDir, QDirIterator::Subdirectories}; gameDirIterator.hasNext();)
     {
-        auto localName = gameDirIterator.next().remove(binaryDir);
+        auto localName = gameDirIterator.next().remove(m_installDir);
         if (localName.contains(signsOfSource))
         {
             m_engine = Engine::Source;
@@ -151,7 +229,7 @@ void Game::detectGameEngine()
 
     // fall back to looking for a single data.pck file
     QStringList pcks;
-    for (QDirIterator dirit{binaryDir, QDirIterator::Subdirectories}; dirit.hasNext();)
+    for (QDirIterator dirit{m_installDir, QDirIterator::Subdirectories}; dirit.hasNext();)
     {
         const auto file = dirit.next();
         if (file.endsWith(".pck"_L1, Qt::CaseInsensitive))
@@ -237,37 +315,9 @@ void Game::detectArchitectures()
                     continue;
                 }
 
-                QDataStream ds(&raw);
-                ds.setByteOrder(QDataStream::LittleEndian); // Initial read is fixed
-
-                // Verify ELF magic number
-                raw.seek(0);
-                quint32 magic;
-                ds >> magic;
-                if (magic != 0x464C457F)
+                const auto machine = elfMachine(raw);
+                if (machine == 0)
                     continue;
-
-                // Read class (32/64 bit)
-                raw.seek(4);
-                quint8 elfClass;
-                ds >> elfClass;
-                if (elfClass != 1 && elfClass != 2)
-                    continue;
-
-                // Read data encoding (endianness)
-                quint8 data;
-                ds >> data;
-                if (data == 1)
-                    ds.setByteOrder(QDataStream::LittleEndian);
-                else if (data == 2)
-                    ds.setByteOrder(QDataStream::BigEndian);
-                else
-                    continue; // invalid encoding
-
-                // Skip to e_machine (offset 18)
-                raw.seek(18);
-                quint16 machine;
-                ds >> machine;
 
                 // Determine architecture
                 switch (machine)

@@ -259,7 +259,8 @@ public:
                 for (const auto &[key, value] : std::as_const(section.keys))
                 {
                     if (key == "executable"_L1)
-                        m_executables[id].executable = m_installDir + '/' + static_cast<const char *>(value.second);
+                        m_executables[id].executable =
+                            resolveWindowsPath(m_installDir, static_cast<const char *>(value.second));
                     else if (key == "type"_L1)
                     {
                         if (QString type{static_cast<const char *>(value.second)}; type == "vr" || type == "openxr")
@@ -360,6 +361,12 @@ public:
                 }
             }
         }
+
+        // A launch option can be marked for Linux and still name a Windows executable, which then runs through Proton.
+        // That doesn't make a Linux build.
+        for (auto &exe : m_executables)
+            if (exe.executable.endsWith(".exe"_L1, Qt::CaseInsensitive))
+                exe.platform = Platform::Windows;
 
         detectWindowsBuild(compat);
         detectGameEngine();
@@ -480,8 +487,7 @@ private:
 
         const auto installed = [this](Platform platform) {
             return std::any_of(m_executables.cbegin(), m_executables.cend(), [platform](const LaunchOption &exe) {
-                // appinfo writes some Windows paths with backslashes
-                return exe.platform == platform && QFileInfo::exists(QString{exe.executable}.replace('\\'_L1, '/'_L1));
+                return exe.platform == platform && QFileInfo::exists(exe.executable);
             });
         };
         const bool windowsBuild = installed(Platform::Windows);

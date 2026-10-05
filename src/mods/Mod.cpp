@@ -329,6 +329,9 @@ void Mod::installMod(Game *game)
             return false;
         }
     });
+    // What goes into the prefix is installed the same way whichever executable it is installed for
+    if (installsIntoPrefix() && exes.size() > 1)
+        exes.resize(1);
 
     switch (exes.size())
     {
