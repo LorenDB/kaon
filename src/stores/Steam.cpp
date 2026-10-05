@@ -3,14 +3,22 @@
 #include <QDesktopServices>
 #include <QDir>
 #include <QDirIterator>
+#include <QFile>
 #include <QFileInfo>
+#include <QFileSystemWatcher>
 #include <QHash>
 #include <QLoggingCategory>
+#include <QMutexLocker>
 #include <QProcess>
 #include <QRegularExpression>
 #include <QSettings>
+#include <QSignalBlocker>
 #include <QSysInfo>
+#include <QTimer>
 #include <QVariant>
+
+#include <algorithm>
+#include <optional>
 
 #include "Aptabase.h"
 #include "Flatpak.h"
@@ -52,6 +60,8 @@ namespace
     CompatTools readValveCompatTools()
     {
         CompatTools compat;
+        // Held across the lookup and the section parse. A reload swaps the bytes those pointers use.
+        QMutexLocker lock{&appInfoVdfMutex()};
         auto *info = AppInfoVDF::instance()->game(SteamPlayManifests);
         if (!info)
         {
@@ -147,6 +157,425 @@ namespace
     }
 } // namespace
 
+namespace
+{
+    // SteamKit's EAppState. FullyInstalled is the bit Steam sets once a download has been committed.
+    // libraryfolders.vdf's app list is rewritten on a clean exit, so it stays stale while the client runs.
+    constexpr quint64 FullyInstalled = 4;
+    constexpr quint64 Uninstalling = 2048;
+
+    struct Manifest
+    {
+        QString appId;
+        QString libraryPath;
+        QString name;
+        QString installDirName;
+        qint64 lastPlayed = 0;
+        bool haveLastPlayed = false;
+        qint64 lastUpdated = 0;
+        quint64 stateFlags = 0;
+        bool haveState = false;
+        bool fromAcf = false;
+    };
+
+    struct LibraryRoot
+    {
+        QString path;
+        QStringList vdfAppIds;
+    };
+
+    struct ClientLibrary
+    {
+        QList<Manifest> manifests;
+        QStringList libraryPaths;
+        QStringList watchPaths;
+        QDateTime appInfoMtime;
+    };
+
+    bool isDigits(const QString &text)
+    {
+        if (text.isEmpty())
+            return false;
+        for (const auto c : text)
+            if (!c.isDigit())
+                return false;
+        return true;
+    }
+
+    bool safeInstallDir(const QString &name)
+    {
+        if (name.isEmpty() || name.startsWith('/'_L1))
+            return false;
+        const auto parts = name.split('/'_L1);
+        return !parts.contains(".."_L1) && !parts.contains("."_L1);
+    }
+
+    QString vdfAttrib(const tyti::vdf::object &obj, const QLatin1String key)
+    {
+        for (const auto &[name, value] : obj.attribs)
+            if (QString::fromStdString(name).compare(key, Qt::CaseInsensitive) == 0)
+                return QString::fromStdString(value);
+        return {};
+    }
+
+    std::optional<tyti::vdf::object> readTextVdf(const QString &path)
+    {
+        QFile file{path};
+        if (!file.open(QIODevice::ReadOnly))
+            return std::nullopt;
+        auto bytes = file.readAll();
+        if (bytes.startsWith("\xEF\xBB\xBF"))
+            bytes.remove(0, 3);
+        // Binary VDF (shortcuts.vdf) is not this format.
+        if (bytes.isEmpty() || bytes.at(0) == '\0')
+            return std::nullopt;
+
+        const std::string text{bytes.constData(), static_cast<size_t>(bytes.size())};
+        bool ok = false;
+        auto obj = tyti::vdf::read(text.begin(), text.end(), &ok);
+        if (!ok)
+            return std::nullopt;
+        return obj;
+    }
+
+    // libraryfolders.vdf written inside the Flatpak sandbox uses sandbox paths. The host file
+    // lives under ~/.var/app, and ~/.local/share inside the sandbox is the host data directory.
+    QString normalizeSteamPath(QString path, const QString &flatpakAppId, const QString &steamRoot)
+    {
+        path = path.trimmed();
+        path.replace('\\'_L1, '/'_L1);
+        while (path.contains("//"_L1))
+            path.replace("//"_L1, "/"_L1);
+        if (path.startsWith("~/"))
+            path = QDir::homePath() + path.sliced(1);
+        if (path.isEmpty() || QFileInfo::exists(path))
+            return path;
+
+        const auto rewritten = Flatpak::hostPath(flatpakAppId, path);
+        if (QFileInfo::exists(rewritten))
+            return rewritten;
+        if (flatpakAppId.isEmpty())
+            return path;
+
+        const auto home = QDir::homePath();
+        const auto remap = [&](const QString &sandboxPrefix) {
+            if (path == sandboxPrefix)
+                return steamRoot;
+            if (path.startsWith(sandboxPrefix + '/'_L1))
+                return steamRoot + path.sliced(sandboxPrefix.size());
+            return QString{};
+        };
+        for (const auto &prefix : {home + "/.local/share/Steam"_L1, home + "/.steam/steam"_L1, home + "/.steam/root"_L1})
+        {
+            const auto candidate = remap(prefix);
+            if (!candidate.isEmpty() && QFileInfo::exists(candidate))
+                return candidate;
+        }
+        const auto sandboxShare = home + "/.local/share/"_L1;
+        if (path.startsWith(sandboxShare))
+        {
+            const auto candidate = home + "/.var/app/"_L1 + flatpakAppId + "/data/"_L1 + path.sliced(sandboxShare.size());
+            if (QFileInfo::exists(candidate))
+                return candidate;
+        }
+        return path;
+    }
+
+    QString canonicalDir(const QString &path)
+    {
+        const QFileInfo info{path};
+        if (!info.exists() || !info.isDir())
+            return {};
+        return info.canonicalFilePath();
+    }
+
+    void addLibrary(QHash<QString, LibraryRoot> &libraries,
+                    const QString &rawPath,
+                    const QStringList &apps,
+                    const QString &flatpakAppId,
+                    const QString &steamRoot)
+    {
+        if (rawPath.isEmpty())
+            return;
+        const auto canonical = canonicalDir(normalizeSteamPath(rawPath, flatpakAppId, steamRoot));
+        if (canonical.isEmpty())
+        {
+            qCDebug(SteamLog) << "Steam library path does not exist:" << rawPath;
+            return;
+        }
+        auto &library = libraries[canonical];
+        library.path = canonical;
+        for (const auto &app : apps)
+            if (isDigits(app) && app != "0"_L1 && !library.vdfAppIds.contains(app))
+                library.vdfAppIds << app;
+    }
+
+    bool parseLibraryFolders(const QString &path,
+                             const QString &flatpakAppId,
+                             const QString &steamRoot,
+                             QHash<QString, LibraryRoot> &libraries)
+    {
+        const auto root = readTextVdf(path);
+        if (!root)
+            return false;
+
+        const tyti::vdf::object *folders = &*root;
+        if (QString::fromStdString(folders->name).compare("libraryfolders"_L1, Qt::CaseInsensitive) != 0)
+        {
+            for (const auto &[key, child] : folders->childs)
+            {
+                if (child && QString::fromStdString(key).compare("libraryfolders"_L1, Qt::CaseInsensitive) == 0)
+                {
+                    folders = child.get();
+                    break;
+                }
+            }
+        }
+
+        for (const auto &[_, folder] : folders->childs)
+        {
+            if (!folder)
+                continue;
+            QStringList apps;
+            if (const auto appsNode = folder->childs.find("apps"); appsNode != folder->childs.end() && appsNode->second)
+                for (const auto &[appId, _] : appsNode->second->attribs)
+                    apps << QString::fromStdString(appId);
+            const auto folderPath = vdfAttrib(*folder, "path"_L1);
+            if (!folderPath.isEmpty())
+                addLibrary(libraries, folderPath, apps, flatpakAppId, steamRoot);
+        }
+
+        // Pre-2021 libraryfolders.vdf stored extra libraries as "1" "/path" attributes.
+        for (const auto &[key, value] : folders->attribs)
+        {
+            const auto name = QString::fromStdString(key);
+            if (!isDigits(name))
+                continue;
+            const auto folderPath = QString::fromStdString(value);
+            if (folderPath.contains('/'_L1) || (folderPath.size() >= 3 && folderPath.at(1) == ':'_L1))
+                addLibrary(libraries, folderPath, {}, flatpakAppId, steamRoot);
+        }
+        return true;
+    }
+
+    void collectBaseInstallFolders(const tyti::vdf::object &node,
+                                   const QString &flatpakAppId,
+                                   const QString &steamRoot,
+                                   QHash<QString, LibraryRoot> &libraries)
+    {
+        for (const auto &[key, value] : node.attribs)
+        {
+            if (QString::fromStdString(key).startsWith("BaseInstallFolder"_L1, Qt::CaseInsensitive))
+                addLibrary(libraries, QString::fromStdString(value), {}, flatpakAppId, steamRoot);
+        }
+        for (const auto &[_, child] : node.childs)
+            if (child)
+                collectBaseInstallFolders(*child, flatpakAppId, steamRoot, libraries);
+    }
+
+    std::optional<Manifest> readManifest(const QString &acfPath, const QString &libraryPath)
+    {
+        const auto root = readTextVdf(acfPath);
+        if (!root)
+            return std::nullopt;
+
+        const tyti::vdf::object *state = &*root;
+        if (vdfAttrib(*state, "appid"_L1).isEmpty())
+        {
+            for (const auto &[key, child] : root->childs)
+            {
+                if (!child)
+                    continue;
+                if (QString::fromStdString(key).compare("AppState"_L1, Qt::CaseInsensitive) == 0)
+                {
+                    state = child.get();
+                    break;
+                }
+            }
+        }
+
+        Manifest manifest;
+        manifest.libraryPath = libraryPath;
+        manifest.fromAcf = true;
+        manifest.appId = vdfAttrib(*state, "appid"_L1);
+        if (!isDigits(manifest.appId))
+        {
+            static const QRegularExpression idInName{R"(appmanifest_(\d+)\.acf$)"_L1,
+                                                     QRegularExpression::CaseInsensitiveOption};
+            if (const auto match = idInName.match(acfPath); match.hasMatch())
+                manifest.appId = match.captured(1);
+        }
+        if (!isDigits(manifest.appId) || manifest.appId == "0"_L1)
+            return std::nullopt;
+
+        manifest.name = vdfAttrib(*state, "name"_L1);
+        manifest.installDirName = vdfAttrib(*state, "installdir"_L1);
+        manifest.installDirName.replace('\\'_L1, '/'_L1);
+        if (const auto flags = vdfAttrib(*state, "StateFlags"_L1); !flags.isEmpty())
+        {
+            bool ok = false;
+            manifest.stateFlags = flags.toULongLong(&ok);
+            manifest.haveState = ok;
+        }
+        if (const auto played = vdfAttrib(*state, "LastPlayed"_L1); !played.isEmpty())
+        {
+            bool ok = false;
+            manifest.lastPlayed = played.toLongLong(&ok);
+            manifest.haveLastPlayed = ok;
+        }
+        if (const auto updated = vdfAttrib(*state, "LastUpdated"_L1); !updated.isEmpty())
+        {
+            bool ok = false;
+            manifest.lastUpdated = updated.toLongLong(&ok);
+            if (!ok)
+                manifest.lastUpdated = 0;
+        }
+        return manifest;
+    }
+
+    bool isInstalled(const Manifest &manifest)
+    {
+        if (!manifest.haveState)
+            return true;
+        if ((manifest.stateFlags & Uninstalling) != 0)
+            return false;
+        return (manifest.stateFlags & FullyInstalled) != 0;
+    }
+
+    int manifestRank(const Manifest &manifest)
+    {
+        auto score = manifest.fromAcf ? 8 : 0;
+        if (safeInstallDir(manifest.installDirName) &&
+            QFileInfo{manifest.libraryPath + "/steamapps/common/"_L1 + manifest.installDirName}.isDir())
+            score += 4;
+        if (!manifest.haveState || (manifest.stateFlags & FullyInstalled) != 0)
+            score += 2;
+        return score;
+    }
+
+    QString manifestSignature(const Manifest &manifest)
+    {
+        return manifest.libraryPath + '\n'_L1 + manifest.appId + '\n'_L1 + manifest.name + '\n'_L1 +
+               manifest.installDirName + '\n'_L1 + QString::number(manifest.stateFlags) + '\n'_L1 +
+               QString::number(manifest.haveLastPlayed ? manifest.lastPlayed : -1);
+    }
+
+    void trackLibraryFoldersFailure(const QString &path)
+    {
+        const auto parts = path.split('/'_L1);
+        Aptabase::instance()->track("failure-parsing-libraryfolders-bug"_L1,
+                                    {{"which"_L1, parts.size() >= 2 ? parts[parts.size() - 2] : QString{}}});
+    }
+
+    // Paths come from every library index Steam has used. Which games are installed comes from
+    // appmanifest_*.acf, which Steam rewrites as a download starts, finishes, or is removed.
+    ClientLibrary scanSteamClient(const QString &steamRoot, const QString &flatpakAppId, const QString &name, bool log)
+    {
+        ClientLibrary result;
+        const QFileInfo appInfo{steamRoot + "/appcache/appinfo.vdf"_L1};
+        if (appInfo.isFile())
+            result.appInfoMtime = appInfo.lastModified();
+
+        const QStringList indexes = {
+            steamRoot + "/steamapps/libraryfolders.vdf"_L1,
+            steamRoot + "/config/libraryfolders.vdf"_L1,
+            steamRoot + "/appcache/appinfo.vdf"_L1,
+        };
+        result.watchPaths << steamRoot + "/steamapps"_L1;
+        for (const auto &index : indexes)
+            result.watchPaths << index;
+
+        QHash<QString, LibraryRoot> libraries;
+        addLibrary(libraries, steamRoot, {}, flatpakAppId, steamRoot);
+        for (const auto &index : {indexes.at(0), indexes.at(1)})
+        {
+            if (!QFileInfo::exists(index))
+                continue;
+            if (!parseLibraryFolders(index, flatpakAppId, steamRoot, libraries) && log)
+            {
+                qCWarning(SteamLog) << "Failure while parsing" << index;
+                trackLibraryFoldersFailure(index);
+            }
+        }
+        if (const auto configPath = steamRoot + "/config/config.vdf"_L1; QFileInfo::exists(configPath))
+        {
+            if (const auto config = readTextVdf(configPath))
+                collectBaseInstallFolders(*config, flatpakAppId, steamRoot, libraries);
+            else if (log)
+                qCWarning(SteamLog) << "Could not read" << configPath << "while looking for Steam library folders";
+        }
+
+        auto acfCount = 0;
+        QHash<QString, Manifest> best;
+        const auto consider = [&](Manifest manifest) {
+            const auto existing = best.constFind(manifest.appId);
+            if (existing == best.cend() || manifestRank(manifest) > manifestRank(*existing) ||
+                (manifestRank(manifest) == manifestRank(*existing) && manifest.lastUpdated > existing->lastUpdated))
+                best.insert(manifest.appId, manifest);
+        };
+
+        for (const auto &library : libraries)
+        {
+            result.libraryPaths << library.path;
+            result.watchPaths << library.path + "/steamapps"_L1;
+            const QDir steamapps{library.path + "/steamapps"_L1};
+            if (!steamapps.exists())
+                continue;
+            const auto files = steamapps.entryList(QDir::Files);
+            for (const auto &file : files)
+            {
+                if (!file.startsWith("appmanifest_"_L1, Qt::CaseInsensitive) ||
+                    !file.endsWith(".acf"_L1, Qt::CaseInsensitive))
+                    continue;
+                ++acfCount;
+                auto manifest = readManifest(steamapps.absoluteFilePath(file), library.path);
+                if (!manifest || !isInstalled(*manifest))
+                    continue;
+                consider(*manifest);
+            }
+        }
+
+        if (acfCount == 0)
+        {
+            auto fallback = 0;
+            for (const auto &library : libraries)
+            {
+                for (const auto &appId : library.vdfAppIds)
+                {
+                    Manifest manifest;
+                    manifest.appId = appId;
+                    manifest.libraryPath = library.path;
+                    consider(manifest);
+                    ++fallback;
+                }
+            }
+            if (log && fallback > 0)
+                qCInfo(SteamLog) << "No app manifests under" << steamRoot << "- using the app list in libraryfolders.vdf ("
+                                 << fallback << "apps)";
+        }
+        else if (log)
+        {
+            QStringList stale;
+            for (const auto &library : libraries)
+                for (const auto &appId : library.vdfAppIds)
+                    if (!best.contains(appId))
+                        stale << appId;
+            qCInfo(SteamLog) << name << "has" << best.size() << "installed app manifests across" << libraries.size()
+                             << "libraries";
+            if (!stale.isEmpty())
+                qCInfo(SteamLog) << "libraryfolders.vdf lists" << stale.size()
+                                 << "apps that are not installed. Steam rewrites that list when it exits; ignoring"
+                                 << stale.join(", "_L1);
+        }
+
+        result.manifests = best.values();
+        std::ranges::sort(result.manifests, [](const Manifest &a, const Manifest &b) { return a.appId < b.appId; });
+        result.libraryPaths.removeDuplicates();
+        result.watchPaths.removeDuplicates();
+        return result;
+    }
+} // namespace
+
 class SteamGame : public Game
 {
     Q_OBJECT
@@ -158,6 +587,8 @@ public:
               const QString &steamRoot,
               const QString &flatpakAppId,
               const CompatTools &compat,
+              const Manifest &manifest,
+              bool *missingAppInfo,
               QObject *parent)
         : Game{parent}
     {
@@ -168,23 +599,11 @@ public:
         m_canLaunch = true;
         m_canOpenSettings = true;
 
-        const QString acfPath = "%1/steamapps/appmanifest_%2.acf"_L1.arg(steamDrive, m_id);
-        try
-        {
-            std::ifstream acfFile{acfPath.toStdString()};
-            auto app = tyti::vdf::read(acfFile);
-
-            m_name = QString::fromStdString(app.attribs["name"]);
-            if (const auto installDir = QString::fromStdString(app.attribs["installdir"]); !installDir.isEmpty())
-                m_installDir = steamDrive + "/steamapps/common/"_L1 + installDir;
-            if (app.attribs.contains("LastPlayed"))
-                m_lastPlayed = QDateTime::fromSecsSinceEpoch(std::stoi(app.attribs["LastPlayed"]));
-        }
-        catch (const std::length_error &e)
-        {
-            qCWarning(SteamLog) << "Failure while parsing " << acfPath << "from .acf:" << e.what();
-            return;
-        }
+        m_name = manifest.name;
+        if (safeInstallDir(manifest.installDirName))
+            m_installDir = steamDrive + "/steamapps/common/"_L1 + manifest.installDirName;
+        if (manifest.haveLastPlayed)
+            m_lastPlayed = QDateTime::fromSecsSinceEpoch(manifest.lastPlayed);
 
         const auto imageDir = steamRoot + "/appcache/librarycache/"_L1 + m_id;
         QDirIterator images{imageDir, QDirIterator::Subdirectories};
@@ -209,155 +628,164 @@ public:
             m_sandboxWineBinary = m_wineBinary;
         }
 
-        auto *info = AppInfoVDF::instance()->game(m_id.toInt());
-        if (!info)
+        bool idOk = false;
+        const auto numericId = m_id.toInt(&idOk);
         {
-            qCWarning(SteamLog) << "No appinfo entry for" << m_id << "under" << steamRoot;
-            return;
-        }
-        AppInfoVDF::AppInfo::Section section;
-        AppInfoVDF::AppInfo::SectionDesc app_desc{};
-
-        app_desc.blob = info->getRootSection(&app_desc.size);
-        section.parse(app_desc);
-
-        constexpr auto parseInt = [](const auto type, const auto &value) -> int64_t {
-            switch (type)
+            QMutexLocker lock{&appInfoVdfMutex()};
+            auto *info = idOk ? AppInfoVDF::instance()->game(numericId) : nullptr;
+            if (!info)
             {
-            case AppInfoVDF::AppInfo::Section::Int32:
-                return *static_cast<int32_t *>(value);
-            case AppInfoVDF::AppInfo::Section::Int64:
-                return *static_cast<int64_t *>(value);
-            case AppInfoVDF::AppInfo::Section::String:
-                return std::stoi(static_cast<char *>(value));
-            default:
-                return 0;
+                qCWarning(SteamLog) << "No appinfo entry for" << m_id << "under" << steamRoot;
+                if (missingAppInfo != nullptr)
+                    *missingAppInfo = true;
+                return;
             }
-        };
+            AppInfoVDF::AppInfo::Section section;
+            AppInfoVDF::AppInfo::SectionDesc app_desc{};
 
-        constexpr auto parseDouble = [](const auto type, const auto &value) -> int64_t {
-            switch (type)
-            {
-            case AppInfoVDF::AppInfo::Section::Int32:
-                return *static_cast<int32_t *>(value);
-            case AppInfoVDF::AppInfo::Section::Int64:
-                return *static_cast<int64_t *>(value);
-            case AppInfoVDF::AppInfo::Section::String:
-                return std::stod(static_cast<char *>(value));
-            default:
-                return 0;
-            }
-        };
+            app_desc.blob = info->getRootSection(&app_desc.size);
+            section.parse(app_desc);
 
-        for (auto &section : section.finished_sections)
-        {
-            if (section.name.startsWith("appinfo.config.launch."_L1))
-            {
-                int id = section.name.split('.').at(3).toInt();
-                if (!m_executables.contains(id))
-                    m_executables[id] = {};
-                for (const auto &[key, value] : std::as_const(section.keys))
+            constexpr auto parseInt = [](const auto type, const auto &value) -> int64_t {
+                switch (type)
                 {
-                    if (key == "executable"_L1)
-                        m_executables[id].executable =
-                            resolveWindowsPath(m_installDir, static_cast<const char *>(value.second));
-                    else if (key == "type"_L1)
-                    {
-                        if (QString type{static_cast<const char *>(value.second)}; type == "vr" || type == "openxr")
-                            m_features.setFlag(Feature::VR);
-                    }
-                    else if (key == "oslist"_L1)
-                    {
-                        const QString os = static_cast<const char *>(value.second);
-                        if (os.contains("windows"_L1))
-                            m_executables[id].platform = Platform::Windows;
-                        if (os.contains("linux"_L1))
-                            m_executables[id].platform = Platform::Linux;
-                        if (os.contains("macos"_L1))
-                            m_executables[id].platform = Platform::MacOS;
-                    }
+                case AppInfoVDF::AppInfo::Section::Int32:
+                    return *static_cast<int32_t *>(value);
+                case AppInfoVDF::AppInfo::Section::Int64:
+                    return *static_cast<int64_t *>(value);
+                case AppInfoVDF::AppInfo::Section::String:
+                    return std::stoi(static_cast<char *>(value));
+                default:
+                    return 0;
                 }
-            }
+            };
 
-            else if (section.name == "appinfo.common.library_assets.logo_position"_L1)
-            {
-                for (const auto &[key, value] : std::as_const(section.keys))
+            constexpr auto parseDouble = [](const auto type, const auto &value) -> int64_t {
+                switch (type)
                 {
-                    if (key == "width_pct"_L1)
-                        m_logoWidth = parseDouble(value.first, value.second);
-                    else if (key == "height_pct"_L1)
-                        m_logoHeight = parseDouble(value.first, value.second);
-                    else if (key == "pinned_position"_L1)
-                    {
-                        QString posStr = static_cast<char *>(value.second);
-                        if (posStr.startsWith("Center"_L1))
-                            m_logoVPosition = LogoPosition::Center;
-                        else if (posStr.startsWith("Top"_L1) || posStr.startsWith("Upper"_L1))
-                            m_logoVPosition = LogoPosition::Top;
-                        else if (posStr.startsWith("Bottom"_L1))
-                            m_logoVPosition = LogoPosition::Bottom;
-
-                        if (posStr.endsWith("Center"_L1))
-                            m_logoHPosition = LogoPosition::Center;
-                        else if (posStr.endsWith("Left"_L1))
-                            m_logoHPosition = LogoPosition::Left;
-                        else if (posStr.endsWith("Right"_L1))
-                            m_logoHPosition = LogoPosition::Right;
-                    }
+                case AppInfoVDF::AppInfo::Section::Int32:
+                    return *static_cast<int32_t *>(value);
+                case AppInfoVDF::AppInfo::Section::Int64:
+                    return *static_cast<int64_t *>(value);
+                case AppInfoVDF::AppInfo::Section::String:
+                    return std::stod(static_cast<char *>(value));
+                default:
+                    return 0;
                 }
-            }
-            else if (section.name == "appinfo.common")
-            {
-                for (const auto &[key, value] : std::as_const(section.keys))
-                {
-                    if (key == "name"_L1 && m_name.isEmpty())
-                        m_name = static_cast<const char *>(value.second);
-                    else if (key == "installdir"_L1 && m_installDir.isEmpty())
-                        m_installDir = steamDrive + "/steamapps/common/"_L1 + static_cast<const char *>(value.second);
-                    else if (key == "type"_L1)
-                    {
-                        QString type{static_cast<const char *>(value.second)};
-                        type = type.toLower();
-                        if (type == "game"_L1 || type == "beta"_L1)
-                            m_type = AppType::Game;
-                        else if (type == "application"_L1)
-                            m_type = AppType::App;
-                        else if (type == "tool"_L1)
-                            m_type = AppType::Tool;
-                        else if (type == "demo"_L1)
-                            m_type = AppType::Demo;
-                        else if (type == "music"_L1)
-                            m_type = AppType::Music;
-                    }
-                    else if (key == "icon"_L1 || key == "clienticon"_L1)
-                    {
-                        const QString logoId{static_cast<const char *>(value.second)};
+            };
 
-                        // We prefer to use the .jpg but will fall back to the .ico if the .jpg is available
-                        if (QFileInfo fi{u"%1/appcache/librarycache/%2/%3.jpg"_s.arg(steamRoot, m_id, logoId)}; fi.exists())
-                            m_icon = "file://"_L1 + fi.absoluteFilePath();
-                        else if (QFileInfo fi{u"%1/steam/games/%2.ico"_s.arg(steamRoot, logoId)};
-                                 fi.exists() && !m_icon.isEmpty())
-                            m_icon = "file://"_L1 + fi.absoluteFilePath();
-                    }
-                    else if ((key == "openvrsupport"_L1 || key == "openxrsupport"_L1) && !m_features.testFlag(Feature::VR))
-                        m_features.setFlag(Feature::VR, parseInt(value.first, value.second));
-                    else if (key == "onlyvrsupport"_L1 && !m_features.testFlag(Feature::VR))
+            for (auto &section : section.finished_sections)
+            {
+                if (section.name.startsWith("appinfo.config.launch."_L1))
+                {
+                    int id = section.name.split('.').at(3).toInt();
+                    if (!m_executables.contains(id))
+                        m_executables[id] = {};
+                    for (const auto &[key, value] : std::as_const(section.keys))
                     {
-                        if (bool vrOnly = parseInt(value.first, value.second); vrOnly)
+                        if (key == "executable"_L1)
+                            m_executables[id].executable =
+                                resolveWindowsPath(m_installDir, static_cast<const char *>(value.second));
+                        else if (key == "type"_L1)
                         {
-                            m_features.setFlag(Feature::VR);
-                            m_features.setFlag(Feature::Flatscreen, false);
+                            if (QString type{static_cast<const char *>(value.second)}; type == "vr" || type == "openxr")
+                                m_features.setFlag(Feature::VR);
+                        }
+                        else if (key == "oslist"_L1)
+                        {
+                            const QString os = static_cast<const char *>(value.second);
+                            if (os.contains("windows"_L1))
+                                m_executables[id].platform = Platform::Windows;
+                            if (os.contains("linux"_L1))
+                                m_executables[id].platform = Platform::Linux;
+                            if (os.contains("macos"_L1))
+                                m_executables[id].platform = Platform::MacOS;
                         }
                     }
                 }
-            }
-            else if (section.name == "appinfo.extended")
-            {
-                for (const auto &[key, value] : std::as_const(section.keys))
+
+                else if (section.name == "appinfo.common.library_assets.logo_position"_L1)
                 {
-                    if (key == "vacmacmodulecache"_L1 || key == "vacmodulecache"_L1 || key == "vacmodulefilename"_L1)
-                        m_features.setFlag(Feature::Anticheat);
+                    for (const auto &[key, value] : std::as_const(section.keys))
+                    {
+                        if (key == "width_pct"_L1)
+                            m_logoWidth = parseDouble(value.first, value.second);
+                        else if (key == "height_pct"_L1)
+                            m_logoHeight = parseDouble(value.first, value.second);
+                        else if (key == "pinned_position"_L1)
+                        {
+                            QString posStr = static_cast<char *>(value.second);
+                            if (posStr.startsWith("Center"_L1))
+                                m_logoVPosition = LogoPosition::Center;
+                            else if (posStr.startsWith("Top"_L1) || posStr.startsWith("Upper"_L1))
+                                m_logoVPosition = LogoPosition::Top;
+                            else if (posStr.startsWith("Bottom"_L1))
+                                m_logoVPosition = LogoPosition::Bottom;
+
+                            if (posStr.endsWith("Center"_L1))
+                                m_logoHPosition = LogoPosition::Center;
+                            else if (posStr.endsWith("Left"_L1))
+                                m_logoHPosition = LogoPosition::Left;
+                            else if (posStr.endsWith("Right"_L1))
+                                m_logoHPosition = LogoPosition::Right;
+                        }
+                    }
+                }
+                else if (section.name == "appinfo.common")
+                {
+                    for (const auto &[key, value] : std::as_const(section.keys))
+                    {
+                        if (key == "name"_L1 && m_name.isEmpty())
+                            m_name = static_cast<const char *>(value.second);
+                        else if (key == "installdir"_L1 && m_installDir.isEmpty())
+                            m_installDir = steamDrive + "/steamapps/common/"_L1 + static_cast<const char *>(value.second);
+                        else if (key == "type"_L1)
+                        {
+                            QString type{static_cast<const char *>(value.second)};
+                            type = type.toLower();
+                            if (type == "game"_L1 || type == "beta"_L1)
+                                m_type = AppType::Game;
+                            else if (type == "application"_L1)
+                                m_type = AppType::App;
+                            else if (type == "tool"_L1)
+                                m_type = AppType::Tool;
+                            else if (type == "demo"_L1)
+                                m_type = AppType::Demo;
+                            else if (type == "music"_L1)
+                                m_type = AppType::Music;
+                        }
+                        else if (key == "icon"_L1 || key == "clienticon"_L1)
+                        {
+                            const QString logoId{static_cast<const char *>(value.second)};
+
+                            // We prefer to use the .jpg but will fall back to the .ico if the .jpg is available
+                            if (QFileInfo fi{u"%1/appcache/librarycache/%2/%3.jpg"_s.arg(steamRoot, m_id, logoId)};
+                                fi.exists())
+                                m_icon = "file://"_L1 + fi.absoluteFilePath();
+                            else if (QFileInfo fi{u"%1/steam/games/%2.ico"_s.arg(steamRoot, logoId)};
+                                     fi.exists() && !m_icon.isEmpty())
+                                m_icon = "file://"_L1 + fi.absoluteFilePath();
+                        }
+                        else if ((key == "openvrsupport"_L1 || key == "openxrsupport"_L1) &&
+                                 !m_features.testFlag(Feature::VR))
+                            m_features.setFlag(Feature::VR, parseInt(value.first, value.second));
+                        else if (key == "onlyvrsupport"_L1 && !m_features.testFlag(Feature::VR))
+                        {
+                            if (bool vrOnly = parseInt(value.first, value.second); vrOnly)
+                            {
+                                m_features.setFlag(Feature::VR);
+                                m_features.setFlag(Feature::Flatscreen, false);
+                            }
+                        }
+                    }
+                }
+                else if (section.name == "appinfo.extended")
+                {
+                    for (const auto &[key, value] : std::as_const(section.keys))
+                    {
+                        if (key == "vacmacmodulecache"_L1 || key == "vacmodulecache"_L1 || key == "vacmodulefilename"_L1)
+                            m_features.setFlag(Feature::Anticheat);
+                    }
                 }
             }
         }
@@ -596,6 +1024,16 @@ Steam::Steam(QObject *parent)
     : Store{parent}
 {
     discover(true);
+    ensureLibraryWatch();
+    QStringList paths;
+    for (const auto &install : std::as_const(m_installs))
+    {
+        paths << install.path + "/steamapps"_L1;
+        paths << install.path + "/steamapps/libraryfolders.vdf"_L1;
+        paths << install.path + "/config/libraryfolders.vdf"_L1;
+        paths << install.path + "/appcache/appinfo.vdf"_L1;
+    }
+    applyLibraryWatch(paths);
     countAsLauncher();
 }
 
@@ -644,61 +1082,15 @@ bool Steam::readLibrary(QList<Game *> &games)
 
     auto installs = m_installs;
     auto hasSteamVR = false;
+    auto waitForAppInfo = false;
+    QDateTime appInfoMtime;
+    QStringList watchPaths;
+    QList<Manifest> installed;
 
     for (const auto &install : std::as_const(installs))
         AppInfoVDF::load(install.path + "/appcache/appinfo.vdf"_L1);
 
     const auto valveCompat = readValveCompatTools();
-
-    const auto parseLibraryFolders =
-        [&games, &hasSteamVR](const QString &vdfPath, Install &install, const CompatTools &compat) -> bool {
-        qCDebug(SteamLog) << "Parsing libraryfolders.vdf from" << vdfPath;
-        std::ifstream vdfFile{vdfPath.toStdString()};
-
-        try
-        {
-            auto libraryFolders = tyti::vdf::read(vdfFile);
-            QStringList libraries;
-            for (const auto &[_, folder] : libraryFolders.childs)
-                libraries << QString::fromStdString(folder->attribs["path"]);
-            for (const auto &[_, folder] : libraryFolders.childs)
-            {
-                qCDebug(SteamLog) << "Scanning Steam drive:" << folder->attribs["path"];
-                for (const auto &[appId, _] : folder->childs["apps"]->attribs)
-                {
-                    if (auto g = new SteamGame{QString::fromStdString(appId),
-                                               QString::fromStdString(folder->attribs["path"]),
-                                               libraries,
-                                               install.path,
-                                               install.flatpakAppId,
-                                               compat,
-                                               nullptr};
-                        g->isValid())
-                    {
-                        games.push_back(g);
-                        ++install.count;
-                        if (g->id() == "250820"_L1)
-                        {
-                            install.hasSteamVR = true;
-                            hasSteamVR = true;
-                        }
-                    }
-                    else
-                        delete g;
-                }
-            }
-        }
-        catch (const std::length_error &e)
-        {
-            qCWarning(SteamLog) << "Failure while parsing libraryfolders.vdf:" << e.what();
-            auto parts = vdfPath.split('/');
-            Aptabase::instance()->track("failure-parsing-libraryfolders-bug"_L1,
-                                        {{"which"_L1, parts.size() >= 2 ? parts[parts.size() - 2] : ""_L1}});
-            return false;
-        }
-
-        return true;
-    };
 
     for (auto &install : installs)
     {
@@ -706,20 +1098,61 @@ bool Steam::readLibrary(QList<Game *> &games)
         install.hasSteamVR = false;
         auto compat = valveCompat;
         readChosenCompatTools(install.path, compat);
-        bool parsed = false;
-        if (const QFileInfo fi{install.path + "/steamapps/libraryfolders.vdf"_L1}; fi.exists() && fi.isFile())
-            parsed = parseLibraryFolders(fi.absoluteFilePath(), install, compat);
-        if (!parsed)
+
+        const auto scanned = scanSteamClient(install.path, install.flatpakAppId, install.name, true);
+        watchPaths += scanned.watchPaths;
+        if (scanned.appInfoMtime > appInfoMtime)
+            appInfoMtime = scanned.appInfoMtime;
+        installed += scanned.manifests;
+
+        for (const auto &manifest : scanned.manifests)
         {
-            if (const QFileInfo fi{install.path + "/config/libraryfolders.vdf"_L1}; fi.exists() && fi.isFile())
-                parsed = parseLibraryFolders(fi.absoluteFilePath(), install, compat);
+            try
+            {
+                auto missingAppInfo = false;
+                auto *game = new SteamGame{manifest.appId,
+                                           manifest.libraryPath,
+                                           scanned.libraryPaths,
+                                           install.path,
+                                           install.flatpakAppId,
+                                           compat,
+                                           manifest,
+                                           &missingAppInfo,
+                                           nullptr};
+                if (missingAppInfo)
+                    waitForAppInfo = true;
+                if (game->isValid())
+                {
+                    games.push_back(game);
+                    ++install.count;
+                    if (game->id() == "250820"_L1)
+                    {
+                        install.hasSteamVR = true;
+                        hasSteamVR = true;
+                    }
+                }
+                else
+                    delete game;
+            }
+            catch (const std::exception &e)
+            {
+                qCWarning(SteamLog) << "Failure while reading Steam app" << manifest.appId << e.what();
+            }
         }
-        if (!parsed)
-            qCWarning(SteamLog) << "Could not find libraryfolders.vdf in" << install.path;
     }
+
+    QStringList signatures;
+    for (const auto &manifest : installed)
+        signatures << manifestSignature(manifest);
+    signatures.sort();
 
     m_scannedInstalls = installs;
     m_scannedSteamVR = hasSteamVR;
+    m_scannedWaitForAppInfo = waitForAppInfo;
+    m_scannedSignature = signatures.join(QChar{0x1e});
+    m_scannedAppInfoMtime = appInfoMtime;
+    m_scannedWatchPaths = watchPaths;
+    m_scannedWatchPaths.removeDuplicates();
     return true;
 }
 
@@ -727,8 +1160,99 @@ void Steam::finishScan()
 {
     m_installs = m_scannedInstalls;
     m_hasSteamVR = m_scannedSteamVR;
+    m_waitForAppInfo = m_scannedWaitForAppInfo;
+    m_librarySignature = m_scannedSignature;
+    m_appInfoMtime = m_scannedAppInfoMtime;
+    m_watchPaths = m_scannedWatchPaths;
+    applyLibraryWatch(m_watchPaths);
     emit hasSteamVRChanged(m_hasSteamVR);
     emit librariesChanged();
+}
+
+void Steam::ensureLibraryWatch()
+{
+    if (m_libraryWatcher != nullptr)
+        return;
+    m_libraryWatcher = new QFileSystemWatcher{this};
+    connect(m_libraryWatcher, &QFileSystemWatcher::directoryChanged, this, &Steam::onLibraryChanged);
+    connect(m_libraryWatcher, &QFileSystemWatcher::fileChanged, this, &Steam::onLibraryChanged);
+    m_libraryRefresh = new QTimer{this};
+    m_libraryRefresh->setSingleShot(true);
+    m_libraryRefresh->setInterval(2000);
+    connect(m_libraryRefresh, &QTimer::timeout, this, &Steam::refreshLibrary);
+}
+
+void Steam::applyLibraryWatch(const QStringList &paths)
+{
+    ensureLibraryWatch();
+    const QSignalBlocker blocker{m_libraryWatcher};
+    const auto current = m_libraryWatcher->files() + m_libraryWatcher->directories();
+    if (!current.isEmpty())
+        m_libraryWatcher->removePaths(current);
+
+    QStringList add;
+    for (const auto &path : paths)
+        if (QFileInfo::exists(path) && !add.contains(path))
+            add << path;
+    if (!add.isEmpty())
+        m_libraryWatcher->addPaths(add);
+}
+
+void Steam::onLibraryChanged(const QString &path)
+{
+    // Steam replaces these files by renaming over them, which drops the watch.
+    if (!path.isEmpty() && QFileInfo::exists(path))
+    {
+        const auto watched = m_libraryWatcher->files() + m_libraryWatcher->directories();
+        if (!watched.contains(path))
+            m_libraryWatcher->addPath(path);
+    }
+    m_libraryDirty = true;
+    if (!m_libraryRefresh->isActive())
+        m_libraryRefresh->start();
+}
+
+void Steam::refreshLibrary()
+{
+    if (scanning())
+    {
+        m_libraryRefresh->start();
+        return;
+    }
+
+    for (const auto &path : std::as_const(m_watchPaths))
+    {
+        if (!QFileInfo::exists(path))
+            continue;
+        const auto watched = m_libraryWatcher->files() + m_libraryWatcher->directories();
+        if (!watched.contains(path))
+            m_libraryWatcher->addPath(path);
+    }
+
+    if (!m_libraryDirty)
+        return;
+    m_libraryDirty = false;
+
+    QList<Manifest> installed;
+    QDateTime appInfoMtime;
+    for (const auto &install : std::as_const(m_installs))
+    {
+        const auto scanned = scanSteamClient(install.path, install.flatpakAppId, install.name, false);
+        installed += scanned.manifests;
+        if (scanned.appInfoMtime > appInfoMtime)
+            appInfoMtime = scanned.appInfoMtime;
+    }
+    QStringList signatures;
+    for (const auto &manifest : installed)
+        signatures << manifestSignature(manifest);
+    signatures.sort();
+    const auto signature = signatures.join(QChar{0x1e});
+    // A game can be on disk before its launch config lands in appinfo.vdf. Reload once that file moves.
+    const bool appInfoArrived = m_waitForAppInfo && appInfoMtime.isValid() && appInfoMtime != m_appInfoMtime;
+    if (signature != m_librarySignature || appInfoArrived)
+        scanStore();
+    else if (m_libraryDirty)
+        m_libraryRefresh->start();
 }
 
 #include "Steam.moc"

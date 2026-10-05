@@ -30,8 +30,14 @@
 #include <cstdint>
 
 #include <QByteArray>
+#include <QDateTime>
 #include <QList>
+#include <QRecursiveMutex>
 #include <QString>
+
+// appinfo.vdf is loaded once and shared. Scans reload it when the file changes, so every reader
+// holds this lock across a lookup and the section parse that follows it.
+QRecursiveMutex &appInfoVdfMutex();
 
 class Game;
 
@@ -124,6 +130,11 @@ private:
     explicit AppInfoVDF(const QString &path);
     ~AppInfoVDF() {}
 
+    // Replace the cached bytes when the file on disk has changed. Keeps the previous bytes if the
+    // new file is unreadable, which happens while Steam is still writing it.
+    void refresh();
+    bool adoptBuffer();
+
     static uint32_t vdf_version;
 
     QString m_appInfoPath;
@@ -135,5 +146,7 @@ private:
     StringTable *table = nullptr;
     // This file's version. The static vdf_version follows whichever library is being parsed.
     uint32_t m_fileVersion = 0x27;
+    qint64 m_loadedSize = -1;
+    QDateTime m_loadedMtime;
 };
 #pragma pack(pop)
