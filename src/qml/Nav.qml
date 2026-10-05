@@ -21,12 +21,18 @@ QtObject {
     }
     readonly property Connections rescans: Connections {
         function onGamesChanged() {
-            if (nav.game !== null || nav.gameId === "")
+            if (nav.gameId === "")
                 return;
-            const match = GamesFilterModel.games().find(g => g.id === nav.gameId && g.store === nav.gameStore);
-            if (match)
-                nav.game = match;
-            else if (nav.view === "game")
+            // Search the whole library. The filtered list hides a game the user still has open, and a rescan
+            // has already swapped in the new object by the time this runs.
+            const match = GamesFilterModel.gameByIdentity(nav.gameStore, nav.gameId);
+            if (match) {
+                if (nav.game !== match)
+                    nav.game = match;
+                return;
+            }
+            nav.game = null;
+            if (nav.view === "game")
                 nav.view = "library";
         }
 

@@ -591,6 +591,31 @@ bool GameStatus::isDownloading(Mod *mod, ModRelease *release) const
     return mod && release && !release->downloaded() && m_pendingDownloads.contains(downloadKey(mod, release));
 }
 
+void GameStatus::retargetGames(const QList<Game *> &previous, const QList<Game *> &current)
+{
+    const auto mapGame = [&](Game *old) -> Game * {
+        if (!old || !previous.contains(old))
+            return old;
+        for (auto *game : current)
+            if (game->store() == old->store() && game->id() == old->id())
+                return game;
+        return nullptr;
+    };
+
+    if (m_setUpGame)
+    {
+        m_setUpGame = mapGame(m_setUpGame);
+        if (!m_setUpGame)
+            m_setUpLastKey.clear();
+    }
+
+    QHash<Mod *, QPointer<Game>> pending;
+    for (auto it = m_installAfterDownload.cbegin(); it != m_installAfterDownload.cend(); ++it)
+        if (auto *next = mapGame(it.value()))
+            pending.insert(it.key(), next);
+    m_installAfterDownload = pending;
+}
+
 void GameStatus::rescanLibraries()
 {
     for (Store *store :

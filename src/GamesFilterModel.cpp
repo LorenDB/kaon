@@ -3,6 +3,8 @@
 #include <QSettings>
 
 #include "Aptabase.h"
+#include "GameStatus.h"
+#include "Launcher.h"
 
 GamesFilterModel::GamesFilterModel(QObject *parent)
     : QSortFilterProxyModel{parent},
@@ -35,6 +37,18 @@ GamesFilterModel::GamesFilterModel(QObject *parent)
     QSettings settings;
     settings.beginGroup("GamesFilterModel"_L1);
     m_sortType = settings.value("sortType"_L1, SortType::LastPlayed).value<SortType>();
+    if (settings.contains("search"_L1))
+        m_search = settings.value("search"_L1).toString();
+    if (settings.contains("engineFilter"_L1))
+        m_engineFilter = Game::Engines::fromInt(settings.value("engineFilter"_L1).toInt());
+    if (settings.contains("typeFilter"_L1))
+        m_typeFilter = Game::AppTypes::fromInt(settings.value("typeFilter"_L1).toInt());
+    if (settings.contains("featureFilter"_L1))
+        m_featureFilter = Game::Features::fromInt(settings.value("featureFilter"_L1).toInt());
+    if (settings.contains("storeFilter"_L1))
+        m_storeFilter = Game::Stores::fromInt(settings.value("storeFilter"_L1).toInt());
+    if (settings.contains("featureFilterType"_L1))
+        m_featureFilterType = static_cast<FilterType>(settings.value("featureFilterType"_L1).toInt());
 
     connect(this, &QAbstractItemModel::rowsInserted, this, &GamesFilterModel::gamesChanged);
     connect(this, &QAbstractItemModel::rowsRemoved, this, &GamesFilterModel::gamesChanged);
@@ -75,30 +89,35 @@ void GamesFilterModel::updateScanning()
 
 void GamesFilterModel::setSearch(const QString &search)
 {
+    if (m_search == search)
+        return;
     beginFilterChange();
     m_search = search;
     emit searchChanged();
     endFilterChange();
+    saveFilters();
 }
 
 void GamesFilterModel::setSortType(SortType sortType)
 {
+    if (m_sortType == sortType)
+        return;
     beginFilterChange();
     m_sortType = sortType;
     emit sortTypeChanged(m_sortType);
     endFilterChange();
-
-    QSettings settings;
-    settings.beginGroup("GamesFilterModel"_L1);
-    settings.setValue("sortType"_L1, m_sortType);
+    saveFilters();
 }
 
 void GamesFilterModel::setFeatureFilterType(FilterType type)
 {
+    if (m_featureFilterType == type)
+        return;
     beginFilterChange();
     m_featureFilterType = type;
     emit featureFilterTypeChanged(type);
     endFilterChange();
+    saveFilters();
 }
 
 bool GamesFilterModel::isEngineFilterSet(Game::Engine engine)
@@ -123,34 +142,46 @@ bool GamesFilterModel::isStoreFilterSet(Game::Store store)
 
 void GamesFilterModel::setEngineFilter(Game::Engine engine, bool state)
 {
+    if (m_engineFilter.testFlag(engine) == state)
+        return;
     beginFilterChange();
     m_engineFilter.setFlag(engine, state);
     emit engineFilterChanged();
     endFilterChange();
+    saveFilters();
 }
 
 void GamesFilterModel::setTypeFilter(Game::AppType type, bool state)
 {
+    if (m_typeFilter.testFlag(type) == state)
+        return;
     beginFilterChange();
     m_typeFilter.setFlag(type, state);
     emit typeFilterChanged();
     endFilterChange();
+    saveFilters();
 }
 
 void GamesFilterModel::setFeatureFilter(Game::Feature feature, bool state)
 {
+    if (m_featureFilter.testFlag(feature) == state)
+        return;
     beginFilterChange();
     m_featureFilter.setFlag(feature, state);
     emit featureFilterChanged();
     endFilterChange();
+    saveFilters();
 }
 
 void GamesFilterModel::setStoreFilter(Game::Store store, bool state)
 {
+    if (m_storeFilter.testFlag(store) == state)
+        return;
     beginFilterChange();
     m_storeFilter.setFlag(store, state);
     emit storeFilterChanged();
     endFilterChange();
+    saveFilters();
 }
 
 QList<Game *> GamesFilterModel::games() const
@@ -161,6 +192,43 @@ QList<Game *> GamesFilterModel::games() const
         if (auto g = data(index(i, 0), Store::Roles::GameObject).value<Game *>())
             list.push_back(g);
     return list;
+}
+
+Game *GamesFilterModel::gameByIdentity(int store, const QString &id) const
+{
+    if (id.isEmpty())
+        return nullptr;
+    const auto which = static_cast<Game::Store>(store);
+    for (const auto *source : m_stores)
+        for (auto *game : source->games())
+            if (game && game->store() == which && game->id() == id)
+                return game;
+    return nullptr;
+}
+
+bool GamesFilterModel::retargetBeforeReset(const QList<Game *> &previous, const QList<Game *> &current)
+{
+    GameStatus::instance()->retargetGames(previous, current);
+    return Launcher::instance()->retargetGame(previous, current);
+}
+
+void GamesFilterModel::retargetAfterReset(bool announce)
+{
+    if (announce)
+        Launcher::instance()->announceGame();
+}
+
+void GamesFilterModel::saveFilters() const
+{
+    QSettings settings;
+    settings.beginGroup("GamesFilterModel"_L1);
+    settings.setValue("search"_L1, m_search);
+    settings.setValue("sortType"_L1, m_sortType);
+    settings.setValue("engineFilter"_L1, static_cast<int>(m_engineFilter));
+    settings.setValue("typeFilter"_L1, static_cast<int>(m_typeFilter));
+    settings.setValue("featureFilter"_L1, static_cast<int>(m_featureFilter));
+    settings.setValue("storeFilter"_L1, static_cast<int>(m_storeFilter));
+    settings.setValue("featureFilterType"_L1, static_cast<int>(m_featureFilterType));
 }
 
 bool GamesFilterModel::filterAcceptsRow(int row, const QModelIndex &parent) const

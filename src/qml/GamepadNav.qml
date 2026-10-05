@@ -51,7 +51,7 @@ Item {
 
         if (current && isText(current)) {
             if (current === searchField && current.text !== "") {
-                current.text = "";
+                searchField.clearSearch();
                 return;
             }
             host.contentItem.forceActiveFocus();

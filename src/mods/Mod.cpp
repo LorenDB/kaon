@@ -8,6 +8,7 @@
 
 #include "Aptabase.h"
 #include "GameExecutablePickerModel.h"
+#include "GamesFilterModel.h"
 #include "ModsFilterModel.h"
 
 ModRelease::ModRelease(
@@ -348,8 +349,14 @@ void Mod::installMod(Game *game)
         break;
     default:
     {
-        auto m = new GameExecutablePickerModel{
-            this, game, [this, game](const Game::LaunchOption &exe) { installModImpl(game, exe); }};
+        // The dialog can still be open when a rescan deletes this Game. Install into whichever object replaced it.
+        const auto store = static_cast<int>(game->store());
+        const auto id = game->id();
+        auto m =
+            new GameExecutablePickerModel{this, game, [this, store, id](const Game::LaunchOption &exe) {
+                                              if (auto *current = GamesFilterModel::instance()->gameByIdentity(store, id))
+                                                  installModImpl(current, exe);
+                                          }};
         emit requestChooseLaunchOption(m);
         break;
     }

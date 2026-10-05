@@ -19,9 +19,16 @@ Item {
                               "native": [],
                               "none": []
                           })
+    property real heldY: 0
     readonly property real inner: width - 2 * Theme.pad
     readonly property var order: ["ready", "setup", "native", "none"]
+    property bool ready: false
     property string rowsKey: ""
+    property bool scrollLocked: false
+    property int scrollTries: 0
+    property bool settled: false
+    // The loader hides this page without destroying it. parent.visible is that loader.
+    readonly property bool shown: parent !== null && parent.visible
     readonly property var titles: ({
                                        "ready": "Ready for VR",
                                        "setup": "Needs setup",
@@ -29,6 +36,27 @@ Item {
                                        "none": "No VR mod yet"
                                    })
     property int total: 0
+
+    function closePopups() {
+        filters.close();
+    }
+
+    function placeScroll() {
+        if (!scrollLocked)
+            return;
+        const maxY = list.originY + Math.max(0, list.contentHeight - list.height);
+        // A hidden list reports no height yet. Guessing would pin the user at the top, so wait until it's on screen.
+        const layoutShort = heldY > maxY + 0.5 && list.contentHeight <= list.height;
+        if (layoutShort && (scrollTries > 0 || !shown)) {
+            if (scrollTries > 0)
+                scrollTries -= 1;
+            if (shown)
+                Qt.callLater(placeScroll);
+            return;
+        }
+        list.contentY = Math.max(list.originY, Math.min(heldY, maxY));
+        scrollLocked = false;
+    }
 
     function rebuild() {
         let rows = [];
@@ -56,29 +84,20 @@ Item {
             return;
         rowsKey = key;
 
-        // Keep the scroll position when a game moves between groups
-        const y = list.contentY;
+        // Replacing the model jumps back to the top. Hold the offset the user was actually looking at.
+        const y = scrollLocked ? heldY : list.contentY;
+        scrollLocked = true;
+        heldY = y;
         list.model = rows;
-        Qt.callLater(() => list.contentY = Math.max(list.originY, Math.min(y, list.originY + list.contentHeight
-                                                                           - list.height)));
+        scrollTries = 8;
+        placeScroll();
     }
 
     function regroup() {
-        // Each store publishes on its own. Keep the grid empty until the whole wave has finished.
-        if (GamesFilterModel.scanning) {
-            if (total !== 0 || list.count !== 0) {
-                groups = {
-                    "ready": [],
-                    "setup": [],
-                    "native": [],
-                    "none": []
-                };
-                total = 0;
-                rowsKey = "";
-                list.model = [];
-            }
+        // The first scan waits until every store has published, so games don't trickle in one library at a time.
+        // A later rescan keeps this grid and only swaps in the new objects, or the cards would point at deleted games.
+        if (GamesFilterModel.scanning && !settled)
             return;
-        }
 
         let g = {
             "ready": [],
@@ -91,6 +110,8 @@ Item {
             g[GameStatus.group(game)].push(game);
         groups = g;
         total = games.length;
+        if (!GamesFilterModel.scanning)
+            settled = true;
         rebuild();
     }
 
@@ -105,8 +126,23 @@ Item {
         rebuild();
     }
 
-    Component.onCompleted: regroup()
+    Component.onCompleted: {
+        ready = true;
+        regroup();
+    }
     onColsChanged: rebuild()
+    onShownChanged: {
+        if (!ready)
+            return;
+        if (!shown) {
+            closePopups();
+            return;
+        }
+        if (scrollLocked) {
+            scrollTries = 8;
+            placeScroll();
+        }
+    }
 
     Settings {
         id: librarySettings
@@ -124,8 +160,9 @@ Item {
         }
 
         function onScanningChanged() {
-            view.rowsKey = "";
-            view.regroup();
+            // Starting a scan must not throw away the grid. Rebuild once the last store has published.
+            if (!GamesFilterModel.scanning)
+                view.regroup();
         }
 
         target: GamesFilterModel
@@ -298,6 +335,11 @@ Item {
             height: Theme.notchHeight + 30
             width: 1
         }
+
+        onContentHeightChanged: if (view.scrollLocked)
+                                    view.placeScroll()
+        onContentYChanged: if (!view.scrollLocked)
+                               view.heldY = contentY
     }
 
     Column {
@@ -312,7 +354,7 @@ Item {
                 return "Steam, Heroic, and itch are being read. Everything appears together when the last one finishes.";
             if (view.total === 0)
                 return GamesFilterModel.search !== "" ? "Check the spelling, or clear the search to see your whole library." :
-                                                         "Kaon looks for Steam, Heroic and itch libraries. Add a game by hand with the button below, or check the filters.";
+                                                        "Kaon looks for Steam, Heroic and itch libraries. Add a game by hand with the button below, or check the filters.";
             return "Turn on a group to see its games.";
         }
 
@@ -320,8 +362,10 @@ Item {
             if (GamesFilterModel.scanning)
                 return "Looking through your libraries";
             if (view.total === 0)
-                return GamesFilterModel.search !== "" ? "No games match “" + GamesFilterModel.search + "”" : "No games found";
-            return GamesFilterModel.search !== "" ? "Your matches are in a hidden group" : "Every group with games is switched off";
+                return GamesFilterModel.search !== "" ? "No games match “" + GamesFilterModel.search + "”" :
+                                                        "No games found";
+            return GamesFilterModel.search !== "" ? "Your matches are in a hidden group" :
+                                                    "Every group with games is switched off";
         }
 
         spacing: 8

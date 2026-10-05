@@ -8,21 +8,26 @@ Flickable {
     id: view
 
     readonly property real colW: wide ? (width - 2 * Theme.pad - 40) / 2 : width - 2 * Theme.pad
-    readonly property bool wide: width > 900
 
-    function libraryRows() {
+    // A binding, not a function call, so this updates while the page stays loaded.
+    readonly property var libraryRows: {
+        const steamLibs = Steam.libraries;
+        const heroicLibs = Heroic.libraries;
+        const itchRoot = Itch.storeRoot;
+        const itchCount = Itch.count;
         const rows = [];
-        for (const lib of Steam.libraries)
+        for (const lib of steamLibs)
             rows.push(lib);
-        for (const lib of Heroic.libraries)
+        for (const lib of heroicLibs)
             rows.push(lib);
         rows.push({
                       "store": "itch",
-                      "path": Itch.storeRoot,
-                      "count": Itch.count
+                      "path": itchRoot,
+                      "count": itchCount
                   });
         return rows;
     }
+    readonly property bool wide: width > 900
 
     boundsBehavior: Flickable.StopAtBounds
     clip: true
@@ -43,7 +48,7 @@ Flickable {
         }
 
         Repeater {
-            model: view.libraryRows()
+            model: view.libraryRows
 
             Item {
                 required property var modelData

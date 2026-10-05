@@ -180,12 +180,17 @@ void Store::publishScan(const QList<Game *> &games)
     for (auto *game : games)
         game->setParent(this);
 
+    // Launches and the open game keep the new objects. That has to happen before the model resets, or QML
+    // sees the old pointer disappear and drops back to the library.
+    const auto previous = m_games;
+    const auto announce = GamesFilterModel::instance()->retargetBeforeReset(previous, games);
+
     beginResetModel();
-    const auto old = m_games;
     m_games = games;
     endResetModel();
+    GamesFilterModel::instance()->retargetAfterReset(announce);
 
-    for (auto *game : old)
+    for (auto *game : previous)
         game->deleteLater();
 
     finishScan();

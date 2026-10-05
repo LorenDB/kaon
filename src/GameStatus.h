@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QHash>
+#include <QList>
 #include <QObject>
 #include <QPointer>
 #include <QQmlEngine>
@@ -57,6 +58,9 @@ public:
     Q_INVOKABLE bool isDownloading(Mod *mod, ModRelease *release) const;
 
     Q_INVOKABLE void rescanLibraries();
+
+    // Setup and installs that were waiting on a game follow the object that replaced it.
+    void retargetGames(const QList<Game *> &previous, const QList<Game *> &current);
 
 signals:
     void changed();

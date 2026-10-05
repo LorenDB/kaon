@@ -14,6 +14,7 @@ Item {
     readonly property bool locked: game !== null && mod.type === Mod.Installable && (GameStatus.revision, mod.isInstalledForGame(
                                                                                          game))
     required property Mod mod
+    property int popupEpoch: 0
     readonly property ModRelease shown: locked ? (GameStatus.revision, mod.releaseInstalledForGame(game)) ?? current :
                                                  current
 
@@ -36,6 +37,7 @@ Item {
                               pop.open()
     Keys.onSpacePressed: if (!picker.locked)
                              pop.open()
+    onPopupEpochChanged: pop.close()
 
     ModReleaseFilter {
         id: releases

@@ -78,6 +78,31 @@ void Launcher::openModNow()
     m_dismiss.start(20000);
 }
 
+bool Launcher::retargetGame(const QList<Game *> &previous, const QList<Game *> &current)
+{
+    if (!m_game || !previous.contains(m_game))
+        return false;
+
+    for (auto *game : current)
+    {
+        if (game->store() == m_game->store() && game->id() == m_game->id())
+        {
+            if (game == m_game)
+                return false;
+            m_game = game;
+            return true;
+        }
+    }
+
+    stop();
+    return false;
+}
+
+void Launcher::announceGame()
+{
+    emit stateChanged();
+}
+
 void Launcher::stop()
 {
     m_tick.stop();

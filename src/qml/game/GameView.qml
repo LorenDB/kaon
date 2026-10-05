@@ -9,11 +9,16 @@ Item {
     readonly property var extraMods: game ? (GameStatus.revision, GameStatus.extraMods(game)) : []
     readonly property Game game: Nav.game
     readonly property string group: game ? (GameStatus.revision, GameStatus.group(game)) : "none"
+    property string heldId: ""
+    property int heldStore: -1
     readonly property real heroH: Math.max(190, Math.min(height * 0.36, width * 0.25))
     readonly property bool launching: game !== null && Launcher.game === game && Launcher.phase !== Launcher.Idle
     readonly property Mod mod: game ? (GameStatus.revision, GameStatus.preferredMod(game)) : null
+    property int popupEpoch: 0
     readonly property int remaining: steps.filter(s => s.state === "todo" || s.state === "busy" || s.state === "wait").length
     property bool showOtherMods: false
+    // The loader hides this page without destroying it, so scroll and open menus survive a trip back to the library.
+    readonly property bool shown: parent !== null && parent.visible
     readonly property var steps: game ? (GameStatus.revision, GameStatus.steps(game)) : []
     readonly property var vrMods: game ? (GameStatus.revision, GameStatus.vrMods(game)) : []
 
@@ -42,7 +47,33 @@ Item {
                                                                                                                     "";
     }
 
+    function syncGame() {
+        // game.store is an enum. A mixed enum-or-number temporary crashes Qt's compiled QML when stored in heldStore.
+        if (!game) {
+            if (heldId !== "")
+                heldId = "";
+            if (heldStore !== -1)
+                heldStore = -1;
+            return;
+        }
+        const store = Number(game.store);
+        if (heldId === game.id && heldStore === store)
+            return;
+        heldId = game.id;
+        heldStore = store;
+        showOtherMods = false;
+        if (pageFlick)
+            pageFlick.contentY = 0;
+    }
+
+    Component.onCompleted: syncGame()
+    onGameChanged: Qt.callLater(syncGame)
+    onShownChanged: if (!shown)
+                        popupEpoch += 1
+
     Flickable {
+        id: pageFlick
+
         anchors.fill: parent
         boundsBehavior: Flickable.StopAtBounds
         clip: true
@@ -482,6 +513,7 @@ Item {
                                     anchors.verticalCenter: parent.verticalCenter
                                     game: view.game
                                     mod: modRow.modelData
+                                    popupEpoch: view.popupEpoch
                                 }
                             }
 

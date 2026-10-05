@@ -16,11 +16,21 @@ Flickable {
         return decodeURIComponent(url.toString().replace(/^file:\/\//, ""));
     }
 
+    function resetForm() {
+        nameBox.text = "";
+        exeBox.text = "";
+        wineBox.text = systemWine;
+        prefixBox.text = Wine.defaultWinePrefix();
+        advanced.visible = false;
+    }
+
     function submit() {
         if (!valid)
             return;
-        if (CustomGames.addGame(nameBox.text.trim(), exeBox.text.trim(), wineBox.text.trim(), prefixBox.text.trim())) {
-            Nav.notify("Added " + nameBox.text.trim());
+        const added = nameBox.text.trim();
+        if (CustomGames.addGame(added, exeBox.text.trim(), wineBox.text.trim(), prefixBox.text.trim())) {
+            resetForm();
+            Nav.notify("Added " + added);
             Nav.goLibrary();
         } else {
             Nav.notify("Kaon couldn't add that game. Check that the executable exists.");

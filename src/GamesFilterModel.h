@@ -70,6 +70,13 @@ public:
 
     // The games that pass the filters, in display order
     Q_INVOKABLE QList<Game *> games() const;
+    // Ignores search and filters, so an open game can be found again after a rescan replaces its object
+    Q_INVOKABLE Game *gameByIdentity(int store, const QString &id) const;
+
+    // A store is about to drop its previous Game objects. Point launches and setup at the replacements first,
+    // then tell QML once the model itself has swapped, so both sides change together.
+    bool retargetBeforeReset(const QList<Game *> &previous, const QList<Game *> &current);
+    void retargetAfterReset(bool announce);
 
 signals:
     void engineFilterChanged();
@@ -93,6 +100,7 @@ private:
     ~GamesFilterModel() = default;
 
     void updateScanning();
+    void saveFilters() const;
 
     QConcatenateTablesProxyModel *m_models;
     QList<Store *> m_stores;
@@ -103,7 +111,7 @@ private:
     Game::Features m_featureFilter;
     Game::Stores m_storeFilter;
     QString m_search;
-    SortType m_sortType;
+    SortType m_sortType = SortType::LastPlayed;
 
     FilterType m_featureFilterType = FilterType::HasAnyFilter;
 };

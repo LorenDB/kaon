@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QList>
 #include <QObject>
 #include <QPointer>
 #include <QQmlEngine>
@@ -47,6 +48,11 @@ public:
     Q_INVOKABLE void play(Game *game);
     Q_INVOKABLE void openModNow();
     Q_INVOKABLE void stop();
+
+    // Point an in-progress launch at the replacement object. True means the pointer changed and announceGame()
+    // still has to run, after QML has caught up. A removed game stops the launch here.
+    bool retargetGame(const QList<Game *> &previous, const QList<Game *> &current);
+    void announceGame();
 
 signals:
     void stateChanged();

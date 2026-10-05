@@ -16,6 +16,10 @@ ApplicationWindow {
     readonly property Mod gameMod: inGame ? (GameStatus.revision, GameStatus.preferredMod(game)) : null
     readonly property string group: inGame ? (GameStatus.revision, GameStatus.group(game)) : ""
     readonly property bool inGame: Nav.view === "game" && game !== null
+    property bool keepAdd: false
+    property bool keepGame: false
+    property bool keepMods: false
+    property bool keepSettings: false
     readonly property bool launching: inGame && Launcher.game === game && Launcher.phase !== Launcher.Idle
     readonly property var openStep: inGame ? (GameStatus.revision, GameStatus.steps(game).find(s => s.state !== "ok" && s.state
                                                                                                     !== "warn")) : undefined
@@ -34,6 +38,17 @@ ApplicationWindow {
         return false;
     }
 
+    function retainPage() {
+        if (Nav.view === "game")
+            keepGame = true;
+        else if (Nav.view === "mods")
+            keepMods = true;
+        else if (Nav.view === "settings")
+            keepSettings = true;
+        else if (Nav.view === "addGame")
+            keepAdd = true;
+    }
+
     color: Theme.shell
     height: 720
     minimumHeight: 480
@@ -41,6 +56,8 @@ ApplicationWindow {
     title: "Kaon"
     visible: true
     width: 950
+
+    Component.onCompleted: retainPage()
 
     Settings {
         property alias windowHeight: root.height
@@ -55,6 +72,14 @@ ApplicationWindow {
         target: GamesFilterModel
     }
 
+    Connections {
+        function onViewChanged() {
+            root.retainPage();
+        }
+
+        target: Nav
+    }
+
     // ------------------------------------------------------------ the visor and what it shows
     Rectangle {
         id: visor
@@ -65,16 +90,61 @@ ApplicationWindow {
         x: Theme.side
         y: Theme.topStrap
 
-        Loader {
-            id: page
+        // Pages stay loaded after the first visit. Destroying them threw away scroll position, open menus,
+        // and anything the page was in the middle of showing.
+        Item {
+            id: pages
 
             anchors.fill: parent
-            focus: true
-            sourceComponent: root.inGame ? gameC : Nav.view === "mods" ? modsC : Nav.view === "settings" ? settingsC :
-                                                                                                           Nav.view
-                                                                                                           === "addGame"
-                                                                                                           ? addGameC :
-                                                                                                             libraryC
+
+            Loader {
+                id: libraryPage
+
+                anchors.fill: parent
+                focus: visible
+                sourceComponent: libraryC
+                visible: Nav.view === "library"
+            }
+
+            Loader {
+                id: gamePage
+
+                active: Nav.view === "game" || root.keepGame
+                anchors.fill: parent
+                focus: visible
+                sourceComponent: gameC
+                visible: root.inGame
+            }
+
+            Loader {
+                id: modsPage
+
+                active: Nav.view === "mods" || root.keepMods
+                anchors.fill: parent
+                focus: visible
+                sourceComponent: modsC
+                visible: Nav.view === "mods"
+            }
+
+            Loader {
+                id: settingsPage
+
+                active: Nav.view === "settings" || root.keepSettings
+                anchors.fill: parent
+                focus: visible
+                sourceComponent: settingsC
+                visible: Nav.view === "settings"
+            }
+
+            Loader {
+                id: addPage
+
+                active: Nav.view === "addGame" || root.keepAdd
+                anchors.fill: parent
+                focus: visible
+                sourceComponent: addGameC
+                visible: Nav.view === "addGame"
+            }
         }
     }
 
@@ -278,6 +348,16 @@ ApplicationWindow {
             TextInput {
                 id: search
 
+                function applySearch() {
+                    if (text !== GamesFilterModel.search)
+                        text = GamesFilterModel.search;
+                }
+
+                function clearSearch() {
+                    GamesFilterModel.search = "";
+                    applySearch();
+                }
+
                 activeFocusOnTab: true
                 anchors.left: parent.left
                 anchors.leftMargin: 40
@@ -292,13 +372,22 @@ ApplicationWindow {
                 selectByMouse: true
                 selectedTextColor: Theme.shell
                 selectionColor: Theme.ink
-                text: GamesFilterModel.search
 
+                Component.onCompleted: applySearch()
                 Keys.onEscapePressed: {
-                    text = "";
+                    clearSearch();
                     focus = false;
                 }
-                onTextChanged: GamesFilterModel.search = text
+                // textEdited is only user input. Hiding this field must not write an empty string back over the search.
+                onTextEdited: GamesFilterModel.search = text
+
+                Connections {
+                    function onSearchChanged() {
+                        search.applySearch();
+                    }
+
+                    target: GamesFilterModel
+                }
 
                 VText {
                     color: Theme.inkMuted
@@ -417,6 +506,7 @@ ApplicationWindow {
                     if (Launcher.phase === Launcher.Countdown && Launcher.game !== root.game)
                         return "Opening " + Launcher.mod.name + " for " + Launcher.game.name + " in " + Launcher.remaining
                                 + " s";
+
 
                     if (GamesFilterModel.scanning)
                         return "Scanning libraries";
@@ -555,7 +645,7 @@ ApplicationWindow {
 
         enabled: {
             if (Nav.view === "addGame")
-                return (page.item as AddGameView)?.valid ?? false;
+                return (addPage.item as AddGameView)?.valid ?? false;
             if (!root.inGame || root.launching)
                 return true;
             if (root.group === "setup")
@@ -595,7 +685,7 @@ ApplicationWindow {
 
         onClicked: {
             if (Nav.view === "addGame")
-                (page.item as AddGameView)?.submit();
+                (addPage.item as AddGameView)?.submit();
             else if (!root.inGame) {
                 if (Steam.hasSteamVR) {
                     Steam.launchSteamVR();
