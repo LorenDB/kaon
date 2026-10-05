@@ -28,9 +28,6 @@ public:
 
     QMap<int, Game::LaunchOption> acceptableInstallCandidates(const Game *game) const override;
 
-signals:
-    void installFailed(const QString &message);
-
 protected:
     void installModImpl(Game *game, const Game::LaunchOption &exe) override;
 
@@ -40,6 +37,4 @@ protected:
 private:
     explicit Portal1VR(QObject *parent = nullptr);
     ~Portal1VR() = default;
-
-    void fail(const QString &message);
 };

@@ -33,7 +33,6 @@ bool BepInExConfigManager::isInstalledForGame(const Game *game) const
 {
     if (!game)
         return false;
-    // TODO: this only detects Linux/macOS installations of BepInExConfigManager
     const auto exes = acceptableInstallCandidates(game);
     return std::any_of(exes.cbegin(), exes.cend(), [this, game](const auto &exe) {
         return QFileInfo::exists(modInstallDirForGame(game, exe) + "/plugins/BepInExConfigManager.Mono.dll"_L1);

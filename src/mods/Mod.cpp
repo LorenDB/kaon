@@ -207,10 +207,9 @@ void Mod::installModImpl(Game *game, const Game::LaunchOption &exe)
 {
     if (!QFileInfo::exists(exe.executable))
     {
-        // TODO: also show error to user
-        qCWarning(logger()) << "Attempted to install mod for game with nonexistent executable: %1"_L1.arg(exe.executable);
         Aptabase::instance()->track("nonexistent-executable-mod-install-bug",
                                     {{"executable"_L1, exe.executable}, {"game"_L1, game->name()}});
+        fail("Kaon couldn't find %1. Rescan your libraries and try again."_L1.arg(exe.executable));
         return;
     }
 
@@ -310,11 +309,20 @@ bool ModReleaseFilter::lessThan(const QModelIndex &left, const QModelIndex &righ
     return left.data(Mod::Roles::Timestamp).toDateTime() > right.data(Mod::Roles::Timestamp).toDateTime();
 }
 
+void Mod::fail(const QString &message)
+{
+    qCWarning(logger()).noquote() << message;
+    emit installFailed(message);
+}
+
 void Mod::launchMod(Game *game)
 {
-    // TODO: refactor to have launchModImpl() like installMod() does
+    if (!game || !currentRelease())
+        return;
+
     Aptabase::instance()->track("launch-%1"_L1.arg(settingsGroup()),
                                 {{"version"_L1, currentRelease()->name()}, {"game"_L1, game->name()}});
+    launchModImpl(game);
 }
 
 void Mod::installMod(Game *game)
@@ -337,10 +345,8 @@ void Mod::installMod(Game *game)
     switch (exes.size())
     {
     case 0:
-        // TODO: show error to user
-        qCWarning(logger()) << "No acceptable executables found for installing mod "_L1 + displayName()
-                            << " for game "_L1 + game->name();
         Aptabase::instance()->track("no-executable-mod-install-bug", {{"mod"_L1, displayName()}, {"game"_L1, game->name()}});
+        fail("%1 has no executable that %2 can be installed for."_L1.arg(game->name(), displayName()));
         break;
     case 1:
         Aptabase::instance()->track("install-%1"_L1.arg(settingsGroup()),

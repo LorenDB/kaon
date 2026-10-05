@@ -219,7 +219,10 @@ void GitHubZipExtractorMod::installModImpl(Game *game, const Game::LaunchOption 
 
     const auto asset = chooseAssetToInstall(game, exe);
     if (asset.id == -1)
-        return; // TODO: show user an error message
+    {
+        fail("This version of %1 has no download that fits %2."_L1.arg(displayName(), game->name()));
+        return;
+    }
 
     QProcess process;
     process.setWorkingDirectory(installDir);
@@ -229,9 +232,9 @@ void GitHubZipExtractorMod::installModImpl(Game *game, const Game::LaunchOption 
     process.waitForFinished();
     if (process.exitCode() != 0)
     {
-        qCWarning(logger()).noquote() << "Unzip" << displayName() << "failed:" << process.errorString();
-        qCWarning(logger()) << process.readAllStandardError();
-        // TODO: show error in GUI
+        qCWarning(logger()).noquote() << process.readAllStandardError();
+        fail("Kaon couldn't extract the %1 download. It may be damaged: delete it and download it again. Its log has the "
+             "details: ~/.cache/LorenDB/Kaon/kaon.log"_L1.arg(displayName()));
         return;
     }
 

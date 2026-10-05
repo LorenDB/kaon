@@ -143,12 +143,8 @@ void UEVRAFW::deleteRelease(ModRelease *release)
         release->setDownloaded(false);
 }
 
-void UEVRAFW::launchMod(Game *game)
+void UEVRAFW::launchModImpl(Game *game)
 {
-    if (!currentRelease() || !game)
-        return;
-
-    Mod::launchMod(game);
     Wine::instance()->runInWine(currentRelease()->name(), game, path(Paths::CurrentInjector), true);
 }
 

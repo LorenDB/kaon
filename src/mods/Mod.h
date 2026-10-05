@@ -159,7 +159,7 @@ public slots:
     virtual void downloadRelease(ModRelease *release) = 0;
     virtual void deleteRelease(ModRelease *release) = 0;
 
-    virtual void launchMod(Game *game);
+    void launchMod(Game *game);
     void installMod(Game *game);
     virtual void uninstallMod(Game *game);
 
@@ -172,10 +172,17 @@ signals:
     void releaseDownloadedChanged(ModRelease *release);
     void busyChanged();
     void launchDelayChanged();
+    // An install gave up. The message says why, in words meant for the user.
+    void installFailed(const QString &message);
 
 protected:
     // Override this to implement the actual installation logic. Your implementation must call this base function at its end!
     virtual void installModImpl(Game *game, const Game::LaunchOption &exe);
+    // Override this to implement the actual launch. Only called with a game and a current release.
+    virtual void launchModImpl(Game *game) {}
+
+    // Call this when an install can't go on. Logs the message and shows it to the user.
+    void fail(const QString &message);
 
     // Use this if you need to have whatever the settings had at startup, e.g. if you need to download release information
     // before you can build the release list

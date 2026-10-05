@@ -47,7 +47,8 @@ public slots:
     void downloadRelease(ModRelease *release) override;
     void deleteRelease(ModRelease *release) override;
 
-    void launchMod(Game *game) override;
+protected:
+    void launchModImpl(Game *game) override;
 
 private:
     explicit UEVR(QObject *parent = nullptr);

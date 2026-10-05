@@ -60,7 +60,7 @@ Dotnet::Dotnet(QObject *parent)
     // The old .exe installer cannot run under Proton (WiX Burn always initializes
     // its theme manager, even for /quiet, and that fails with 0x80070583). Delete
     // stale caches; the zips below replace them.
-    // TODO: migration, remove me before 0.4.0
+    // TODO: migration, remove me once 0.4.0 has shipped with it
     QFile{QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) +
           "/windowsdesktop-runtime-6.0.36-win-x64.exe"_L1}
         .remove();
@@ -179,13 +179,14 @@ void Dotnet::installModImpl(Game *game, const Game::LaunchOption &exe)
     const auto target = dotnetDir(game);
     if (!extractZip(m_runtimeZip, target) || !extractZip(m_desktopZip, target))
     {
-        qCWarning(DotNetLog) << "Failed to extract .NET desktop runtime for" << game->name();
+        fail("Kaon couldn't extract the .NET runtime into %1's prefix. Its log has the details: "
+             "~/.cache/LorenDB/Kaon/kaon.log"_L1.arg(game->name()));
         return;
     }
 
     if (!isInstalledForGame(game))
     {
-        qCWarning(DotNetLog) << "Extraction finished but .NET is still missing for" << game->name();
+        fail("The .NET runtime was extracted, but it is still missing from %1's prefix."_L1.arg(game->name()));
         return;
     }
 

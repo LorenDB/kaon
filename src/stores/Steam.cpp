@@ -701,6 +701,15 @@ public:
                             if (os.contains("macos"_L1))
                                 m_executables[id].platform = Platform::MacOS;
                         }
+                        else if (key == "osarch"_L1)
+                        {
+                            // Only a fallback. detectArchitectures() replaces it with what the executable itself says.
+                            const QString arch = static_cast<const char *>(value.second);
+                            if (arch == "32"_L1)
+                                m_executables[id].arch = Architecture::x86;
+                            else if (arch == "64"_L1)
+                                m_executables[id].arch = Architecture::x64;
+                        }
                     }
                 }
 

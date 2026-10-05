@@ -33,7 +33,6 @@ bool Bepinex::isInstalledForGame(const Game *game) const
 {
     if (!game)
         return false;
-    // TODO: this only detects Linux/macOS installations of BepInEx
     const auto exes = acceptableInstallCandidates(game);
     return std::any_of(exes.cbegin(), exes.cend(), [this, game](const auto &exe) {
         return QFileInfo::exists(modInstallDirForGame(game, exe) + "/BepInEx/core/BepInEx.dll"_L1);

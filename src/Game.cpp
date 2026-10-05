@@ -3,6 +3,7 @@
 #include <QDirIterator>
 #include <QFileInfo>
 #include <QRegularExpression>
+#include <QSet>
 
 #include "Aptabase.h"
 
@@ -42,6 +43,43 @@ namespace
         raw.seek(18);
         quint16 machine;
         ds >> machine;
+        return machine;
+    }
+
+    // Some games (e.g. Portal 2) ship a shell script as their Linux launch option, which then starts a binary next to
+    // it. Returns the e_machine the ELF files named in the script agree on, or 0 if this isn't a script, it names none,
+    // or they differ.
+    quint16 elfMachineStartedByScript(QFile &raw)
+    {
+        raw.seek(0);
+        const auto script = raw.read(64 * 1024);
+        if (!script.startsWith("#!"_ba))
+            return 0;
+
+        // Variables are dropped, so "$DIR/bin/game" leaves /bin/game. Every name is then tried relative to the script.
+        static const QRegularExpression variable{R"(\$\{[^}]*\}|\$\w+)"_L1};
+        static const QRegularExpression pathLike{R"([\w.+\-/]+)"_L1};
+        const auto text = QString::fromLatin1(script).replace(variable, " "_L1);
+        const auto dir = QFileInfo{raw}.absolutePath();
+        QSet<QString> seen;
+        quint16 machine = 0;
+        for (const auto &match : pathLike.globalMatch(text))
+        {
+            const auto name = match.captured();
+            if (seen.contains(name))
+                continue;
+            seen.insert(name);
+
+            QFile candidate{dir + '/' + name};
+            if (!QFileInfo{candidate}.isFile() || !candidate.open(QFile::ReadOnly))
+                continue;
+            const auto found = elfMachine(candidate);
+            if (found == 0)
+                continue;
+            if (machine != 0 && found != machine)
+                return 0;
+            machine = found;
+        }
         return machine;
     }
 } // namespace
@@ -309,16 +347,9 @@ void Game::detectArchitectures()
             }
             else if (exe.platform == Platform::Linux)
             {
-                // TODO: some games (e.g. Portal 2) ship a .sh for the Linux launch option. I should come up with a generic
-                // solution eventually. For now, we hardcode it.
-                if (m_id == "620"_L1 && store() == Store::Steam && exe.executable.endsWith(".sh"_L1))
-                {
-                    // Portal 2 launches via shell script but has an x86 binary
-                    exe.arch = Architecture::x86;
-                    continue;
-                }
-
-                const auto machine = elfMachine(raw);
+                auto machine = elfMachine(raw);
+                if (machine == 0)
+                    machine = elfMachineStartedByScript(raw);
                 if (machine == 0)
                     continue;
 

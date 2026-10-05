@@ -120,9 +120,8 @@ void UEVR::deleteRelease(ModRelease *release)
         release->setDownloaded(false);
 }
 
-void UEVR::launchMod(Game *game)
+void UEVR::launchModImpl(Game *game)
 {
-    Aptabase::instance()->track("launch-uevr"_L1, {{"version"_L1, currentRelease()->name()}, {"game"_L1, game->name()}});
     Wine::instance()->runInWine(currentRelease()->name(), game, path(Paths::CurrentUEVRInjector), true);
 }
 

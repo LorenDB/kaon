@@ -97,12 +97,6 @@ bool Portal1VR::isThisFileTheActualModDownload(const QString &file) const
             (file.startsWith("Portal1VR-Windows-x86-"_L1) && file.endsWith(".zip"_L1)));
 }
 
-void Portal1VR::fail(const QString &message)
-{
-    qCWarning(logger()).noquote() << message;
-    emit installFailed(message);
-}
-
 void Portal1VR::installModImpl(Game *game, const Game::LaunchOption &exe)
 {
     if (!QFileInfo::exists(exe.executable))

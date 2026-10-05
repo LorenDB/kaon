@@ -143,6 +143,9 @@ void GameStatus::watch(Mod *mod)
     connect(mod, &QAbstractItemModel::modelReset, this, &GameStatus::invalidate);
     connect(mod, &Mod::busyChanged, this, &GameStatus::invalidate);
     connect(mod, &Mod::requestChooseLaunchOption, this, &GameStatus::chooseExecutable);
+    connect(mod, &Mod::installFailed, this, [this, mod](const QString &message) {
+        emit actionFailed("%1 didn't install"_L1.arg(mod->displayName()), message);
+    });
     connect(mod, &Mod::releaseDownloadedChanged, this, [this, mod](ModRelease *release) {
         m_pendingDownloads.remove(downloadKey(mod, release));
         if (release->downloaded() && release == mod->currentRelease() && m_installAfterDownload.contains(mod))
