@@ -61,6 +61,8 @@ public:
 signals:
     void changed();
     void chooseExecutable(GameExecutablePickerModel *model);
+    // A step's action didn't work, and the checklist can't say why
+    void actionFailed(const QString &title, const QString &message);
 
 private:
     explicit GameStatus(QObject *parent = nullptr);

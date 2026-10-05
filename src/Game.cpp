@@ -125,11 +125,8 @@ bool Game::noWindowsSupport() const
         m_executables.begin(), m_executables.end(), [](const auto &exe) { return exe.platform != Platform::Windows; });
 }
 
-void Game::detectGameEngine()
+QStringList Game::layoutRoots() const
 {
-    // The game's own files can start below the install directory: itch unpacks many games into a single subfolder, and a
-    // launch option can point several folders down. Any folder from an executable up to the install directory may be the
-    // one the engine's layout is relative to.
     const auto installDir = QDir::cleanPath(m_installDir);
     QStringList roots{installDir};
     for (const auto &exe : std::as_const(m_executables))
@@ -142,6 +139,12 @@ void Game::detectGameEngine()
                 break;
         }
     }
+    return roots;
+}
+
+void Game::detectGameEngine()
+{
+    const auto roots = layoutRoots();
 
     // =======================================
     // Unreal detection

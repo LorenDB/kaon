@@ -161,6 +161,14 @@ public:
 
     const QMap<int, LaunchOption> executables() const { return m_executables; }
 
+    // Folders the game's own files may be laid out from: the install directory, and every folder between it and an
+    // executable. itch unpacks many games into a single subfolder, and a launch option can point several folders down.
+    QStringList layoutRoots() const;
+
+    // Launchers made for Windows record paths with backslashes and without minding case. Returns the file that relative
+    // names below root, or the two joined with forward slashes when there is no such file.
+    static QString resolveWindowsPath(const QString &root, const QString &relative);
+
     // This is used to detect if a game has fully loaded or if there were errors parsing it.
     bool isValid() const { return m_valid; }
 
@@ -177,10 +185,6 @@ signals:
 
 protected:
     explicit Game(QObject *parent = nullptr);
-
-    // Launchers made for Windows record paths with backslashes and without minding case. Returns the file that relative
-    // names below root, or the two joined with forward slashes when there is no such file.
-    static QString resolveWindowsPath(const QString &root, const QString &relative);
 
     void detectGameEngine();
     void detectArchitectures();

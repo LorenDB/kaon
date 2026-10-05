@@ -18,6 +18,7 @@
 #include "Itch.h"
 #include "ModsFilterModel.h"
 #include "Steam.h"
+#include "UnrealVrPlugins.h"
 
 Q_LOGGING_CATEGORY(GameStatusLog, "gamestatus")
 
@@ -268,6 +269,28 @@ QVariantList GameStatus::steps(Game *game) const
 
     if (const auto mod = preferredMod(game))
     {
+        if (mod->conflictsWithBundledVrPlugins())
+        {
+            if (const auto present = UnrealVrPlugins::present(game); !present.isEmpty())
+                out << makeStep("vrPlugins"_L1,
+                                "Built-in VR plugins"_L1,
+                                "This game ships %1, which %2 warns will cause issues. Disabling renames the folders, and "
+                                "they can be put back."_L1.arg(QLocale{}.createSeparatedList(present), mod->displayName()),
+                                "warn"_L1,
+                                "disableVrPlugins"_L1,
+                                "Disable"_L1);
+            else if (const auto disabled = UnrealVrPlugins::disabled(game); !disabled.isEmpty())
+            {
+                auto step = makeStep("vrPlugins"_L1,
+                                     "Built-in VR plugins disabled"_L1,
+                                     "%1 renamed in the game folder"_L1.arg(QLocale{}.createSeparatedList(disabled)),
+                                     "ok"_L1);
+                step["secondaryAction"_L1] = "restoreVrPlugins"_L1;
+                step["secondaryLabel"_L1] = "Restore"_L1;
+                out << step;
+            }
+        }
+
         for (const auto dep : mod->dependencies())
         {
             const auto key = dep->settingsGroup();
@@ -474,6 +497,14 @@ void GameStatus::runStep(Game *game, const QString &key, bool secondary)
     }
     else if (action == "rescan"_L1)
         rescanLibraries();
+    else if (action == "disableVrPlugins"_L1 || action == "restoreVrPlugins"_L1)
+    {
+        const bool disabling = action == "disableVrPlugins"_L1;
+        if (!(disabling ? UnrealVrPlugins::disable(game) : UnrealVrPlugins::restore(game)))
+            emit actionFailed(disabling ? "Couldn't disable the VR plugins"_L1 : "Couldn't restore the VR plugins"_L1,
+                              "Kaon couldn't rename a folder in %1's Engine/Binaries/ThirdParty. Its log has the details: "
+                              "~/.cache/LorenDB/Kaon/kaon.log"_L1.arg(game->name()));
+    }
     else if (const auto mod = modForKey(key))
     {
         if (action == "download"_L1)

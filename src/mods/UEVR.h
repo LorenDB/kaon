@@ -25,6 +25,7 @@ public:
     const QLoggingCategory &logger() const final;
 
     bool hasRepairOption() const override { return false; }
+    bool conflictsWithBundledVrPlugins() const override { return true; }
 
     Game::Engines compatibleEngines() const override { return Game::Engine::Unreal; }
     virtual QList<Mod *> dependencies() const override;

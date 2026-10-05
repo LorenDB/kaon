@@ -101,6 +101,9 @@ public:
     virtual bool installsIntoPrefix() const { return false; }
     // Non-empty when the mod fits this game but installation has to wait. Shown instead of the install button.
     virtual QString installHoldReason(const Game *game) const { return {}; }
+    // True for mods that bring VR into an Unreal game themselves, so that the VR plugins such a game ships with get in
+    // their way. See UnrealVrPlugins.
+    virtual bool conflictsWithBundledVrPlugins() const { return false; }
 
     // Seconds to wait between starting a game and launching this mod into it
     int launchDelay() const;

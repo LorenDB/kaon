@@ -237,6 +237,12 @@ Item {
     }
 
     Connections {
+        function onActionFailed(title: string, message: string) {
+            messageDialog.title = title;
+            messageDialog.text = message;
+            messageDialog.open();
+        }
+
         function onChooseExecutable(model: GameExecutablePickerModel) {
             exeDialog.choice = 0;
             exeDialog.model = model;
