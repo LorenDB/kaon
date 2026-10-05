@@ -28,7 +28,7 @@ Portal1VR *Portal1VR::create(QQmlEngine *, QJSEngine *)
 QString Portal1VR::info() const
 {
     return "Start SteamVR first. Paste the launch options below into Steam so Proton loads this mod's d3d9.dll. "
-           "See [GitHub](https://github.com/BowmanFox/portal1vr#installation)."_L1;
+           "See [GitHub](https://github.com/LorenDB/portal1vr#installation)."_L1;
 }
 
 QString Portal1VR::launchOptions() const
@@ -50,8 +50,7 @@ bool Portal1VR::isInstalledForGame(const Game *game) const
     const auto exes = acceptableInstallCandidates(game);
     return std::any_of(exes.cbegin(), exes.cend(), [](const auto &exe) {
         const auto root = QFileInfo{exe.executable}.absolutePath();
-        return QFileInfo::exists(root + "/bin/d3d9.dll"_L1) && QFileInfo::exists(root + "/bin/openvr_api.dll"_L1) &&
-               QFileInfo::exists(root + "/portal/custom/bowman_portal1.vpk"_L1);
+        return QFileInfo::exists(root + "/bin/d3d9.dll"_L1) && QFileInfo::exists(root + "/bin/openvr_api.dll"_L1);
     });
 }
 
@@ -92,7 +91,8 @@ QMap<int, Game::LaunchOption> Portal1VR::acceptableInstallCandidates(const Game 
 
 bool Portal1VR::isThisFileTheActualModDownload(const QString &file) const
 {
-    return file.startsWith("Portal1VR-Windows-x86-"_L1) && file.endsWith(".zip"_L1);
+    return (file == "Portal1VR-Windows-x86.zip"_L1 ||
+            (file.startsWith("Portal1VR-Windows-x86-"_L1) && file.endsWith(".zip"_L1)));
 }
 
 void Portal1VR::fail(const QString &message)

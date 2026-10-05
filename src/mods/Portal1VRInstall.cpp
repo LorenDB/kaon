@@ -2,49 +2,17 @@
 
 #include <utility>
 
-#include <QByteArray>
 #include <QDateTime>
 #include <QDir>
 #include <QDirIterator>
 #include <QFile>
 #include <QFileInfo>
-#include <QProcess>
 #include <QRegularExpression>
 #include <QSaveFile>
 #include <QSet>
-#include <QTemporaryDir>
 
 namespace
 {
-    bool runTool(const QString &program, const QStringList &args, QByteArray *output, QString &error)
-    {
-        QProcess process;
-        process.start(program, args);
-        if (!process.waitForStarted(10000))
-        {
-            error = "Couldn't run %1."_L1.arg(program);
-            return false;
-        }
-        // The avatar archive expands to about 150 MB.
-        if (!process.waitForFinished(180000))
-        {
-            process.kill();
-            process.waitForFinished(5000);
-            error = "%1 took too long."_L1.arg(program);
-            return false;
-        }
-        if (output)
-            *output = process.readAllStandardOutput();
-        if (process.exitCode() != 0)
-        {
-            error = QString::fromLocal8Bit(process.readAllStandardError()).trimmed();
-            if (error.isEmpty())
-                error = "%1 failed."_L1.arg(program);
-            return false;
-        }
-        return true;
-    }
-
     QString packageRootOf(const QString &extracted)
     {
         QDir dir{extracted};
@@ -200,73 +168,18 @@ namespace
         return true;
     }
 
-    bool archiveIsSingleVpk(const QString &archive, QString &error)
+    // The mod now uses Portal's stock hands, gun, body and radio song. Earlier
+    // releases installed replacements; move them and their caches outside custom/
+    // so Source falls back to the stock content. Mirrors copy-to-portal.ps1.
+    bool retireLegacyReplacementContent(const QString &portalDir, QString &error)
     {
-        QByteArray listing;
-        if (!runTool("unzip"_L1, {"-Z1"_L1, archive}, &listing, error))
-        {
-            error = "Couldn't read the Bowman model archive."_L1;
-            return false;
-        }
-        const auto names = QString::fromLocal8Bit(listing).split('\n'_L1, Qt::SkipEmptyParts);
-        if (names.size() != 1 || names.constFirst() != "bowman_portal1.vpk"_L1)
-        {
-            error = "The Bowman model archive must contain only bowman_portal1.vpk."_L1;
-            return false;
-        }
-        return true;
-    }
-
-    bool installVpk(const QString &portalDir, const QString &packageRoot, QSet<QString> &tracked, QString &error)
-    {
-        const auto archive = QDir{packageRoot}.filePath("L4D2VR/custom/bowman_portal1.zip"_L1);
-        const auto loose = QDir{packageRoot}.filePath("L4D2VR/custom/bowman_portal1.vpk"_L1);
-        const auto destination = QDir{portalDir}.filePath("portal/custom/bowman_portal1.vpk"_L1);
-
-        QString extracted;
-        QTemporaryDir staging;
-        if (QFileInfo::exists(archive))
-        {
-            if (!archiveIsSingleVpk(archive, error))
-                return false;
-            if (!staging.isValid())
-            {
-                error = "Couldn't create a temporary folder for the Bowman model."_L1;
-                return false;
-            }
-            if (!runTool("unzip"_L1,
-                         {"-o"_L1, "-qq"_L1, "-j"_L1, archive, "bowman_portal1.vpk"_L1, "-d"_L1, staging.path()},
-                         nullptr,
-                         error))
-            {
-                error = "Couldn't extract the Bowman model."_L1;
-                return false;
-            }
-            extracted = QDir{staging.path()}.filePath("bowman_portal1.vpk"_L1);
-            if (!QFileInfo::exists(extracted))
-            {
-                error = "The Bowman model archive did not extract bowman_portal1.vpk."_L1;
-                return false;
-            }
-        }
-        else if (QFileInfo::exists(loose))
-            extracted = loose;
-        else
-        {
-            error = "The Portal 1 VR package has no Bowman model."_L1;
-            return false;
-        }
-
-        if (!copyInto(portalDir, extracted, destination, tracked, error))
-            return false;
-
-        // Older installs left a loose radio WAV and sound caches that hide the song in the VPK.
         const auto customRoot = QDir{portalDir}.absoluteFilePath("portal/custom"_L1);
         const QStringList retired{
+            "bowman_portal1.vpk"_L1,
+            "bowman_portal1.vpk.sound.cache"_L1,
             "portal1vr/sound/ambient/music/looping_radio_mix.wav"_L1,
             "portal1vr/portal1vr_streamer_warning.txt"_L1,
             "portal1vr/sound/sound.cache"_L1,
-            "bowman_portal1.vpk.sound.cache"_L1,
         };
         QStringList moving;
         for (const auto &relative : retired)
@@ -274,7 +187,7 @@ namespace
             const auto oldFile = QDir::cleanPath(customRoot + '/'_L1 + relative);
             if (!oldFile.startsWith(customRoot + '/'_L1))
             {
-                error = "Radio migration path escaped the custom directory."_L1;
+                error = "Retired content path escaped the custom directory."_L1;
                 return false;
             }
             if (QFileInfo{oldFile}.isFile())
@@ -286,7 +199,7 @@ namespace
         const auto now = QDateTime::currentDateTimeUtc();
         const auto fraction = QString{"%1"}.arg(now.time().msec() * 10000, 7, 10, QChar{u'0'});
         const auto stamp = now.toString("yyyyMMdd-HHmmss-"_L1) + fraction;
-        const auto backupRoot = QDir{portalDir}.filePath("bin/VR/InstallBackups/radio-"_L1 + stamp);
+        const auto backupRoot = QDir{portalDir}.filePath("bin/VR/InstallBackups/replaced-content-"_L1 + stamp);
         for (const auto &relative : std::as_const(moving))
         {
             const auto oldFile = QDir::cleanPath(customRoot + '/'_L1 + relative);
@@ -300,7 +213,7 @@ namespace
                 QFile::remove(backupFile);
             if (!QFile::rename(oldFile, backupFile) && !(QFile::copy(oldFile, backupFile) && QFile::remove(oldFile)))
             {
-                error = "Couldn't move the old radio file out of portal/custom."_L1;
+                error = "Couldn't move the old model/radio file out of portal/custom."_L1;
                 return false;
             }
         }
@@ -351,20 +264,6 @@ bool installPortal1VRPackage(const QString &portalDir,
         return false;
     }
 
-    const auto archive = root.filePath("L4D2VR/custom/bowman_portal1.zip"_L1);
-    const auto looseVpk = root.filePath("L4D2VR/custom/bowman_portal1.vpk"_L1);
-    if (QFileInfo::exists(archive))
-    {
-        // Reject a bad archive before anything in the game folder changes.
-        if (!archiveIsSingleVpk(archive, error))
-            return false;
-    }
-    else if (!QFileInfo::exists(looseVpk))
-    {
-        error = "The Portal 1 VR package has no Bowman model."_L1;
-        return false;
-    }
-
     const struct Copy
     {
         const char *from;
@@ -410,7 +309,7 @@ bool installPortal1VRPackage(const QString &portalDir,
         !copyMaterialDirs(portalDir, materials, portal.filePath("portal/custom/portal1vr/materials"_L1), tracked, error))
         return false;
 
-    if (!installVpk(portalDir, packageRoot, tracked, error))
+    if (!retireLegacyReplacementContent(portalDir, error))
         return false;
 
     installedFiles = QStringList{tracked.cbegin(), tracked.cend()};

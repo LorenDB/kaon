@@ -34,7 +34,7 @@ signals:
 protected:
     void installModImpl(Game *game, const Game::LaunchOption &exe) override;
 
-    QUrl githubUrl() const final { return {"https://api.github.com/repos/BowmanFox/portal1vr/releases"_L1}; }
+    QUrl githubUrl() const final { return {"https://api.github.com/repos/LorenDB/portal1vr/releases"_L1}; }
     bool isThisFileTheActualModDownload(const QString &file) const final;
 
 private:
