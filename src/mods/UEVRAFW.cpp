@@ -6,12 +6,11 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QLoggingCategory>
-#include <QProcess>
 #include <QStandardPaths>
-#include <QTemporaryDir>
 #include <QTimer>
 
 #include "Aptabase.h"
+#include "Archive.h"
 #include "Dotnet.h"
 #include "DownloadManager.h"
 #include "Wine.h"
@@ -24,8 +23,9 @@ UEVRAFW::UEVRAFW(QObject *parent)
     // Execute downloads on the first event tick to give time for the download
     // manager to initialize
     QTimer::singleShot(0, this, [this] {
+        // What was saved last time is there at once; the answer from GitHub replaces it when it differs
         parseReleaseInfoJson();
-        updateAvailableReleases();
+        refreshReleases();
     });
 }
 
@@ -63,63 +63,23 @@ bool UEVRAFW::isInstalledForGame(const Game *) const
 
 void UEVRAFW::downloadRelease(ModRelease *release)
 {
-    if (!release)
+    if (!release || release->assets().isEmpty())
         return;
 
     Aptabase::instance()->track("download-"_L1 + settingsGroup(), {{"version"_L1, release->name()}});
 
-    if (release->assets().isEmpty())
-        return;
-
-    auto tempDir = new QTemporaryDir;
-    if (!tempDir->isValid())
-    {
-        qCWarning(UEVRAFWLog) << "Failed to create temporary directory";
-        delete tempDir;
-        return;
-    }
-
     const auto releaseId = release->id();
-    const QString zipPath = tempDir->path() + "/uevr_afw_"_L1 + QString::number(releaseId) + ".zip"_L1;
-
+    const auto asset = release->assets().constFirst();
     DownloadManager::instance()->download(
-        QNetworkRequest{release->assets().constFirst().url},
+        QNetworkRequest{asset.url},
         releaseTitle(release),
         true,
-        [this, zipPath, releaseId](const QByteArray &data) {
-            QFile file{zipPath};
-            if (!file.open(QIODevice::WriteOnly))
-            {
-                qCWarning(UEVRAFWLog) << "Failed to save UEVR AFW";
-                return;
-            }
-
-            file.write(data);
-            file.close();
-
+        [this, releaseId, asset](const QByteArray &data) {
             const QString targetDir = path(Paths::BasePath) + '/' + QString::number(releaseId);
-            if (!QFileInfo::exists(targetDir))
-                QDir{}.mkpath(targetDir);
-
-            QProcess process;
-            process.setWorkingDirectory(targetDir);
-            QStringList args;
-            args << "-o"_L1 << zipPath;
-            process.start("unzip"_L1, args);
-            process.waitForFinished();
-
-            if (process.exitCode() != 0)
+            if (QString error;
+                !asset.matches(data, &error) || !Archive::extractFresh(data, targetDir, "UEVRInjector.exe"_L1, &error))
             {
-                qCWarning(UEVRAFWLog) << "Unzip UEVR AFW failed:" << process.errorString();
-                qCWarning(UEVRAFWLog) << process.readAllStandardError();
-                QDir{targetDir}.removeRecursively();
-                return;
-            }
-
-            if (!QFileInfo::exists(targetDir + "/UEVRInjector.exe"_L1))
-            {
-                qCWarning(UEVRAFWLog) << "UEVR AFW archive did not contain UEVRInjector.exe";
-                QDir{targetDir}.removeRecursively();
+                failDownload(error);
                 return;
             }
 
@@ -129,8 +89,7 @@ void UEVRAFW::downloadRelease(ModRelease *release)
         },
         [](const QNetworkReply::NetworkError, const QString &errorMessage) {
             qCWarning(UEVRAFWLog) << "Download UEVR AFW failed:" << errorMessage;
-        },
-        [tempDir] { delete tempDir; });
+        });
 }
 
 void UEVRAFW::deleteRelease(ModRelease *release)
@@ -172,34 +131,20 @@ QString UEVRAFW::path(const Paths p) const
     }
 }
 
-void UEVRAFW::updateAvailableReleases()
+void UEVRAFW::refreshReleases()
 {
     QNetworkRequest req{{"https://api.github.com/repos/PureDark/UEVR/releases?per_page=100"_L1}};
     req.setRawHeader("X-GitHub-Api-Version"_ba, "2022-11-28"_ba);
 
-    DownloadManager::instance()->download(
+    DownloadManager::instance()->refreshCached(
         req,
         "UEVR AFW release information"_L1,
-        true,
-        [this](const QByteArray &data) {
-            if (!QJsonDocument::fromJson(data).isArray())
-            {
-                qCWarning(UEVRAFWLog) << "UEVR AFW release information was not a JSON array";
-                return;
-            }
-
-            QFile cache{path(Paths::CachedReleasesJSON)};
-            if (cache.open(QFile::WriteOnly))
-            {
-                cache.write(data);
-                cache.close();
-            }
-
-            parseReleaseInfoJson();
+        path(Paths::CachedReleasesJSON),
+        [this](bool changed) {
+            if (changed || m_releases.isEmpty())
+                parseReleaseInfoJson();
         },
-        [](const QNetworkReply::NetworkError, const QString &errorMessage) {
-            qCInfo(UEVRAFWLog) << "Error while fetching releases:" << errorMessage;
-        });
+        [](const QString &errorMessage) { qCInfo(UEVRAFWLog) << "Error while fetching releases:" << errorMessage; });
 }
 
 void UEVRAFW::parseReleaseInfoJson()
@@ -249,6 +194,7 @@ void UEVRAFW::parseReleaseInfoJson()
                 .url = {asset["browser_download_url"_L1].toString()},
                 .timestamp = QDateTime::fromString(asset["updated_at"_L1].toString(), Qt::ISODate),
                 .size = asset["size"_L1].toInt(),
+                .digest = asset["digest"_L1].toString(),
             });
 
             parsed.push_back(new ModRelease{

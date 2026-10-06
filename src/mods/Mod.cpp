@@ -1,5 +1,6 @@
 #include "Mod.h"
 
+#include <QCryptographicHash>
 #include <QFileInfo>
 #include <QJSEngine>
 #include <QLoggingCategory>
@@ -29,8 +30,35 @@ ModRelease::ModRelease(int id,
       m_assets{assets}
 {}
 
+bool ModRelease::Asset::matches(const QByteArray &data, QString *why) const
+{
+    if (size > 0 && data.size() != size)
+    {
+        *why = "The download of %1 was cut short. Check your connection and try again."_L1.arg(name);
+        return false;
+    }
+
+    const auto colon = digest.indexOf(':'_L1);
+    const auto algorithm = digest.left(colon).toLower();
+    if (colon > 0 && (algorithm == "sha256"_L1 || algorithm == "sha512"_L1))
+    {
+        const auto hash = QCryptographicHash::hash(
+            data, algorithm == "sha256"_L1 ? QCryptographicHash::Sha256 : QCryptographicHash::Sha512);
+        if (hash.toHex() != digest.mid(colon + 1).toLower().toLatin1())
+        {
+            *why = "The download of %1 doesn't match the checksum published for it. Try again; if it keeps "
+                   "happening, the file may have been replaced."_L1.arg(name);
+            return false;
+        }
+    }
+    return true;
+}
+
 void ModRelease::setDownloaded(bool state)
 {
+    // A release made of several files reports after each one. Only a change is news.
+    if (m_downloaded == state)
+        return;
     m_downloaded = state;
     emit downloadedChanged(state);
     if (auto mod = qobject_cast<Mod *>(parent()))
@@ -52,6 +80,9 @@ Mod::Mod(QObject *parent)
     // invokable, and the garbage collector deletes a parentless one once the UI drops it. preferredMod() hands mods to
     // QML that way; the next group() then crashes in vrMods() on the freed object.
     QJSEngine::setObjectOwnership(this, QJSEngine::CppOwnership);
+
+    connect(this, &QAbstractItemModel::modelReset, this, &Mod::releasesChanged);
+    connect(this, &Mod::releaseDownloadedChanged, this, &Mod::releasesChanged);
 
     // This HAS to be called later, or else the vtable won't have been built and therefore calling any virtual functions from
     // the mods model will crash
@@ -170,6 +201,36 @@ QString Mod::releaseTitle(const ModRelease *release) const
     return name.contains(displayName(), Qt::CaseInsensitive) ? name : displayName() + ' ' + name;
 }
 
+QString Mod::releaseLabel(const ModRelease *release) const
+{
+    if (!release)
+        return {};
+
+    // Whoever names releases is free with spaces and capitals: "BepInExConfigManager 1.3.0"
+    const auto name = release->name();
+    const auto mine = displayName();
+    qsizetype n = 0, m = 0;
+    while (n < name.size() && m < mine.size())
+    {
+        if (name.at(n).isSpace())
+            ++n;
+        else if (mine.at(m).isSpace())
+            ++m;
+        else if (name.at(n).toLower() == mine.at(m).toLower())
+        {
+            ++n;
+            ++m;
+        }
+        else
+            break;
+    }
+    // Only a whole word counts as the mod's name
+    if (m < mine.size() || (n < name.size() && name.at(n).isLetterOrNumber()))
+        return name;
+    const auto rest = name.mid(n).trimmed();
+    return rest.isEmpty() ? name : rest;
+}
+
 int Mod::rowCount(const QModelIndex &parent) const
 {
     return releases().count();
@@ -206,9 +267,8 @@ QHash<int, QByteArray> Mod::roleNames() const
 
 void Mod::setCurrentRelease(const int id)
 {
-    auto newVersion =
-        std::find_if(releases().constBegin(), releases().constEnd(), [id](const auto &r) { return r->id() == id; });
-    if (newVersion == releases().constEnd())
+    const auto newVersion = releaseFromId(id);
+    if (!newVersion)
     {
         qCWarning(logger()) << "Attempted to activate nonexistent %1"_L1.arg(displayName());
         Aptabase::instance()->track("nonexistent-mod-activation-bug",
@@ -216,7 +276,7 @@ void Mod::setCurrentRelease(const int id)
         return;
     }
 
-    m_currentRelease = releaseFromId(id);
+    m_currentRelease = newVersion;
     emit currentReleaseChanged(m_currentRelease);
 
     QSettings settings;
@@ -355,6 +415,21 @@ void Mod::fail(const QString &message)
     emit installFailed(message);
 }
 
+void Mod::failDownload(const QString &message)
+{
+    qCWarning(logger()).noquote() << message;
+    emit downloadFailed(message);
+    // A file that was replaced after Kaon last read the list of releases looks just like a damaged one. With a fresh
+    // list, trying again gets the file that is there now.
+    refreshReleases();
+}
+
+void Mod::failUninstall(const QString &message)
+{
+    qCWarning(logger()).noquote() << message;
+    emit uninstallFailed(message);
+}
+
 void Mod::launchMod(Game *game)
 {
     if (!game || !currentRelease())
@@ -367,6 +442,14 @@ void Mod::launchMod(Game *game)
 
 void Mod::installMod(Game *game)
 {
+    if (!game)
+        return;
+    if (!currentRelease())
+    {
+        fail("Kaon doesn't have a list of %1 versions yet. Check your connection and try again."_L1.arg(displayName()));
+        return;
+    }
+
     auto exes = acceptableInstallCandidates(game).values();
     QSet<QString> seen;
     exes.removeIf([&seen](const auto &exe) {
@@ -381,6 +464,11 @@ void Mod::installMod(Game *game)
     // What goes into the prefix is installed the same way whichever executable it is installed for
     if (installsIntoPrefix() && exes.size() > 1)
         exes.resize(1);
+    if (exes.size() > 1)
+    {
+        if (const auto preferred = preferredInstallCandidates(game, exes); !preferred.isEmpty())
+            exes = preferred;
+    }
 
     switch (exes.size())
     {
@@ -389,8 +477,6 @@ void Mod::installMod(Game *game)
         fail("%1 has no executable that %2 can be installed for."_L1.arg(game->name(), displayName()));
         break;
     case 1:
-        Aptabase::instance()->track("install-%1"_L1.arg(settingsGroup()),
-                                    {{"version"_L1, currentRelease()->name()}, {"game"_L1, game->name()}});
         installModImpl(game, exes.first());
         break;
     default:
@@ -399,7 +485,7 @@ void Mod::installMod(Game *game)
         const auto store = static_cast<int>(game->store());
         const auto id = game->id();
         auto m =
-            new GameExecutablePickerModel{this, game, [this, store, id](const Game::LaunchOption &exe) {
+            new GameExecutablePickerModel{this, game, exes, [this, store, id](const Game::LaunchOption &exe) {
                                               if (auto *current = GamesFilterModel::instance()->gameByIdentity(store, id))
                                                   installModImpl(current, exe);
                                           }};

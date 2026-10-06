@@ -2,15 +2,18 @@
 
 #include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QLoggingCategory>
-#include <QProcess>
+#include <QSaveFile>
+#include <QSet>
 #include <QSettings>
 #include <QStandardPaths>
 #include <QTimer>
 
 #include "Aptabase.h"
+#include "Archive.h"
 #include "DownloadManager.h"
 
 void GitHubMod::downloadRelease(ModRelease *release)
@@ -36,14 +39,19 @@ void GitHubMod::downloadRelease(ModRelease *release)
                 if (!release)
                     return;
 
-                QFile file{pathForRelease(release, asset)};
-                if (!file.open(QIODevice::WriteOnly))
+                if (QString why; !asset.matches(data, &why))
                 {
-                    qCWarning(logger()).noquote() << "Failed to save" << displayName();
+                    failDownload(why);
                     return;
                 }
-                file.write(data);
-                file.close();
+
+                // Written in one step: a file that exists is taken to be a finished download
+                QSaveFile file{pathForRelease(release, asset)};
+                if (!file.open(QIODevice::WriteOnly) || file.write(data) != data.size() || !file.commit())
+                {
+                    failDownload("Kaon couldn't save %1 to %2: %3"_L1.arg(asset.name, file.fileName(), file.errorString()));
+                    return;
+                }
 
                 // A release can be several files (BepInEx has one per platform). It isn't downloaded until all of them
                 // are, or an install waiting on it starts without the file it needs.
@@ -76,7 +84,8 @@ QString GitHubMod::path(const Paths p) const
     case Paths::ReleaseBasePath:
         return QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + '/' + settingsGroup();
     case Paths::CachedReleasesJSON:
-        return QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + "/%1_releases.json"_L1.arg(settingsGroup());
+        return QStandardPaths::writableLocation(QStandardPaths::CacheLocation) +
+               "/%1_releases.json"_L1.arg(releaseListName());
     default:
         return {};
     }
@@ -102,43 +111,33 @@ GitHubMod::GitHubMod(QObject *parent)
         // This gets executed here so we can actually call the virtual settingsGroup(). I love C++! /s
         QDir{QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)}.mkdir(settingsGroup());
 
+        // What was saved last time is there at once; the answer from GitHub replaces it when it differs
         parseReleaseInfoJson();
-        updateAvailableReleases();
+        refreshReleases();
     });
 }
 
-void GitHubMod::updateAvailableReleases()
+void GitHubMod::refreshReleases()
 {
     QNetworkRequest req{githubUrl()};
     req.setRawHeader("X-GitHub-Api-Version"_ba, "2022-11-28"_ba);
 
-    DownloadManager::instance()->download(
+    DownloadManager::instance()->refreshCached(
         req,
         "%1 release information"_L1.arg(displayName()),
-        true,
-        [this](const QByteArray &data) {
-            QFile cache{path(Paths::CachedReleasesJSON)};
-            if (cache.open(QFile::WriteOnly))
-            {
-                cache.write(data);
-                cache.close();
-            }
-            parseReleaseInfoJson();
+        path(Paths::CachedReleasesJSON),
+        [this](bool changed) {
+            if (changed || m_releases.isEmpty())
+                parseReleaseInfoJson();
         },
-        [this](const QNetworkReply::NetworkError error, const QString &errorMessage) {
-            qCInfo(logger()) << "Error while fetching releases:" << errorMessage;
-            return;
-        });
+        [this](const QString &errorMessage) { qCInfo(logger()) << "Error while fetching releases:" << errorMessage; });
 }
 
 void GitHubMod::parseReleaseInfoJson()
 {
     QFile cachedReleases{path(Paths::CachedReleasesJSON)};
     if (!cachedReleases.open(QFile::ReadOnly))
-    {
-        updateAvailableReleases();
         return;
-    }
 
     const auto releases = QJsonDocument::fromJson(cachedReleases.readAll());
     const int currentId = currentRelease() ? currentRelease()->id() : m_lastCurrentReleaseId;
@@ -152,7 +151,9 @@ void GitHubMod::parseReleaseInfoJson()
         if (prerelease && !offersPrereleases())
             continue;
 
-        const auto name = release["name"_L1].toString();
+        auto name = release["name"_L1].toString();
+        if (name.isEmpty())
+            name = release["tag_name"_L1].toString();
         const auto id = release["id"_L1].toInt();
         const auto timestamp = QDateTime::fromString(release["published_at"_L1].toString(), Qt::ISODate);
 
@@ -167,6 +168,7 @@ void GitHubMod::parseReleaseInfoJson()
                     .url = {asset["browser_download_url"_L1].toString()},
                     .timestamp = QDateTime::fromString(asset["updated_at"_L1].toString(), Qt::ISODate),
                     .size = asset["size"_L1].toInt(),
+                    .digest = asset["digest"_L1].toString(),
                 });
             }
         }
@@ -235,6 +237,7 @@ void GitHubZipExtractorMod::uninstallMod(Game *game)
     const auto toRemove = settings.value("installedFiles"_L1).toStringList();
 
     QStringList dirs;
+    const auto gameDir = QDir::cleanPath(game->installDir());
 
     for (const auto &file : toRemove)
     {
@@ -242,63 +245,78 @@ void GitHubZipExtractorMod::uninstallMod(Game *game)
             continue;
         if (file.endsWith('/'))
             dirs << file;
-        else
-            QFile{file}.remove();
+        else if (QFile{file}.remove() && !gameDir.isEmpty())
+        {
+            // Most zips don't list their folders. The ones this mod's files were in go too, once they are empty and
+            // as long as they are inside the game.
+            for (auto dir = QFileInfo{file}.absolutePath(); dir.startsWith(gameDir + '/') && !dirs.contains(dir);
+                 dir = QFileInfo{dir}.absolutePath())
+                dirs << dir;
+        }
     }
 
     std::sort(dirs.begin(), dirs.end(), [](const auto &l, const auto &r) { return l.count('/') > r.count('/'); });
     for (const auto &dir : std::as_const(dirs))
-        if (QDir d{dir}; d.isEmpty())
+        if (QDir d{dir}; d.exists() && d.isEmpty())
             d.removeRecursively();
 
     settings.remove("installedFiles"_L1);
     Mod::uninstallMod(game);
 }
 
-void GitHubZipExtractorMod::installModImpl(Game *game, const Game::LaunchOption &exe)
+bool GitHubZipExtractorMod::unpackInto(Game *game, const Game::LaunchOption &exe)
 {
-    QStringList installedFilesListing;
-    const auto installDir = modInstallDirForGame(game, exe);
-
-    if (!QFileInfo::exists(installDir))
-        QDir().mkpath(installDir);
-
+    const auto release = currentRelease();
+    if (!release || release->assets().isEmpty())
+    {
+        fail("%1 has no version to install yet."_L1.arg(displayName()));
+        return false;
+    }
     const auto asset = chooseAssetToInstall(game, exe);
     if (asset.id == -1)
     {
         fail("This version of %1 has no download that fits %2."_L1.arg(displayName(), game->name()));
-        return;
+        return false;
+    }
+    const auto archive = pathForRelease(release, asset);
+    if (!QFileInfo::exists(archive))
+    {
+        fail("Download %1 before installing it."_L1.arg(releaseTitle(release)));
+        return false;
     }
 
-    QProcess process;
-    process.setWorkingDirectory(installDir);
-    QStringList args;
-    args << "-o" << pathForRelease(currentRelease(), asset);
-    process.start("unzip", args);
-    process.waitForFinished();
-    if (process.exitCode() != 0)
+    const auto installDir = modInstallDirForGame(game, exe);
+    QString error;
+    QStringList names;
+    if (!Archive::list(archive, &names, &error) || !Archive::extract(archive, installDir, &error))
     {
-        qCWarning(logger()).noquote() << process.readAllStandardError();
-        fail("Kaon couldn't extract the %1 download. It may be damaged: delete it and download it again. Its log has the "
-             "details: ~/.cache/LorenDB/Kaon/kaon.log"_L1.arg(displayName()));
-        return;
-    }
-
-    args[0] = "-Z1"_L1;
-    process.start("unzip", args);
-    process.waitForFinished();
-    if (process.exitCode() == 0)
-    {
-        const auto files = QString{process.readAllStandardOutput()}.split('\n');
-        for (const auto &file : files)
-            if (!file.isEmpty())
-                installedFilesListing += installDir + '/' + file;
+        fail(error);
+        return false;
     }
 
     QSettings settings;
     settings.beginGroup(settingsGroup());
     settings.beginGroup(game->settingsId());
-    settings.setValue("installedFiles"_L1, installedFilesListing);
+    // Files an older version put there are still this mod's to remove
+    const auto before = settings.value("installedFiles"_L1).toStringList();
+    QSet<QString> installed{before.cbegin(), before.cend()};
+    for (const auto &name : std::as_const(names))
+    {
+        // Uninstalling deletes what is listed here. Nothing a zip says may point outside the folder it went into.
+        if (name.startsWith('/'_L1) || name.split('/'_L1).contains(".."_L1))
+        {
+            qCWarning(logger()) << "Ignoring" << name << "in" << archive;
+            continue;
+        }
+        installed.insert(installDir + '/' + name);
+    }
+    installed.remove(QString{});
+    settings.setValue("installedFiles"_L1, QStringList{installed.cbegin(), installed.cend()});
+    return true;
+}
 
-    Mod::installModImpl(game, exe);
+void GitHubZipExtractorMod::installModImpl(Game *game, const Game::LaunchOption &exe)
+{
+    if (unpackInto(game, exe))
+        Mod::installModImpl(game, exe);
 }

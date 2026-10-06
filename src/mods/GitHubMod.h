@@ -6,6 +6,9 @@ class GitHubMod : public Mod
 {
     Q_OBJECT
 
+public:
+    void refreshReleases() final;
+
 public slots:
     void downloadRelease(ModRelease *release) final;
     void deleteRelease(ModRelease *release) final;
@@ -27,11 +30,13 @@ protected:
     virtual ModRelease::Asset chooseAssetToInstall(const Game *game, const Game::LaunchOption &exe) const;
     // False for mods whose prereleases must never be offered, not even behind the version menu's switch
     virtual bool offersPrereleases() const { return true; }
+    // Names the saved copy of the release list. Mods that read the same repository share one copy, and only the first of
+    // them to ask downloads it.
+    virtual QString releaseListName() const { return settingsGroup(); }
 
 private:
     virtual QList<ModRelease *> releases() const final { return m_releases; }
 
-    void updateAvailableReleases();
     void parseReleaseInfoJson();
     bool showsPrereleases() const;
     // The release a mod starts out on when it has no saved one: the newest that the version menu shows
@@ -52,6 +57,10 @@ protected:
     ~GitHubZipExtractorMod() = default;
 
     virtual QString modInstallDirForGame(const Game *game, const Game::LaunchOption &executable) const;
+    // Unpacks the current release into the game and remembers which files that put there, for uninstalling. Returns
+    // false after reporting why it couldn't. A mod with more to do afterwards calls this, does it, and then calls
+    // Mod::installModImpl().
+    bool unpackInto(Game *game, const Game::LaunchOption &exe);
 
 public slots:
     void uninstallMod(Game *game) override;

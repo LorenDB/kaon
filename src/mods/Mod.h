@@ -30,6 +30,12 @@ public:
         QUrl url;
         QDateTime timestamp;
         int size = 0;
+        // "sha256:<hex>" when whoever published the file also published its checksum. Empty otherwise.
+        QString digest;
+
+        // Whether data is the file this asset describes: the right size, and the right checksum where there is one.
+        // why says what is wrong, in words meant for the user.
+        bool matches(const QByteArray &data, QString *why) const;
     };
 
     ModRelease(int id,
@@ -90,6 +96,10 @@ class Mod : public QAbstractListModel
     // runtime-specific tool. Shown as "Name · Runtime" on the game's page so players know what each tool supports.
     Q_PROPERTY(QString vrRuntime READ vrRuntime CONSTANT FINAL)
     Q_PROPERTY(int launchDelay READ launchDelay WRITE setLaunchDelay NOTIFY launchDelayChanged FINAL)
+    // What the list of releases holds, for the version menu
+    Q_PROPERTY(bool hasNightlies READ hasNightlies NOTIFY releasesChanged FINAL)
+    Q_PROPERTY(bool hasPrereleases READ hasPrereleases NOTIFY releasesChanged FINAL)
+    Q_PROPERTY(int downloadedCount READ downloadedCount NOTIFY releasesChanged FINAL)
 
 public:
     Mod(QObject *parent = nullptr);
@@ -100,6 +110,8 @@ public:
     // One plain sentence saying what the mod does
     virtual QString description() const { return {}; }
     virtual QString launchOptions() const { return {}; }
+    // Arguments that keep the mod from loading, and so have to come out of a game's launch options
+    virtual QStringList conflictingLaunchOptions() const { return {}; }
     virtual const QLoggingCategory &logger() const = 0;
 
     virtual bool hasRepairOption() const = 0;
@@ -109,6 +121,8 @@ public:
     virtual bool providesVr() const { return true; }
     virtual bool optional() const { return false; }
     virtual QString vrRuntime() const { return {}; }
+    // For an optional tool: what to tell the player while it is on for a game, e.g. where its settings are
+    virtual QString installedNote() const { return {}; }
     // True if installing the mod runs something inside the game's Wine prefix, which therefore has to exist first.
     virtual bool installsIntoPrefix() const { return false; }
     // Non-empty when the mod fits this game but installation has to wait. Shown instead of the install button.
@@ -139,8 +153,8 @@ public:
     {
         return game && !acceptableInstallCandidates(game).isEmpty();
     }
-    Q_INVOKABLE bool hasNightlies() const;
-    Q_INVOKABLE bool hasPrereleases() const;
+    bool hasNightlies() const;
+    bool hasPrereleases() const;
 
     // Set while something asynchronous, like an installer running in Wine, is working on this mod for a game.
     Q_INVOKABLE bool isBusyForGame(const Game *game) const;
@@ -150,14 +164,18 @@ public:
 
     ModRelease *currentRelease() const;
     Q_INVOKABLE ModRelease *releaseFromId(const int id) const;
-    Q_INVOKABLE int downloadedCount() const;
+    int downloadedCount() const;
     Q_INVOKABLE ModRelease *releaseInstalledForGame(const Game *game);
     // What to call a release where the mod isn't named next to it. "UEVR 1.05" stays as it is; a bare "0.4.0" becomes
     // "UUVR 0.4.0".
     QString releaseTitle(const ModRelease *release) const;
+    // The other way round, for right beside the mod's name: "UEVR 1.05" becomes "1.05"
+    Q_INVOKABLE QString releaseLabel(const ModRelease *release) const;
 
     // Override this to apply filters to both the entire game and individual executables
     virtual QMap<int, Game::LaunchOption> acceptableInstallCandidates(const Game *game) const;
+    // Asks for the list of releases again. Mods fetch it by themselves on startup; this is for trying again later.
+    Q_INVOKABLE virtual void refreshReleases() {}
 
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
@@ -183,6 +201,8 @@ public slots:
 
 signals:
     void currentReleaseChanged(ModRelease *);
+    // The list of releases was rebuilt, or one of them was downloaded or deleted
+    void releasesChanged();
     void installedInGameChanged(Game *game);
     void requestChooseLaunchOption(GameExecutablePickerModel *m);
     void releaseDownloadedChanged(ModRelease *release);
@@ -190,6 +210,10 @@ signals:
     void launchDelayChanged();
     // An install gave up. The message says why, in words meant for the user.
     void installFailed(const QString &message);
+    // A download arrived but could not be used, e.g. it was cut short or would not unpack
+    void downloadFailed(const QString &message);
+    // The mod is still in the game after an attempt to take it out
+    void uninstallFailed(const QString &message);
 
 protected:
     // Override this to implement the actual installation logic. Your implementation must call this base function at its end!
@@ -199,6 +223,18 @@ protected:
 
     // Call this when an install can't go on. Logs the message and shows it to the user.
     void fail(const QString &message);
+    // The same for a download that arrived and turned out to be unusable
+    void failDownload(const QString &message);
+    // And for an uninstall that left the mod where it was
+    void failUninstall(const QString &message);
+
+    // Override this to leave out executables the mod could be installed for, but shouldn't be when there is a better one.
+    // Only asked when there is more than one. Must not return an empty list.
+    virtual QList<Game::LaunchOption> preferredInstallCandidates(const Game *game,
+                                                                 const QList<Game::LaunchOption> &all) const
+    {
+        return all;
+    }
 
     // Use this if you need to have whatever the settings had at startup, e.g. if you need to download release information
     // before you can build the release list

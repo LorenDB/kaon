@@ -30,6 +30,8 @@ public:
 
     virtual QMap<int, Game::LaunchOption> acceptableInstallCandidates(const Game *game) const override;
 
+    void refreshReleases() override;
+
 public slots:
     void downloadRelease(ModRelease *release) override;
     void deleteRelease(ModRelease *release) override;
@@ -51,7 +53,6 @@ private:
 
     virtual QList<ModRelease *> releases() const override { return m_releases; }
 
-    void updateAvailableReleases();
     void parseReleaseInfoJson();
 
     QList<ModRelease *> m_releases;

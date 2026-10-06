@@ -1,14 +1,35 @@
 #include "GameExecutablePickerModel.h"
 
+#include <QDir>
 #include <QTimer>
 
-GameExecutablePickerModel::GameExecutablePickerModel(Mod *mod, Game *game, std::function<void(Game::LaunchOption)> callback)
+GameExecutablePickerModel::GameExecutablePickerModel(Mod *mod,
+                                                     Game *game,
+                                                     const QList<Game::LaunchOption> &options,
+                                                     std::function<void(Game::LaunchOption)> callback)
     : QAbstractListModel{mod},
       m_mod{mod},
       m_game{game},
+      m_availableLaunchOptions{options},
       m_callback{callback}
 {
-    m_availableLaunchOptions = m_mod->acceptableInstallCandidates(game);
+    // Worked out now: a rescan can delete the game while the dialog is still open
+    const QDir root{game->installDir()};
+    for (const auto &exe : options)
+    {
+        // Two launch options often share a file name and differ only in the folder
+        auto path = root.relativeFilePath(exe.executable);
+        if (path.startsWith("../"_L1))
+            path = exe.executable;
+
+        const auto bits = exe.arch == Game::Architecture::x64 ? "64-bit "_L1 :
+                          exe.arch == Game::Architecture::x86 ? "32-bit "_L1 :
+                                                                ""_L1;
+        const auto platform = exe.platform == Game::Platform::Windows ? "Windows"_L1 :
+                              exe.platform == Game::Platform::Linux   ? "Linux"_L1 :
+                                                                        "macOS"_L1;
+        m_labels << path + u" · "_s + bits + platform;
+    }
 }
 
 int GameExecutablePickerModel::rowCount(const QModelIndex &parent) const
@@ -21,20 +42,8 @@ QVariant GameExecutablePickerModel::data(const QModelIndex &index, int role) con
     if (!index.isValid() || index.row() < 0 || index.row() >= m_availableLaunchOptions.size())
         return {};
 
-    const auto key = m_availableLaunchOptions.keys()[index.row()];
-    const auto &exe = m_availableLaunchOptions[key];
-    switch (role)
-    {
-    case Qt::DisplayRole:
-    {
-        return "%1 %2 (%3)"_L1.arg(QMetaEnum::fromType<Game::Platform>().valueToKey(static_cast<quint64>(exe.platform)),
-                                   QMetaEnum::fromType<Game::Architecture>().valueToKey(static_cast<quint64>(exe.arch)),
-                                   exe.executable.split('/').last());
-    }
-    default:
-        break;
-    }
-
+    if (role == Qt::DisplayRole)
+        return m_labels.at(index.row());
     return {};
 }
 
@@ -45,7 +54,8 @@ QHash<int, QByteArray> GameExecutablePickerModel::roleNames() const
 
 void GameExecutablePickerModel::select(int index)
 {
-    m_callback(m_availableLaunchOptions[m_availableLaunchOptions.keys()[index]]);
+    if (index >= 0 && index < m_availableLaunchOptions.size())
+        m_callback(m_availableLaunchOptions.at(index));
 }
 
 void GameExecutablePickerModel::destroySelf()

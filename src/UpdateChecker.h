@@ -16,7 +16,8 @@ public:
     static UpdateChecker *instance();
     static UpdateChecker *create(QQmlEngine *, QJSEngine *);
 
-    Q_INVOKABLE void checkUpdates();
+    // announce is for a check somebody asked for: it also reports when there is nothing new, or no answer
+    Q_INVOKABLE void checkUpdates(bool announce = false);
 
     bool enabled() const { return m_enabled; }
     QString ignore() const { return m_ignore; }
@@ -26,6 +27,8 @@ public:
 
 signals:
     void updateAvailable(const QString &version, const QString &url);
+    void upToDate();
+    void checkFailed();
 
     void enabledChanged(bool state);
     void ignoreChanged(const QString &ignore);

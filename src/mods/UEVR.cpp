@@ -1,17 +1,20 @@
 #include "UEVR.h"
 
+#include <QDir>
+#include <QFile>
+#include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QLoggingCategory>
-#include <QProcess>
+#include <QRegularExpression>
 #include <QSettings>
 #include <QStandardPaths>
-#include <QTemporaryDir>
 #include <QTimer>
 
 #include <memory>
 
 #include "Aptabase.h"
+#include "Archive.h"
 #include "Dotnet.h"
 #include "DownloadManager.h"
 #include "Wine.h"
@@ -24,8 +27,9 @@ UEVR::UEVR(QObject *parent)
     // Execute downloads on the first event tick to give time for the download
     // manager to initialize
     QTimer::singleShot(0, this, [this] {
+        // What was saved last time is there at once; the answer from GitHub replaces it when it differs
         parseReleaseInfoJson();
-        updateAvailableReleases();
+        refreshReleases();
     });
 }
 
@@ -52,67 +56,43 @@ QList<Mod *> UEVR::dependencies() const
 
 bool UEVR::isInstalledForGame(const Game *game) const
 {
-    return currentRelease()->downloaded();
+    return currentRelease() && currentRelease()->downloaded();
 }
 
 void UEVR::downloadRelease(ModRelease *release)
 {
+    if (!release || release->assets().isEmpty())
+        return;
+
     Aptabase::instance()->track("download-uevr"_L1, {{"version"_L1, release->name()}});
 
-    if (release->assets().isEmpty())
-        return;
-
-    auto tempDir = new QTemporaryDir;
-    if (!tempDir->isValid())
-    {
-        qCWarning(UEVRLog) << "Failed to create temporary directory";
-        return;
-    }
-
-    const QString zipPath = tempDir->path() + "/uevr_" + QString::number(release->id()) + ".zip";
-
+    const auto releaseId = release->id();
+    const auto asset = release->assets().constFirst();
     DownloadManager::instance()->download(
-        QNetworkRequest{release->assets().constFirst().url},
+        QNetworkRequest{asset.url},
         releaseTitle(release),
         true,
-        [this, zipPath, release](const QByteArray &data) {
-            QFile file(zipPath);
-            if (file.open(QIODevice::WriteOnly))
+        [this, releaseId, asset](const QByteArray &data) {
+            const QString targetDir = path(Paths::UEVRBasePath) + '/' + QString::number(releaseId);
+            if (QString error;
+                !asset.matches(data, &error) || !Archive::extractFresh(data, targetDir, "UEVRInjector.exe"_L1, &error))
             {
-                file.write(data);
-                file.close();
-
-                QString targetDir = path(Paths::UEVRBasePath) + '/' + QString::number(release->id());
-                if (!QFileInfo::exists(targetDir))
-                    QDir().mkpath(targetDir);
-
-                QProcess process;
-                process.setWorkingDirectory(targetDir);
-                QStringList args;
-                args << "-o" << zipPath;
-                process.start("unzip", args);
-                process.waitForFinished();
-
-                if (process.exitCode() != 0)
-                {
-                    qCWarning(UEVRLog) << "Unzip UEVR failed:" << process.errorString();
-                    qCWarning(UEVRLog) << process.readAllStandardError();
-                }
-                else
-                    release->setDownloaded(true);
+                failDownload(error);
+                return;
             }
-            else
-                qCWarning(UEVRLog) << "Failed to save UEVR";
+
+            // A release refresh may have replaced the ModRelease this download started with.
+            if (auto *downloaded = releaseFromId(releaseId))
+                downloaded->setDownloaded(true);
         },
         [](const QNetworkReply::NetworkError error, const QString &errorMessage) {
             qCWarning(UEVRLog) << "Download UEVR failed:" << errorMessage;
-        },
-        [tempDir] { delete tempDir; });
+        });
 }
 
 void UEVR::deleteRelease(ModRelease *release)
 {
-    if (!release->downloaded())
+    if (!release || !release->downloaded())
         return;
 
     QDir installDir{path(Paths::UEVRBasePath) + '/' + QString::number(release->id())};
@@ -155,39 +135,31 @@ QString UEVR::path(const Paths path) const
     }
 }
 
-void UEVR::updateAvailableReleases()
+void UEVR::refreshReleases()
 {
+    // Releases and nightlies are two repositories. The list is rebuilt once, after both have answered.
     auto settled = std::make_shared<int>(0);
-    auto anyFailed = std::make_shared<bool>(false);
+    auto anyChanged = std::make_shared<bool>(false);
 
-    const auto impl = [this, settled, anyFailed](QUrl url, const QString cachePath) {
+    const auto impl = [this, settled, anyChanged](QUrl url, const QString cachePath) {
         QNetworkRequest req{url};
         req.setRawHeader("X-GitHub-Api-Version"_ba, "2022-11-28"_ba);
 
-        const auto done = [this, settled, anyFailed] {
-            if (++(*settled) < 2)
-                return;
-            if (!*anyFailed)
+        const auto done = [this, settled, anyChanged] {
+            if (++(*settled) == 2 && (*anyChanged || m_releases.isEmpty()))
                 parseReleaseInfoJson();
         };
 
-        DownloadManager::instance()->download(
+        DownloadManager::instance()->refreshCached(
             req,
             "UEVR release information"_L1,
-            true,
-            [this, cachePath, done](const QByteArray &data) {
-                QFile cache{cachePath};
-                if (cache.open(QFile::WriteOnly))
-                {
-                    cache.write(data);
-                    cache.close();
-                }
-
+            cachePath,
+            [anyChanged, done](bool changed) {
+                *anyChanged = *anyChanged || changed;
                 done();
             },
-            [anyFailed, done](const QNetworkReply::NetworkError, const QString &errorMessage) {
+            [done](const QString &errorMessage) {
                 qCInfo(UEVRLog) << "Error while fetching releases:" << errorMessage;
-                *anyFailed = true;
                 done();
             });
     };
@@ -198,45 +170,32 @@ void UEVR::updateAvailableReleases()
 
 void UEVR::parseReleaseInfoJson()
 {
-    QFile cachedReleases{path(Paths::CachedReleasesJSON)};
-    QFile cachedNightlies{path(Paths::CachedNightliesJSON)};
-    if (!cachedReleases.open(QFile::ReadOnly) || !cachedNightlies.open(QFile::ReadOnly))
-    {
-        updateAvailableReleases();
-        return;
-    }
-
-    beginResetModel();
-
-    const auto releases = QJsonDocument::fromJson(cachedReleases.readAll());
-    const auto nightlies = QJsonDocument::fromJson(cachedNightlies.readAll());
+    const auto read = [](const QString &path) {
+        QFile cached{path};
+        return cached.open(QFile::ReadOnly) ? QJsonDocument::fromJson(cached.readAll()).array() : QJsonArray{};
+    };
+    const auto releases = read(path(Paths::CachedReleasesJSON));
+    const auto nightlies = read(path(Paths::CachedNightliesJSON));
 
     const int currentId = currentRelease() ? currentRelease()->id() : m_lastCurrentReleaseId;
 
-    for (const auto release : std::as_const(m_releases))
-        release->deleteLater();
-    m_releases.clear();
-
-    auto parseRelease = [this](const QJsonValue &json, bool nightly) {
+    QList<ModRelease *> parsed;
+    const auto parseRelease = [this, &parsed](const QJsonValue &json, bool nightly) {
         auto name = json["name"_L1].toString();
 
         // Shorten the git hash in nightly release names for display purposes
         static const QRegularExpression rx(R"(^UEVR Nightly \d+ \([0-9a-f]{40}\)$)"_L1,
                                            QRegularExpression::CaseInsensitiveOption);
 
+        // We want to end up with a 7-character git hash. Therefore, after finding the " (", we increment 2 to get to the
+        // git hash and then 7 more to get to the end of the short hash.
         if (rx.match(name).hasMatch())
-        {
-            // We want to end up with a 7-character git hash. Therefore, after finding the " (", we increment 2 to get to the
-            // git hash and then 7 more to get to the end of the short hash.
-            int parenStart = name.lastIndexOf(" ("_L1) + 9;
-            if (parenStart != -1)
-                name = name.left(parenStart) + ')';
-        }
+            name = name.left(name.lastIndexOf(" ("_L1) + 9) + ')';
 
         const auto id = json["id"_L1].toInt();
         const auto timestamp = QDateTime::fromString(json["published_at"_L1].toString(), Qt::ISODate);
-        const auto downloaded = QFileInfo::exists(UEVR::instance()->path(UEVR::Paths::UEVRBasePath) + '/' +
-                                                  QString::number(id) + "/UEVRInjector.exe"_L1);
+        const auto downloaded =
+            QFileInfo::exists(path(Paths::UEVRBasePath) + '/' + QString::number(id) + "/UEVRInjector.exe"_L1);
 
         QList<ModRelease::Asset> assets;
         for (const auto &asset : json["assets"_L1].toArray())
@@ -249,21 +208,32 @@ void UEVR::parseReleaseInfoJson()
                     .url = {asset["browser_download_url"_L1].toString()},
                     .timestamp = QDateTime::fromString(asset["updated_at"_L1].toString(), Qt::ISODate),
                     .size = asset["size"_L1].toInt(),
+                    .digest = asset["digest"_L1].toString(),
                 });
             }
         }
 
-        return new ModRelease{id, name, timestamp, nightly, false, downloaded, assets, this};
+        // A release without UEVR.zip has nothing to run, and must never end up as the current one
+        if (!assets.isEmpty())
+            parsed.push_back(new ModRelease{id, name, timestamp, nightly, false, downloaded, assets, this});
     };
 
-    for (const auto &release : releases.array())
-        m_releases.push_back(parseRelease(release, false));
-    for (const auto &nightly : nightlies.array())
-        m_releases.push_back(parseRelease(nightly, true));
+    for (const auto &release : releases)
+        parseRelease(release, false);
+    for (const auto &nightly : nightlies)
+        parseRelease(nightly, true);
 
+    // Keep the old list when there is nothing to replace it with, so the current release never points at a deleted one
+    if (parsed.isEmpty())
+        return;
+
+    beginResetModel();
+    for (const auto release : std::as_const(m_releases))
+        release->deleteLater();
+    m_releases = parsed;
     endResetModel();
 
     if (currentId != 0 && !releaseFromId(currentId))
         qCWarning(UEVRLog) << "Saved UEVR release" << currentId << "is no longer available";
-    setCurrentRelease(releaseFromId(currentId) ? currentId : m_releases.first()->id());
+    setCurrentRelease(releaseFromId(currentId) ? currentId : m_releases.constFirst()->id());
 }

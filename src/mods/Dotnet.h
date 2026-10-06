@@ -29,6 +29,7 @@ public:
     // .NET is only needed for UEVR, so we'll only show it for Unreal games
     virtual Game::Engines compatibleEngines() const override { return Game::Engine::Unreal; }
     virtual bool isInstalledForGame(const Game *game) const override;
+    QString installHoldReason(const Game *game) const override;
 
     virtual QMap<int, Game::LaunchOption> acceptableInstallCandidates(const Game *game) const override;
 

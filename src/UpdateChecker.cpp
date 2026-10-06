@@ -1,9 +1,11 @@
 #include "UpdateChecker.h"
 
 #include <QCoreApplication>
+#include <QFile>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QSettings>
+#include <QStandardPaths>
 #include <QVersionNumber>
 
 #include "DownloadManager.h"
@@ -51,28 +53,41 @@ void UpdateChecker::setIgnore(const QString &ignore)
     settings.setValue("ignore"_L1, ignore);
 }
 
-void UpdateChecker::checkUpdates()
+void UpdateChecker::checkUpdates(bool announce)
 {
-    DownloadManager::instance()->download(
-        QNetworkRequest{{"https://api.github.com/repos/LorenDB/kaon/releases"_L1}},
+    const QString cache = QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + "/kaon_releases.json"_L1;
+    QNetworkRequest request{{"https://api.github.com/repos/LorenDB/kaon/releases"_L1}};
+    request.setRawHeader("X-GitHub-Api-Version"_ba, "2022-11-28"_ba);
+
+    DownloadManager::instance()->refreshCached(
+        request,
         "Kaon release info"_L1,
-        false,
-        [this](QByteArray data) {
-            auto releases = QJsonDocument::fromJson(data).array();
+        cache,
+        [this, cache, announce](bool) {
+            QFile saved{cache};
+            if (!saved.open(QIODevice::ReadOnly))
+                return;
+            const auto releases = QJsonDocument::fromJson(saved.readAll()).array();
             const auto currentVersion = QVersionNumber::fromString(qApp->applicationVersion());
-            for (const auto &release : std::as_const(releases))
+            for (const auto &release : releases)
             {
                 const auto versionStr = release["tag_name"_L1].toString();
                 const auto version = QVersionNumber::fromString(versionStr.right(versionStr.size() - 1));
                 if (version > currentVersion)
                 {
-                    if (!m_ignore.isEmpty() && version <= QVersionNumber::fromString(m_ignore))
+                    // Skipping a version only silences the check Kaon makes by itself
+                    if (!announce && !m_ignore.isEmpty() && version <= QVersionNumber::fromString(m_ignore))
                         continue;
 
                     emit updateAvailable(version.toString(), release["html_url"_L1].toString());
                     return;
                 }
             }
+            if (announce)
+                emit upToDate();
         },
-        [](QNetworkReply::NetworkError error, QString errorMessage) {});
+        [this, announce](const QString &) {
+            if (announce)
+                emit checkFailed();
+        });
 }

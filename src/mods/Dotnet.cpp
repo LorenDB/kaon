@@ -3,10 +3,11 @@
 #include <QDir>
 #include <QFileInfo>
 #include <QLoggingCategory>
-#include <QProcess>
+#include <QSaveFile>
 #include <QStandardPaths>
 
 #include "Aptabase.h"
+#include "Archive.h"
 #include "DownloadManager.h"
 
 Q_LOGGING_CATEGORY(DotNetLog, "dotnet")
@@ -16,6 +17,12 @@ namespace
     const QUrl runtimeUrl{"https://builds.dotnet.microsoft.com/dotnet/Runtime/6.0.36/dotnet-runtime-6.0.36-win-x64.zip"_L1};
     const QUrl desktopUrl{
         "https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/6.0.36/windowsdesktop-runtime-6.0.36-win-x64.zip"_L1};
+    // From Microsoft's release metadata for 6.0.36, the last release of .NET 6:
+    // https://builds.dotnet.microsoft.com/dotnet/release-metadata/6.0/releases.json
+    const auto runtimeDigest = "sha512:935db5c6cee19f2c016e67168bfae7b491044735de76c673abb3b125dd325fd5e779d7efe12ba80178d4"
+                               "6689ae70a25e558a3fa846417d44c5f4ca256e7f4bf2"_L1;
+    const auto desktopDigest = "sha512:cee88fef07643dceb3d34ea71b64eeae85b8e39e7042bc4d35bc3a1f1df29373681dc48e31c01c9f593e"
+                               "c412699f6762b6fc5817433283c89df35a27ce8885bf"_L1;
 
     QString dotnetDir(const Game *game)
     {
@@ -23,24 +30,6 @@ namespace
         // An x64 program like UEVR's injector runs emulated under an arm64 Wine, and the .NET host then looks for its
         // runtime in an x64 subfolder, the same as on Windows on Arm. See pal::get_default_installation_dir in the host.
         return game->hasArm64Wine() ? dir + "/x64"_L1 : dir;
-    }
-
-    bool extractZip(const QString &zip, const QString &target)
-    {
-        if (!QFileInfo::exists(target))
-            QDir().mkpath(target);
-
-        QProcess unzip;
-        unzip.setWorkingDirectory(target);
-        unzip.start("unzip"_L1, {"-o"_L1, "-qq"_L1, zip, "-d"_L1, target});
-        unzip.waitForFinished(-1);
-        if (unzip.exitCode() != 0)
-        {
-            qCWarning(DotNetLog) << "Unzip" << zip << "failed:" << unzip.errorString();
-            qCWarning(DotNetLog) << unzip.readAllStandardError();
-            return false;
-        }
-        return true;
     }
 
     void removeIfEmpty(const QString &path)
@@ -105,16 +94,17 @@ void Dotnet::downloadRelease(ModRelease *)
 {
     Aptabase::instance()->track("download-"_L1 + settingsGroup(), {{"version"_L1, currentRelease()->name()}});
 
-    const auto saveTo = [](const QString &path, const char *what) {
-        return [path, what](const QByteArray &data) {
-            QFile file{path};
-            if (file.open(QIODevice::WriteOnly))
+    const auto saveTo = [this](const QString &path, const ModRelease::Asset &asset) {
+        return [this, path, asset](const QByteArray &data) {
+            if (QString why; !asset.matches(data, &why))
             {
-                file.write(data);
-                file.close();
+                failDownload(why);
+                return;
             }
-            else
-                qCWarning(DotNetLog) << "Failed to save downloaded" << what;
+            // Written in one step: both files being there is what counts as downloaded
+            QSaveFile file{path};
+            if (!file.open(QIODevice::WriteOnly) || file.write(data) != data.size() || !file.commit())
+                failDownload("Kaon couldn't save %1 to %2: %3"_L1.arg(asset.name, path, file.errorString()));
         };
     };
 
@@ -125,12 +115,13 @@ void Dotnet::downloadRelease(ModRelease *)
     const auto refresh = [this] { releases().constFirst()->setDownloaded(hasDotnetCached()); };
 
     // The queue runs these one at a time; the second refresh flips downloaded to true.
+    const auto assets = releases().constFirst()->assets();
     DownloadManager::instance()->download(
-        QNetworkRequest{runtimeUrl}, ".NET Runtime 6.0.36"_L1, true, saveTo(m_runtimeZip, ".NET runtime"), fail, refresh);
+        QNetworkRequest{runtimeUrl}, ".NET Runtime 6.0.36"_L1, true, saveTo(m_runtimeZip, assets.at(0)), fail, refresh);
     DownloadManager::instance()->download(QNetworkRequest{desktopUrl},
                                           ".NET Desktop Runtime 6.0.36"_L1,
                                           true,
-                                          saveTo(m_desktopZip, ".NET desktop runtime"),
+                                          saveTo(m_desktopZip, assets.at(1)),
                                           fail,
                                           refresh);
 }
@@ -171,16 +162,32 @@ void Dotnet::uninstallMod(Game *game)
     Mod::uninstallMod(game);
 }
 
+QString Dotnet::installHoldReason(const Game *game) const
+{
+    if (game && !game->hasValidWine())
+        return "Can be installed once the prefix exists"_L1;
+    return {};
+}
+
 void Dotnet::installModImpl(Game *game, const Game::LaunchOption &exe)
 {
-    if (!hasDotnetCached() || !game || !game->hasValidWine())
+    if (!game)
         return;
+    if (!hasDotnetCached())
+    {
+        fail("Download the .NET runtime before installing it."_L1);
+        return;
+    }
+    if (!game->hasValidWine())
+    {
+        fail("%1 has no Proton prefix yet. Launch it once, rescan, and try again."_L1.arg(game->name()));
+        return;
+    }
 
     const auto target = dotnetDir(game);
-    if (!extractZip(m_runtimeZip, target) || !extractZip(m_desktopZip, target))
+    if (QString error; !Archive::extract(m_runtimeZip, target, &error) || !Archive::extract(m_desktopZip, target, &error))
     {
-        fail("Kaon couldn't extract the .NET runtime into %1's prefix. Its log has the details: "
-             "~/.cache/LorenDB/Kaon/kaon.log"_L1.arg(game->name()));
+        fail(error);
         return;
     }
 
@@ -216,6 +223,7 @@ QList<ModRelease *> Dotnet::releases() const
                                                         .url = {runtimeUrl},
                                                         .timestamp = QDateTime{{2024, 11, 12}, {0, 0, 0}},
                                                         .size = 33057872,
+                                                        .digest = runtimeDigest,
                                                     },
                                                     ModRelease::Asset{
                                                         .id = 421,
@@ -223,6 +231,7 @@ QList<ModRelease *> Dotnet::releases() const
                                                         .url = {desktopUrl},
                                                         .timestamp = QDateTime{{2024, 11, 12}, {0, 0, 0}},
                                                         .size = 36315065,
+                                                        .digest = desktopDigest,
                                                     }},
                                                    // parented to the mod so downloads of it are reported like any other
                                                    // release
