@@ -1,9 +1,12 @@
 #pragma once
 
 #include <QDateTime>
+#include <QHash>
 #include <QQmlEngine>
 #include <QStringList>
 #include <QVariant>
+
+#include <optional>
 
 #include "Store.h"
 
@@ -29,9 +32,15 @@ public:
 
     Q_INVOKABLE void launchSteamVR();
 
+    // What the player typed into a game's launch options in Steam, read from the settings of whoever used that Steam
+    // last. Empty when there are none. Null when the game isn't from Steam, or its settings can't be read.
+    std::optional<QString> launchOptions(const Game *game);
+
 signals:
     void hasSteamVRChanged(bool state);
     void librariesChanged();
+    // Steam wrote its settings down again, so launchOptions() may answer differently
+    void launchOptionsChanged();
 
 private:
     struct Install
@@ -54,6 +63,22 @@ private:
     void applyLibraryWatch(const QStringList &paths);
     void onLibraryChanged(const QString &path);
     void refreshLibrary();
+    void watchLocalConfig(const QString &file);
+
+    struct LocalConfig
+    {
+        QString file;
+        QDateTime modified;
+        qint64 size = -1;
+        bool readable = false;
+        // By app id
+        QHash<QString, QString> launchOptions;
+    };
+    // By the path of the Steam install
+    QHash<QString, LocalConfig> m_localConfigs;
+    QFileSystemWatcher *m_configWatcher = nullptr;
+    QTimer *m_configChanged = nullptr;
+    QStringList m_watchedConfigs;
 
     QString m_steamRoot;
     QList<Install> m_installs;

@@ -15,10 +15,13 @@ class GamesFilterModel : public QSortFilterProxyModel
 
     Q_PROPERTY(Game::Engines engineFilter READ engineFilter NOTIFY engineFilterChanged FINAL)
     Q_PROPERTY(Game::AppTypes typeFilter READ typeFilter NOTIFY typeFilterChanged FINAL)
-    Q_PROPERTY(Game::Features featureFilter READ featureFilter NOTIFY typeFilterChanged FINAL)
+    Q_PROPERTY(Game::Features featureFilter READ featureFilter NOTIFY featureFilterChanged FINAL)
     Q_PROPERTY(Game::Stores storeFilter READ storeFilter NOTIFY storeFilterChanged FINAL)
     Q_PROPERTY(QString search READ search WRITE setSearch NOTIFY searchChanged FINAL)
     Q_PROPERTY(bool scanning READ scanning NOTIFY scanningChanged FINAL)
+    // Goes up whenever one of the filters above is switched. QML can't read the flags themselves, so a binding that
+    // asks isEngineFilterSet() and friends passes this as the last argument to be run again when the answer changes.
+    Q_PROPERTY(int filterRevision READ filterRevision NOTIFY filterRevisionChanged FINAL)
 
     Q_PROPERTY(SortType sortType READ sortType WRITE setSortType NOTIFY sortTypeChanged FINAL)
     Q_PROPERTY(
@@ -50,6 +53,7 @@ public:
     Game::Stores storeFilter() const { return m_storeFilter; }
     QString search() const { return m_search; }
     bool scanning() const { return m_scanning; }
+    int filterRevision() const { return m_filterRevision; }
 
     SortType sortType() const { return m_sortType; }
     FilterType featureFilterType() const { return m_featureFilterType; }
@@ -58,10 +62,10 @@ public:
     void setSortType(SortType sortType);
     void setFeatureFilterType(FilterType type);
 
-    Q_INVOKABLE bool isEngineFilterSet(Game::Engine engine);
-    Q_INVOKABLE bool isTypeFilterSet(Game::AppType type);
-    Q_INVOKABLE bool isFeatureFilterSet(Game::Feature feature);
-    Q_INVOKABLE bool isStoreFilterSet(Game::Store store);
+    Q_INVOKABLE bool isEngineFilterSet(Game::Engine engine, int revision = 0);
+    Q_INVOKABLE bool isTypeFilterSet(Game::AppType type, int revision = 0);
+    Q_INVOKABLE bool isFeatureFilterSet(Game::Feature feature, int revision = 0);
+    Q_INVOKABLE bool isStoreFilterSet(Game::Store store, int revision = 0);
 
     Q_INVOKABLE void setEngineFilter(Game::Engine engine, bool state);
     Q_INVOKABLE void setTypeFilter(Game::AppType type, bool state);
@@ -85,6 +89,7 @@ signals:
     void storeFilterChanged();
     void searchChanged();
     void scanningChanged();
+    void filterRevisionChanged();
     // Emitted whenever games() would return something different
     void gamesChanged();
 
@@ -105,6 +110,7 @@ private:
     QConcatenateTablesProxyModel *m_models;
     QList<Store *> m_stores;
     bool m_scanning = false;
+    int m_filterRevision = 0;
 
     Game::Engines m_engineFilter;
     Game::AppTypes m_typeFilter;

@@ -120,22 +120,22 @@ void GamesFilterModel::setFeatureFilterType(FilterType type)
     saveFilters();
 }
 
-bool GamesFilterModel::isEngineFilterSet(Game::Engine engine)
+bool GamesFilterModel::isEngineFilterSet(Game::Engine engine, int)
 {
     return m_engineFilter.testFlag(engine);
 }
 
-bool GamesFilterModel::isTypeFilterSet(Game::AppType type)
+bool GamesFilterModel::isTypeFilterSet(Game::AppType type, int)
 {
     return m_typeFilter.testFlag(type);
 }
 
-bool GamesFilterModel::isFeatureFilterSet(Game::Feature feature)
+bool GamesFilterModel::isFeatureFilterSet(Game::Feature feature, int)
 {
     return m_featureFilter.testFlag(feature);
 }
 
-bool GamesFilterModel::isStoreFilterSet(Game::Store store)
+bool GamesFilterModel::isStoreFilterSet(Game::Store store, int)
 {
     return m_storeFilter.testFlag(store);
 }
@@ -147,6 +147,8 @@ void GamesFilterModel::setEngineFilter(Game::Engine engine, bool state)
     beginFilterChange();
     m_engineFilter.setFlag(engine, state);
     emit engineFilterChanged();
+    ++m_filterRevision;
+    emit filterRevisionChanged();
     endFilterChange();
     saveFilters();
 }
@@ -158,6 +160,8 @@ void GamesFilterModel::setTypeFilter(Game::AppType type, bool state)
     beginFilterChange();
     m_typeFilter.setFlag(type, state);
     emit typeFilterChanged();
+    ++m_filterRevision;
+    emit filterRevisionChanged();
     endFilterChange();
     saveFilters();
 }
@@ -169,6 +173,8 @@ void GamesFilterModel::setFeatureFilter(Game::Feature feature, bool state)
     beginFilterChange();
     m_featureFilter.setFlag(feature, state);
     emit featureFilterChanged();
+    ++m_filterRevision;
+    emit filterRevisionChanged();
     endFilterChange();
     saveFilters();
 }
@@ -180,6 +186,8 @@ void GamesFilterModel::setStoreFilter(Game::Store store, bool state)
     beginFilterChange();
     m_storeFilter.setFlag(store, state);
     emit storeFilterChanged();
+    ++m_filterRevision;
+    emit filterRevisionChanged();
     endFilterChange();
     saveFilters();
 }

@@ -5,6 +5,7 @@
 
 #include <QDesktopServices>
 #include <QDir>
+#include <QElapsedTimer>
 #include <QFileInfo>
 #include <QGuiApplication>
 #include <QHash>
@@ -21,9 +22,11 @@
 #include "GamesFilterModel.h"
 #include "Heroic.h"
 #include "Itch.h"
+#include "LaunchOptions.h"
 #include "ModsFilterModel.h"
 #include "Steam.h"
 #include "UnrealVrPlugins.h"
+#include "WinePrefix.h"
 
 Q_LOGGING_CATEGORY(GameStatusLog, "gamestatus")
 
@@ -98,132 +101,6 @@ namespace
         return QString::fromLatin1(QMetaEnum::fromType<Game::Store>().valueToKey(static_cast<quint64>(game->store()))) +
                '/' + game->settingsId();
     }
-
-    // dlls that share a mode become one clause. A different mode stays its own clause.
-    QString mergeOverrides(const QString &a, const QString &b)
-    {
-        QList<QPair<QString, QStringList>> modes;
-        const auto absorb = [&](const QString &spec) {
-            for (const auto &clause : spec.split(u';', Qt::SkipEmptyParts))
-            {
-                const auto eq = clause.indexOf(u'=');
-                if (eq < 0)
-                    continue;
-                const auto mode = clause.mid(eq + 1).trimmed();
-                auto it = std::find_if(modes.begin(), modes.end(), [&](const auto &entry) { return entry.first == mode; });
-                if (it == modes.end())
-                {
-                    modes.push_back({mode, {}});
-                    it = std::prev(modes.end());
-                }
-                for (auto dll : clause.left(eq).split(u',', Qt::SkipEmptyParts))
-                {
-                    dll = dll.trimmed();
-                    if (dll.isEmpty())
-                        continue;
-                    const auto listed = std::any_of(it->second.cbegin(), it->second.cend(), [&](const QString &existing) {
-                        return existing.compare(dll, Qt::CaseInsensitive) == 0;
-                    });
-                    if (!listed)
-                        it->second << dll;
-                }
-            }
-        };
-        absorb(a);
-        absorb(b);
-        QStringList clauses;
-        for (const auto &mode : modes)
-            if (!mode.second.isEmpty())
-                clauses << mode.second.join(u',') + u'=' + mode.first;
-        return clauses.join(u';');
-    }
-
-    struct ParsedLaunch
-    {
-        QStringList envKeys;
-        QHash<QString, QString> env;
-        QString leftover;
-        QString args;
-    };
-
-    ParsedLaunch parseLaunch(const QString &text)
-    {
-        ParsedLaunch out;
-        const auto marker = "%command%"_L1;
-        const auto at = text.indexOf(marker);
-        const auto head = at < 0 ? text : text.left(at);
-        out.args = at < 0 ? QString{} : text.mid(at + marker.size()).trimmed();
-
-        static const QRegularExpression re{R"re(([A-Za-z_][A-Za-z0-9_]*)="([^"]*)")re"};
-        auto it = re.globalMatch(head);
-        int cursor = 0;
-        QString leftover;
-        while (it.hasNext())
-        {
-            const auto match = it.next();
-            leftover += head.mid(cursor, match.capturedStart() - cursor);
-            cursor = match.capturedEnd();
-            const auto key = match.captured(1);
-            if (!out.env.contains(key))
-            {
-                out.envKeys << key;
-                out.env.insert(key, match.captured(2));
-            }
-            else if (key.compare("WINEDLLOVERRIDES"_L1, Qt::CaseInsensitive) == 0)
-                out.env[key] = mergeOverrides(out.env.value(key), match.captured(2));
-        }
-        leftover += head.mid(cursor);
-        out.leftover = leftover.simplified();
-        return out;
-    }
-
-    QString mergeLaunchOptions(const QStringList &parts)
-    {
-        QStringList envKeys;
-        QHash<QString, QString> env;
-        QString leftover;
-        QStringList argTails;
-
-        for (const auto &part : parts)
-        {
-            const auto parsed = parseLaunch(part);
-            for (const auto &key : parsed.envKeys)
-            {
-                if (!env.contains(key))
-                {
-                    envKeys << key;
-                    env.insert(key, parsed.env.value(key));
-                }
-                else if (key.compare("WINEDLLOVERRIDES"_L1, Qt::CaseInsensitive) == 0)
-                    env[key] = mergeOverrides(env.value(key), parsed.env.value(key));
-            }
-            if (leftover.isEmpty())
-                leftover = parsed.leftover;
-            if (!parsed.args.isEmpty() && !argTails.contains(parsed.args))
-                argTails << parsed.args;
-        }
-
-        if (envKeys.isEmpty() && leftover.isEmpty() && argTails.isEmpty())
-            return {};
-
-        QStringList bits;
-        for (const auto &key : envKeys)
-            bits << "%1=\"%2\""_L1.arg(key, env.value(key));
-        if (!leftover.isEmpty())
-            bits << leftover;
-
-        QString out = bits.join(u' ');
-        if (!envKeys.isEmpty())
-            out += (out.isEmpty() ? QString{} : QString{u' '}) + "%command%"_L1;
-        if (!argTails.isEmpty())
-        {
-            const auto args = argTails.join(u' ');
-            if (envKeys.isEmpty() && leftover.isEmpty())
-                return args;
-            out += (out.isEmpty() ? QString{} : QString{u' '}) + args;
-        }
-        return out;
-    }
 } // namespace
 
 GameStatus *GameStatus::instance()
@@ -245,26 +122,58 @@ GameStatus::GameStatus(QObject *parent)
         }
         invalidate();
     });
-    connect(dm, &DownloadManager::currentDownloadNameChanged, this, &GameStatus::invalidate);
+    connect(dm, &DownloadManager::currentDownloadNameChanged, this, [this, dm] {
+        // Cover art and release lists come in by the dozen, and no status depends on them
+        if (!dm->background())
+            invalidate();
+    });
     connect(dm, &DownloadManager::downloadFailed, this, [this](const QString &name) {
         for (auto it = m_pendingDownloads.begin(); it != m_pendingDownloads.end();)
         {
-            if (it.value() == name)
-                it = m_pendingDownloads.erase(it);
-            else
+            if (it.value() != name)
+            {
                 ++it;
+                continue;
+            }
+            // Whatever was waiting to be installed from it has nothing to install
+            if (const auto mod = modForKey(it.key().section('/'_L1, 0, 0)))
+                m_installAfterDownload.remove(mod);
+            it = m_pendingDownloads.erase(it);
         }
         invalidate();
     });
 
     connect(GamesFilterModel::instance(), &GamesFilterModel::gamesChanged, this, &GameStatus::invalidate);
+    connect(Steam::instance(), &Steam::launchOptionsChanged, this, &GameStatus::invalidate);
+
+    // Whether a game is running decides what may be changed in its prefix, and nothing announces a game starting or
+    // quitting. Looking is cheap, and only happens while Kaon is the window in use.
+    auto games = new QTimer{this};
+    games->setInterval(2000);
+    connect(games, &QTimer::timeout, this, [this] {
+        if (const auto running = WinePrefix::prefixesInUse(); running != m_prefixesInUse)
+        {
+            m_prefixesInUse = running;
+            invalidate();
+        }
+    });
 
     // Prefixes and installs can change while Kaon is in the background, e.g. when a game is launched from Steam
     if (qGuiApp)
-        connect(qGuiApp, &QGuiApplication::applicationStateChanged, this, [this](Qt::ApplicationState state) {
-            if (state == Qt::ApplicationActive)
-                invalidate();
+    {
+        connect(qGuiApp, &QGuiApplication::applicationStateChanged, this, [this, games](Qt::ApplicationState state) {
+            if (state != Qt::ApplicationActive)
+            {
+                games->stop();
+                return;
+            }
+            m_prefixesInUse = WinePrefix::prefixesInUse();
+            games->start();
+            invalidate();
         });
+        if (qGuiApp->applicationState() == Qt::ApplicationActive)
+            games->start();
+    }
 }
 
 void GameStatus::watch(Mod *mod)
@@ -276,6 +185,17 @@ void GameStatus::watch(Mod *mod)
     connect(mod, &Mod::requestChooseLaunchOption, this, &GameStatus::chooseExecutable);
     connect(mod, &Mod::installFailed, this, [this, mod](const QString &message) {
         emit actionFailed("%1 didn't install"_L1.arg(mod->displayName()), message);
+    });
+    connect(mod, &Mod::uninstallFailed, this, [this, mod](const QString &message) {
+        emit actionFailed("%1 is still in the game"_L1.arg(mod->displayName()), message);
+    });
+    connect(mod, &Mod::downloadFailed, this, [this, mod](const QString &message) {
+        // Nothing more will come of this download, and nothing may be installed from it
+        const auto prefix = mod->settingsGroup() + '/';
+        m_pendingDownloads.removeIf([&prefix](const auto &entry) { return entry.key().startsWith(prefix); });
+        m_installAfterDownload.remove(mod);
+        emit actionFailed("%1 didn't download"_L1.arg(mod->displayName()), message);
+        invalidate();
     });
     connect(mod, &Mod::releaseDownloadedChanged, this, [this, mod](ModRelease *release) {
         m_pendingDownloads.remove(downloadKey(mod, release));
@@ -300,12 +220,17 @@ void GameStatus::invalidate()
     QTimer::singleShot(0, this, [this] {
         m_changePending = false;
         ++m_revision;
+        // Every binding that shows a status runs again here, for every game on screen and for the library's groups
+        QElapsedTimer timer;
+        timer.start();
         emit changed();
+        if (timer.elapsed() > 100)
+            qCDebug(GameStatusLog) << "Refreshing every status took" << timer.elapsed() << "ms";
         advanceSetUp();
     });
 }
 
-QString GameStatus::group(Game *game) const
+QString GameStatus::group(Game *game, int) const
 {
     if (!game)
         return "none"_L1;
@@ -326,7 +251,7 @@ QString GameStatus::group(Game *game) const
     return pending ? "setup"_L1 : "ready"_L1;
 }
 
-QVariantList GameStatus::steps(Game *game) const
+QVariantList GameStatus::steps(Game *game, int) const
 {
     if (!game)
         return {};
@@ -344,16 +269,25 @@ QVariantList GameStatus::steps(Game *game) const
         out << makeStep("platform"_L1, "Runs through Proton"_L1, game->windowsBuildReason(), "ok"_L1);
     else if (game->hasLinuxBuild())
     {
+        // Steam's settings say which build it starts, so there this is known and nothing after it can work until it is
+        // dealt with. For other launchers it is a guess, and stays a warning.
+        const bool steam = game->store() == Game::Store::Steam;
         auto step = makeStep("platform"_L1,
                              "Native Linux build"_L1,
-                             game->store() == Game::Store::Steam ?
-                                 "Force Proton in the game's Steam properties so the mod can attach."_L1 :
-                                 "Run the Windows build through Wine or Proton so the mod can attach."_L1,
-                             "warn"_L1);
+                             steam ? "Steam starts this game's Linux build, and the mod can only attach to the Windows one. "
+                                     "Pick a Proton version under Compatibility in the game's Steam properties, then "
+                                     "rescan."_L1 :
+                                     "Run the Windows build through Wine or Proton so the mod can attach."_L1,
+                             steam ? "todo"_L1 : "warn"_L1);
         if (game->canOpenSettings())
         {
             step["action"_L1] = "steamSettings"_L1;
             step["actionLabel"_L1] = "Steam properties"_L1;
+        }
+        if (steam)
+        {
+            step["secondaryAction"_L1] = "rescan"_L1;
+            step["secondaryLabel"_L1] = "Rescan"_L1;
         }
         out << step;
     }
@@ -443,8 +377,15 @@ QVariantList GameStatus::steps(Game *game) const
             }
             else if (release && isDownloading(dep, release))
                 out << makeStep(key, dep->displayName(), "Downloading"_L1, "busy"_L1);
-            else if (dep->installsIntoPrefix() && !game->hasValidWine())
-                out << makeStep(key, dep->displayName(), "Can be installed once the prefix exists"_L1, "wait"_L1);
+            else if (const auto hold = dep->installHoldReason(game); !hold.isEmpty())
+                out << makeStep(key, dep->displayName(), hold, "wait"_L1);
+            else if (!release)
+                out << makeStep(key,
+                                dep->displayName(),
+                                "Looking for releases. Check your connection if this doesn't change."_L1,
+                                "wait"_L1,
+                                "refresh"_L1,
+                                "Check again"_L1);
             else
             {
                 QString detail = dep->installsIntoPrefix() ? "Not installed in this game's prefix"_L1 : "Not installed"_L1;
@@ -461,7 +402,9 @@ QVariantList GameStatus::steps(Game *game) const
             out << makeStep(key,
                             mod->displayName(),
                             "Looking for releases. Check your connection if this doesn't change."_L1,
-                            "wait"_L1);
+                            "wait"_L1,
+                            "refresh"_L1,
+                            "Check again"_L1);
         else if (installable && mod->isInstalledForGame(game))
         {
             const auto installed = mod->releaseInstalledForGame(game);
@@ -508,18 +451,93 @@ QVariantList GameStatus::steps(Game *game) const
             out << makeStep(key, mod->releaseTitle(release), "Downloaded"_L1, "ok"_L1);
     }
 
+    if (const auto step = launchOptionsStep(game); !step.isEmpty())
+        out << step;
+
     m_stepsCache.insert(game, out);
     return out;
 }
 
-QString GameStatus::summary(Game *game) const
+QList<Mod *> GameStatus::modsWithLaunchOptions(Game *game) const
+{
+    QList<Mod *> mods;
+    // A game with its own VR mode isn't played with a mod, even where one would fit its engine. And until a mod is in
+    // the game, there is nothing for launch options to load.
+    if (const auto mod = game->supportsVr() ? nullptr : preferredMod(game);
+        mod && (mod->type() == Mod::Type::Launchable || mod->isInstalledForGame(game)))
+        mods << mod;
+    for (const auto mod : extraMods(game))
+        if (mod->isInstalledForGame(game))
+            mods << mod;
+    mods.removeIf([](Mod *mod) { return mod->launchOptions().isEmpty(); });
+    return mods;
+}
+
+QVariantMap GameStatus::launchOptionsStep(Game *game) const
+{
+    // A game added by hand is started by Kaon, which passes these along itself
+    if (game->store() == Game::Store::Custom)
+        return {};
+
+    const auto mods = modsWithLaunchOptions(game);
+    if (mods.isEmpty())
+        return {};
+
+    QStringList parts, conflicts, names;
+    for (const auto mod : mods)
+    {
+        parts << mod->launchOptions();
+        conflicts << mod->conflictingLaunchOptions();
+        names << mod->displayName();
+    }
+    const auto required = LaunchOptions::merge(parts);
+
+    // Steam keeps what the player typed in a file Kaon can read. Other launchers don't.
+    const auto current = Steam::instance()->launchOptions(game);
+    if (current && LaunchOptions::covers(*current, required, conflicts))
+        return makeStep("launchOptions"_L1, "Launch options"_L1, "Set in the game's Steam properties"_L1, "ok"_L1);
+
+    const auto orElse = "%1 won't load without them."_L1.arg(QLocale{}.createSeparatedList(names));
+    QString detail;
+    QString text = required;
+    if (!current)
+        detail = "Add these to the game's launch options in %1. %2"_L1.arg(launcherName(game), orElse);
+    else if (current->trimmed().isEmpty())
+        detail = "Paste these into the launch options in the game's Steam properties. %1"_L1.arg(orElse);
+    else if (!LaunchOptions::isSimple(*current))
+        detail = "This game's launch options in Steam run a script, which Kaon won't rewrite. Add these to them by "
+                 "hand. %1"_L1.arg(orElse);
+    else
+    {
+        text = LaunchOptions::combined(*current, required, conflicts);
+        const auto dropped = LaunchOptions::conflictsIn(*current, conflicts);
+        detail = dropped.isEmpty() ?
+                     "Replace the launch options in the game's Steam properties with these. They keep what is there now. "
+                     "%1"_L1.arg(orElse) :
+                     "Replace the launch options in the game's Steam properties with these. They keep what is there now, "
+                     "except %1, which gets in the mod's way. %2"_L1.arg(QLocale{}.createSeparatedList(dropped), orElse);
+    }
+
+    // A warning, not a step in the way: Steam writes its settings down a while after they change, and Kaon can't see
+    // other launchers' at all
+    auto step = makeStep("launchOptions"_L1, "Launch options"_L1, detail, "warn"_L1);
+    step["copyText"_L1] = text;
+    if (game->canOpenSettings())
+    {
+        step["secondaryAction"_L1] = "steamSettings"_L1;
+        step["secondaryLabel"_L1] = "Steam properties"_L1;
+    }
+    return step;
+}
+
+QString GameStatus::summary(Game *game, int) const
 {
     if (!game)
         return {};
 
     const auto g = group(game);
     if (g == "native"_L1)
-        return game->vrOnly() ? "VR only"_L1 : "Has its own VR mode"_L1;
+        return game->vrOnly() ? "VR only"_L1 : "Built-in VR mode"_L1;
     if (g == "none"_L1)
     {
         if (game->noWindowsSupport())
@@ -530,8 +548,13 @@ QString GameStatus::summary(Game *game) const
 
     const auto mod = preferredMod(game);
     if (g == "ready"_L1)
+    {
+        // A tool that needs them and doesn't have them is not what keeps the game from VR
+        if (!mod->launchOptions().isEmpty() && findStep(game, "launchOptions"_L1).value("state"_L1).toString() == "warn"_L1)
+            return "Set launch options"_L1;
         return mod->type() == Mod::Type::Launchable ? "Ready with %1"_L1.arg(mod->displayName()) :
                                                       "%1 installed"_L1.arg(mod->displayName());
+    }
 
     for (const auto &value : steps(game))
     {
@@ -540,6 +563,8 @@ QString GameStatus::summary(Game *game) const
         const auto key = step.value("key"_L1).toString();
         if (state == "ok"_L1 || state == "warn"_L1)
             continue;
+        if (key == "platform"_L1)
+            return "Needs Proton forced in Steam"_L1;
         if (key == "proton"_L1)
             return game->store() == Game::Store::Custom ? "Wine prefix not found"_L1 :
                                                           "Launch once in %1"_L1.arg(launcherName(game));
@@ -555,7 +580,7 @@ QString GameStatus::summary(Game *game) const
     return {};
 }
 
-QList<Mod *> GameStatus::vrMods(Game *game) const
+QList<Mod *> GameStatus::vrMods(Game *game, int) const
 {
     QList<Mod *> list;
     if (!game)
@@ -567,7 +592,7 @@ QList<Mod *> GameStatus::vrMods(Game *game) const
     return list;
 }
 
-Mod *GameStatus::preferredMod(Game *game) const
+Mod *GameStatus::preferredMod(Game *game, int) const
 {
     const auto mods = vrMods(game);
     if (mods.isEmpty())
@@ -605,27 +630,103 @@ QList<Mod *> GameStatus::extraMods(Game *game) const
     return list;
 }
 
-QString GameStatus::launchOptions(Game *game) const
+QVariantList GameStatus::tools(Game *game, int) const
+{
+    auto mods = extraMods(game);
+    std::sort(mods.begin(), mods.end(), [](Mod *a, Mod *b) { return a->displayName() < b->displayName(); });
+
+    QVariantList rows;
+    for (const auto mod : std::as_const(mods))
+    {
+        const auto release = mod->currentRelease();
+        const bool on = mod->isInstalledForGame(game);
+        const bool working = mod->isBusyForGame(game) || (release && isDownloading(mod, release));
+        const auto hold = mod->installHoldReason(game);
+
+        QString detail;
+        if (!hold.isEmpty())
+            detail = hold;
+        else if (working)
+            detail = mod->isBusyForGame(game) ? "Installing"_L1 : "Downloading"_L1;
+        else if (on)
+            detail = mod->installedNote();
+        else if (!release)
+            detail = "Looking for a download"_L1;
+
+        // "Quit the game" goes stale while the page stays open, so that one stays clickable and is checked again
+        // when the switch is used
+        const bool held = !hold.isEmpty() && !WinePrefix::inUse(game);
+        rows << QVariantMap{{"mod"_L1, QVariant::fromValue(mod)},
+                            {"on"_L1, on},
+                            {"working"_L1, working},
+                            {"enabled"_L1, !held && !working && (on || release)},
+                            {"detail"_L1, detail}};
+    }
+    return rows;
+}
+
+void GameStatus::toggleTool(Game *game, Mod *mod)
+{
+    if (!game || !mod || mod->isBusyForGame(game))
+        return;
+
+    if (const auto hold = mod->installHoldReason(game); !hold.isEmpty())
+        emit noticed(hold);
+    else if (mod->isInstalledForGame(game))
+        mod->uninstallMod(game);
+    else if (!mod->currentRelease())
+        emit noticed("Still looking for a %1 download"_L1.arg(mod->displayName()));
+    else
+        installForGame(game, mod);
+    invalidate();
+}
+
+bool GameStatus::isInstalled(Mod *mod, Game *game, int) const
+{
+    return mod && game && mod->isInstalledForGame(game);
+}
+
+ModRelease *GameStatus::installedRelease(Mod *mod, Game *game, int) const
+{
+    return mod && game ? mod->releaseInstalledForGame(game) : nullptr;
+}
+
+bool GameStatus::usesLaunchDelay(Game *game, int) const
+{
+    if (!game || !game->canLaunch())
+        return false;
+    const auto mod = preferredMod(game);
+    return mod && mod->type() == Mod::Type::Launchable;
+}
+
+QString GameStatus::launchOptions(const Game *game) const
 {
     if (!game)
         return {};
 
     QStringList parts;
-    if (const auto mod = preferredMod(game))
-    {
-        const auto options = mod->launchOptions();
-        if (!options.isEmpty())
-            parts << options;
-    }
-    for (const auto mod : extraMods(game))
-    {
-        if (!mod->isInstalledForGame(game))
-            continue;
-        const auto options = mod->launchOptions();
-        if (!options.isEmpty())
-            parts << options;
-    }
-    return mergeLaunchOptions(parts);
+    // Nothing here changes the game. QML hands games over without const, and so the functions it calls take them that way.
+    for (const auto mod : modsWithLaunchOptions(const_cast<Game *>(game)))
+        parts << mod->launchOptions();
+    return LaunchOptions::merge(parts);
+}
+
+void GameStatus::openSteamProperties(Game *game)
+{
+    if (!game || !game->canOpenSettings())
+        return;
+    const auto url = "steam://gameproperties/"_L1 + game->id();
+    if (game->flatpakAppId().isEmpty())
+        QDesktopServices::openUrl(QUrl{url});
+    else if (!QProcess::startDetached("flatpak"_L1, {"run"_L1, game->flatpakAppId(), url}))
+        qCWarning(GameStatusLog) << "Could not open Flatpak Steam properties for" << game->id();
+}
+
+void GameStatus::openFolder(Game *game)
+{
+    // Built here and not in QML: a folder name may hold characters that mean something else in a URL
+    if (game && !game->installDir().isEmpty())
+        QDesktopServices::openUrl(QUrl::fromLocalFile(game->installDir()));
 }
 
 QList<Mod *> GameStatus::allMods() const
@@ -651,13 +752,7 @@ void GameStatus::runStep(Game *game, const QString &key, bool secondary)
     if (action == "launchOnce"_L1)
         game->launch();
     else if (action == "steamSettings"_L1)
-    {
-        const auto url = "steam://gameproperties/"_L1 + game->id();
-        if (game->flatpakAppId().isEmpty())
-            QDesktopServices::openUrl(QUrl{url});
-        else if (!QProcess::startDetached("flatpak"_L1, {"run"_L1, game->flatpakAppId(), url}))
-            qCWarning(GameStatusLog) << "Could not open Flatpak Steam properties for" << game->id();
-    }
+        openSteamProperties(game);
     else if (action == "rescan"_L1)
         rescanLibraries();
     else if (action == "disableVrPlugins"_L1 || action == "restoreVrPlugins"_L1)
@@ -670,7 +765,9 @@ void GameStatus::runStep(Game *game, const QString &key, bool secondary)
     }
     else if (const auto mod = modForKey(key))
     {
-        if (action == "download"_L1)
+        if (action == "refresh"_L1)
+            mod->refreshReleases();
+        else if (action == "download"_L1)
             download(mod, mod->currentRelease());
         else if (action == "install"_L1)
         {
@@ -689,7 +786,7 @@ void GameStatus::runStep(Game *game, const QString &key, bool secondary)
     invalidate();
 }
 
-bool GameStatus::canSetUp(Game *game) const
+bool GameStatus::canSetUp(Game *game, int) const
 {
     for (const auto &value : steps(game))
     {
@@ -766,7 +863,7 @@ void GameStatus::download(Mod *mod, ModRelease *release)
     invalidate();
 }
 
-bool GameStatus::isDownloading(Mod *mod, ModRelease *release) const
+bool GameStatus::isDownloading(Mod *mod, ModRelease *release, int) const
 {
     return mod && release && !release->downloaded() && m_pendingDownloads.contains(downloadKey(mod, release));
 }

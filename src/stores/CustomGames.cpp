@@ -11,6 +11,8 @@
 #include <QUuid>
 
 #include "Aptabase.h"
+#include "GameStatus.h"
+#include "LaunchOptions.h"
 #include "Wine.h"
 
 Q_LOGGING_CATEGORY(CustomGameLog, "custom")
@@ -99,7 +101,12 @@ public:
         qCInfo(CustomGameLog) << "Launching" << lo.executable;
 
         if (lo.platform == Platform::Windows)
-            Wine::instance()->runInWine(m_name, this, lo.executable);
+        {
+            // Nobody can type launch options for a game that Kaon starts itself, so Kaon passes on what its mods need
+            const auto options = LaunchOptions::parse(GameStatus::instance()->launchOptions(this));
+            Wine::instance()->runInWine(
+                m_name, this, lo.executable, options.arguments, [] {}, [] {}, false, {}, options.env);
+        }
         else if (lo.platform == Platform::Linux)
         {
             auto process = new QProcess;
@@ -132,7 +139,7 @@ CustomGames *CustomGames::create(QQmlEngine *qml, QJSEngine *js)
     return instance();
 }
 
-bool CustomGames::addGame(const QString &name, const QString &executable, const QString &wine, const QString &winePrefix)
+Game *CustomGames::addGame(const QString &name, const QString &executable, const QString &wine, const QString &winePrefix)
 {
     if (QFileInfo fi{executable}; fi.exists() && fi.isFile())
     {
@@ -143,13 +150,13 @@ bool CustomGames::addGame(const QString &name, const QString &executable, const 
             endInsertRows();
             writeConfig();
             scanAgainIfBusy();
-            return true;
+            return g;
         }
         else
             g->deleteLater();
     }
 
-    return false;
+    return nullptr;
 }
 
 void CustomGames::deleteGame(Game *game)

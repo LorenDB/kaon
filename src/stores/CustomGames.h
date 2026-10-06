@@ -16,7 +16,11 @@ public:
 
     QString storeRoot() const final { return {}; }
 
-    Q_INVOKABLE bool addGame(const QString &name, const QString &executable, const QString &wine, const QString &winePrefix);
+    // The game that was added, or null when the executable can't be used
+    Q_INVOKABLE Game *addGame(const QString &name,
+                              const QString &executable,
+                              const QString &wine,
+                              const QString &winePrefix);
     Q_INVOKABLE void deleteGame(Game *game);
 
 private:

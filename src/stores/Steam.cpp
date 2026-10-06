@@ -576,6 +576,53 @@ namespace
     }
 } // namespace
 
+namespace
+{
+    // localconfig.vdf holds one account's settings. More than one person may have signed in here; the file written
+    // last belongs to whoever is using Steam now.
+    QString newestLocalConfig(const QString &steamRoot)
+    {
+        QString newest;
+        QDateTime modified;
+        const auto users = QDir{steamRoot + "/userdata"_L1}.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot);
+        for (const auto &user : users)
+        {
+            const QFileInfo config{user.absoluteFilePath() + "/config/localconfig.vdf"_L1};
+            if (config.isFile() && (newest.isEmpty() || config.lastModified() > modified))
+            {
+                newest = config.absoluteFilePath();
+                modified = config.lastModified();
+            }
+        }
+        return newest;
+    }
+
+    // False when the file isn't the text VDF it should be
+    bool readLaunchOptions(const QString &localConfig, QHash<QString, QString> &options)
+    {
+        const auto root = readTextVdf(localConfig);
+        if (!root)
+            return false;
+
+        // UserLocalConfigStore > Software > Valve > Steam > apps > <app id>. The capitalization has changed over time.
+        const tyti::vdf::object *node = &*root;
+        for (const auto name : {"Software"_L1, "Valve"_L1, "Steam"_L1, "apps"_L1})
+        {
+            const auto child = std::find_if(node->childs.cbegin(), node->childs.cend(), [name](const auto &entry) {
+                return entry.second && QString::fromStdString(entry.first).compare(name, Qt::CaseInsensitive) == 0;
+            });
+            if (child == node->childs.cend())
+                return false;
+            node = child->second.get();
+        }
+
+        for (const auto &[appId, app] : node->childs)
+            if (app)
+                options.insert(QString::fromStdString(appId), vdfAttrib(*app, "LaunchOptions"_L1));
+        return true;
+    }
+} // namespace
+
 class SteamGame : public Game
 {
     Q_OBJECT
@@ -1078,6 +1125,77 @@ void Steam::launchSteamVR()
         return;
     }
     QDesktopServices::openUrl({"steam://run/250820"_L1});
+}
+
+std::optional<QString> Steam::launchOptions(const Game *game)
+{
+    if (!game || game->store() != Game::Store::Steam)
+        return std::nullopt;
+    const auto install = std::find_if(m_installs.cbegin(), m_installs.cend(), [game](const Install &candidate) {
+        return candidate.flatpakAppId == game->flatpakAppId();
+    });
+    if (install == m_installs.cend())
+        return std::nullopt;
+
+    const auto file = newestLocalConfig(install->path);
+    if (file.isEmpty())
+        return std::nullopt;
+
+    // Steam rewrites the file every few minutes while it runs. It is read again only when it has changed.
+    auto &config = m_localConfigs[install->path];
+    const QFileInfo info{file};
+    if (config.file != file || config.modified != info.lastModified() || config.size != info.size())
+    {
+        config = {file, info.lastModified(), info.size(), false, {}};
+        config.readable = readLaunchOptions(file, config.launchOptions);
+        if (!config.readable)
+            qCWarning(SteamLog) << "Could not read launch options from" << file;
+        watchLocalConfig(file);
+    }
+    if (!config.readable)
+        return std::nullopt;
+    return config.launchOptions.value(game->id());
+}
+
+void Steam::watchLocalConfig(const QString &file)
+{
+    if (m_configWatcher == nullptr)
+    {
+        m_configWatcher = new QFileSystemWatcher{this};
+        m_configChanged = new QTimer{this};
+        m_configChanged->setSingleShot(true);
+        m_configChanged->setInterval(500);
+        connect(m_configChanged, &QTimer::timeout, this, [this] {
+            // Steam rewrites the file for every setting it keeps there. Only the launch options are news here.
+            bool changed = false;
+            for (auto &config : m_localConfigs)
+            {
+                const QFileInfo info{config.file};
+                LocalConfig now{config.file, info.lastModified(), info.size(), false, {}};
+                now.readable = readLaunchOptions(now.file, now.launchOptions);
+                changed = changed || now.readable != config.readable || now.launchOptions != config.launchOptions;
+                config = now;
+            }
+            if (changed)
+                emit launchOptionsChanged();
+        });
+
+        const auto changed = [this] {
+            // Steam replaces the file by renaming a new one over it, which ends the watch on the old one
+            for (const auto &watched : std::as_const(m_watchedConfigs))
+                if (QFileInfo::exists(watched) && !m_configWatcher->files().contains(watched))
+                    m_configWatcher->addPath(watched);
+            m_configChanged->start();
+        };
+        connect(m_configWatcher, &QFileSystemWatcher::fileChanged, this, changed);
+        connect(m_configWatcher, &QFileSystemWatcher::directoryChanged, this, changed);
+    }
+
+    if (m_watchedConfigs.contains(file))
+        return;
+    m_watchedConfigs << file;
+    m_configWatcher->addPath(file);
+    m_configWatcher->addPath(QFileInfo{file}.absolutePath());
 }
 
 void Steam::prepareScan()

@@ -300,11 +300,8 @@ public:
                 },
                 [this, file](const QNetworkReply::NetworkError, const QString &) {
                     // fall back to cache if possible
-                    if (file->exists())
-                    {
-                        file->open(QIODevice::ReadOnly);
+                    if (file->exists() && file->open(QIODevice::ReadOnly))
                         m_image = QImage::fromData(file->readAll());
-                    }
                     else
                         m_error = "Could not download or find in cache";
                 },
