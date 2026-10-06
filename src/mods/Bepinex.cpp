@@ -2,10 +2,32 @@
 
 #include <QFileInfo>
 #include <QLoggingCategory>
-#include <QProcess>
 #include <QRegularExpression>
+#include <QSettings>
+
+#include "LaunchOptions.h"
+#include "Steam.h"
+#include "WinePrefix.h"
 
 Q_LOGGING_CATEGORY(BepinexLog, "bepinex")
+
+namespace
+{
+    // BepInEx starts from Doorstop, which Windows builds ship as winhttp.dll next to the game. Wine has a winhttp of its
+    // own and loads that one unless it is told to prefer the game's copy. BepInEx's guide sets this in winecfg:
+    // https://docs.bepinex.dev/articles/advanced/proton_wine.html
+    const auto doorstopDll = "winhttp"_L1;
+
+    // Either way of telling Wine will do. Someone who set BepInEx up by hand, or with an older Kaon, did it in the game's
+    // launch options in Steam.
+    bool doorstopLoads(const Game *game)
+    {
+        if (WinePrefix::hasNativeDllOverride(game, doorstopDll))
+            return true;
+        const auto options = Steam::instance()->launchOptions(game);
+        return options && LaunchOptions::covers(*options, "WINEDLLOVERRIDES=\"winhttp=n,b\" %command%"_L1);
+    }
+} // namespace
 
 Bepinex *Bepinex::instance()
 {
@@ -20,23 +42,21 @@ Bepinex *Bepinex::create(QQmlEngine *, QJSEngine *)
 
 QString Bepinex::info() const
 {
-    return "Extra setup required; see instructions for "
-           "[Linux](https://docs.bepinex.dev/articles/advanced/steam_interop.html#3-configure-steam-to-run-the-script) "
-           "and [Windows](https://docs.bepinex.dev/articles/advanced/proton_wine.html) binaries. For Windows games "
-           "played through Proton, paste the launch options below into Steam so BepInEx actually loads."_L1;
-}
-
-QString Bepinex::launchOptions() const
-{
-    // Doorstop hooks Windows games via winhttp.dll; Proton only loads it with this override. Native Linux games
-    // don't need it (they use run_bepinex.sh instead), but showing it unconditionally matches how Kaon presents
-    // launch options elsewhere, and UUVR only supports Windows games anyway.
-    return "WINEDLLOVERRIDES=\"winhttp=n,b\" %command%"_L1;
+    return "For Windows games, Kaon also tells the game's Proton prefix to load BepInEx, so there are no launch options "
+           "to set. A native Linux game needs "
+           "[its launch options "
+           "changed](https://docs.bepinex.dev/articles/advanced/steam_interop.html#3-configure-steam-to-run-the-script) "
+           "by hand."_L1;
 }
 
 const QLoggingCategory &Bepinex::logger() const
 {
     return BepinexLog();
+}
+
+bool Bepinex::hasFilesFor(const Game *game, const Game::LaunchOption &exe) const
+{
+    return QFileInfo::exists(modInstallDirForGame(game, exe) + "/BepInEx/core/BepInEx.dll"_L1);
 }
 
 bool Bepinex::isInstalledForGame(const Game *game) const
@@ -45,27 +65,44 @@ bool Bepinex::isInstalledForGame(const Game *game) const
         return false;
     const auto exes = acceptableInstallCandidates(game);
     return std::any_of(exes.cbegin(), exes.cend(), [this, game](const auto &exe) {
-        return QFileInfo::exists(modInstallDirForGame(game, exe) + "/BepInEx/core/BepInEx.dll"_L1);
+        if (!hasFilesFor(game, exe))
+            return false;
+        // Unless Wine is told to, it never loads it, and the game starts as if nothing were installed
+        return exe.platform != Game::Platform::Windows || doorstopLoads(game);
     });
+}
+
+QString Bepinex::installHoldReason(const Game *game) const
+{
+    if (!game)
+        return {};
+    const auto exes = acceptableInstallCandidates(game);
+    const bool windows =
+        std::any_of(exes.cbegin(), exes.cend(), [](const auto &exe) { return exe.platform == Game::Platform::Windows; });
+    return windows ? WinePrefix::editHoldReason(game) : QString{};
 }
 
 void Bepinex::installModImpl(Game *game, const Game::LaunchOption &exe)
 {
-    GitHubZipExtractorMod::installModImpl(game, exe);
+    const bool windows = exe.platform == Game::Platform::Windows;
+    if (windows)
+    {
+        // Checked before anything is unpacked, so a game is never left with BepInEx that can't load
+        if (const auto hold = WinePrefix::editHoldReason(game); !hold.isEmpty())
+        {
+            fail(hold);
+            return;
+        }
+    }
 
-    if (!QFileInfo::exists(exe.executable))
+    if (!unpackInto(game, exe))
         return;
 
     const auto installDir = modInstallDirForGame(game, exe);
-
     if (exe.platform == Game::Platform::Linux)
     {
-        QProcess process;
-        process.setWorkingDirectory(installDir);
-        process.start("chmod"_L1, {"+x"_L1, "run_bepinex.sh"_L1});
-        process.waitForFinished();
-
         QFile file{installDir + "/run_bepinex.sh"_L1};
+        file.setPermissions(file.permissions() | QFile::ExeOwner | QFile::ExeGroup | QFile::ExeOther);
         if (file.open(QIODevice::ReadWrite))
         {
             auto content = file.readAll();
@@ -75,10 +112,47 @@ void Bepinex::installModImpl(Game *game, const Game::LaunchOption &exe)
             file.close();
         }
     }
-    else if (exe.platform == Game::Platform::Windows)
+    else if (windows)
     {
         ensureDoorstopSearchPath(game, exe);
+
+        QSettings settings;
+        settings.beginGroup(settingsGroup());
+        settings.beginGroup(game->settingsId());
+        if (!WinePrefix::hasNativeDllOverride(game, doorstopDll))
+        {
+            if (QString error; !WinePrefix::setNativeDllOverride(game, doorstopDll, &error))
+            {
+                fail(error);
+                return;
+            }
+            // Only an override Kaon made is Kaon's to take away again
+            settings.setValue("addedDllOverride"_L1, true);
+        }
     }
+
+    Mod::installModImpl(game, exe);
+}
+
+void Bepinex::uninstallMod(Game *game)
+{
+    if (!game)
+        return;
+
+    QSettings settings;
+    settings.beginGroup(settingsGroup());
+    settings.beginGroup(game->settingsId());
+    if (settings.value("addedDllOverride"_L1, false).toBool())
+    {
+        if (QString error; !WinePrefix::removeDllOverride(game, doorstopDll, &error))
+        {
+            failUninstall(error);
+            return;
+        }
+        settings.remove("addedDllOverride"_L1);
+    }
+
+    GitHubZipExtractorMod::uninstallMod(game);
 }
 
 void Bepinex::ensureDoorstopSearchPath(const Game *game, const Game::LaunchOption &exe) const

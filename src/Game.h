@@ -2,6 +2,7 @@
 
 #include <QObject>
 #include <QQmlEngine>
+#include <QVersionNumber>
 
 class Game : public QObject
 {
@@ -114,6 +115,8 @@ public:
     QString sandboxWinePrefix() const { return m_sandboxWinePrefix.isEmpty() ? m_winePrefix : m_sandboxWinePrefix; }
     QString sandboxWineBinary() const { return m_sandboxWineBinary.isEmpty() ? m_wineBinary : m_sandboxWineBinary; }
     Engine engine() const { return m_engine; }
+    // Only known for Unity games, e.g. 2019.4.30. Null when the game's files don't say.
+    QVersionNumber engineVersion() const { return m_engineVersion; }
     AppType type() const { return m_type; }
     Features features() const { return m_features; }
     bool supportsVr() const { return m_features.testFlag(Feature::VR); }
@@ -224,6 +227,7 @@ protected:
 
 private:
     Engine m_engine = Engine::UnknownEngine;
+    QVersionNumber m_engineVersion;
 };
 Q_DECLARE_METATYPE(Game)
 

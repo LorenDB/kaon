@@ -30,6 +30,7 @@ protected:
     bool isThisFileTheActualModDownload(const QString &file) const final;
     QString modInstallDirForGame(const Game *game, const Game::LaunchOption &executable) const final;
     ModRelease::Asset chooseAssetToInstall(const Game *game, const Game::LaunchOption &exe) const final;
+    QList<Game::LaunchOption> preferredInstallCandidates(const Game *game, const QList<Game::LaunchOption> &all) const final;
 
 private:
     explicit BepInExConfigManager(QObject *parent = nullptr);

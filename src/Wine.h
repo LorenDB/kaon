@@ -24,7 +24,9 @@ public:
         std::function<void()> successCallback = [] {},
         std::function<void()> failureCallback = [] {},
         bool inLauncherSandbox = false,
-        std::function<bool()> verifySuccess = {});
+        std::function<bool()> verifySuccess = {},
+        // Variables for this one program, on top of what Wine needs. Not handed into a Flatpak sandbox.
+        const QHash<QString, QString> &extraEnvironment = {});
 
     // Injectors pass true so a Flatpak game is started with `flatpak enter`. Host games ignore the flag.
     void runInWine(const QString &prettyName, const Game *wineRoot, const QString &command, bool inLauncherSandbox)

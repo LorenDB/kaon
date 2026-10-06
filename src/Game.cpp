@@ -82,6 +82,23 @@ namespace
         }
         return machine;
     }
+
+    // Unity writes its version near the start of these files, e.g. "2019.4.30f1". The same files Rai Pal reads:
+    // https://github.com/Raicuparta/rai-pal/blob/51157fdae6b1d87760580d85082ccd5026bb0320/backend/core/src/game_engines/unity.rs
+    QVersionNumber unityVersion(const QString &dataDir)
+    {
+        static const QRegularExpression version{R"((\d+)\.(\d+)\.(\d+)[abfp]\d+)"_L1};
+        for (const auto name : {"globalgamemanagers"_L1, "mainData"_L1, "data.unity3d"_L1})
+        {
+            QFile file{dataDir + '/' + name};
+            if (!file.open(QFile::ReadOnly))
+                continue;
+            const auto match = version.match(QString::fromLatin1(file.read(4096)));
+            if (match.hasMatch())
+                return {match.captured(1).toInt(), match.captured(2).toInt(), match.captured(3).toInt()};
+        }
+        return {};
+    }
 } // namespace
 
 Game::Game(QObject *parent)
@@ -230,10 +247,15 @@ void Game::detectGameEngine()
     for (const auto &e : std::as_const(m_executables))
     {
         QFileInfo exe{e.executable};
-        if (QFileInfo dataDir{exe.absolutePath() + '/' + exe.baseName() + "_Data"_L1}; dataDir.exists() && dataDir.isDir())
+        // The folder is named after the executable without its extension, dots in the name included
+        for (const auto &name : {exe.completeBaseName(), exe.baseName()})
         {
-            m_engine = Engine::Unity;
-            return;
+            if (QFileInfo dataDir{exe.absolutePath() + '/' + name + "_Data"_L1}; dataDir.exists() && dataDir.isDir())
+            {
+                m_engine = Engine::Unity;
+                m_engineVersion = unityVersion(dataDir.absoluteFilePath());
+                return;
+            }
         }
     }
 

@@ -11,8 +11,58 @@
 #include "Flatpak.h"
 #include "Heroic.h"
 #include "Steam.h"
+#include "WinePrefix.h"
 
 Q_LOGGING_CATEGORY(WineLog, "wine")
+
+namespace
+{
+    // The .NET host treats DOTNET_ROOT as the folder its runtime is installed in. Several distributions set it for
+    // .NET on Linux in a profile script, and Wine hands it on, which sends UEVR's injector looking for hostfxr.dll
+    // under /usr instead of in the prefix.
+    bool isHostDotnetVariable(const QString &name)
+    {
+        return name.startsWith("DOTNET_ROOT"_L1) || name == "DOTNET_BUNDLE_EXTRACT_BASE_DIR"_L1;
+    }
+
+    // WINEESYNC, WINEFSYNC and their relatives decide how Wine processes wait on each other
+    bool isSyncVariable(const QString &name)
+    {
+        return (name.startsWith("WINE"_L1) || name.startsWith("PROTON"_L1)) && name.contains("SYNC"_L1);
+    }
+
+    // A program has to make the same choice as the wineserver it joins, or Wine stops it at once with "Server is
+    // running with WINEFSYNC but this process is not". running is the environment of a Wine process already in the
+    // prefix. Without one there is nothing to match, and this is what Proton turns on by itself.
+    QHash<QString, QString> syncVariables(const QHash<QString, QString> &running)
+    {
+        if (!running.contains("WINEPREFIX"_L1))
+            return {{"WINEESYNC"_L1, "1"_L1}, {"WINEFSYNC"_L1, "1"_L1}};
+
+        QHash<QString, QString> sync;
+        for (auto it = running.cbegin(); it != running.cend(); ++it)
+            if (isSyncVariable(it.key()))
+                sync.insert(it.key(), it.value());
+        return sync;
+    }
+
+    // Proton keeps a prefix in <compatdata>/<app id>/pfx, and this variable names the folder around it
+    QString compatDataPath(const QString &prefix)
+    {
+        const QFileInfo info{prefix};
+        return info.fileName() == "pfx"_L1 ? info.absolutePath() : prefix;
+    }
+
+    // Kaon's own environment, without what must not reach a Windows program it starts
+    QProcessEnvironment hostEnvironment()
+    {
+        auto env = QProcessEnvironment::systemEnvironment();
+        for (const auto &name : env.keys())
+            if (isHostDotnetVariable(name) || isSyncVariable(name))
+                env.remove(name);
+        return env;
+    }
+} // namespace
 
 Wine::Wine(QObject *parent)
     : QObject{parent}
@@ -123,6 +173,7 @@ void Wine::enterGameSandbox(qint64 pid,
 
     const auto sandboxCommand = stagedDir + '/'_L1 + injector.fileName();
     const auto home = QDir::homePath();
+    const auto running = WinePrefix::environmentOfProcess(pid);
     // flatpak enter does not copy the app environment, and the command has to run in the
     // game's subsandbox. The launcher's own /tmp is not the game's /tmp.
     QStringList arguments{"enter"_L1,
@@ -138,17 +189,20 @@ void Wine::enterGameSandbox(qint64 pid,
                           "HOME="_L1 + home,
                           "USER="_L1 + qEnvironmentVariable("USER"),
                           "WINEPREFIX="_L1 + sandboxPrefix,
-                          "STEAM_COMPAT_DATA_PATH="_L1 + sandboxPrefix,
-                          "WINEFSYNC=1"_L1,
-                          "PATH=/app/bin:/usr/bin:/bin"_L1,
-                          sandboxWine,
-                          sandboxCommand};
+                          "STEAM_COMPAT_DATA_PATH="_L1 +
+                              running.value("STEAM_COMPAT_DATA_PATH"_L1, compatDataPath(sandboxPrefix)),
+                          "PATH=/app/bin:/usr/bin:/bin"_L1};
+    const auto sync = syncVariables(running);
+    for (auto it = sync.cbegin(); it != sync.cend(); ++it)
+        arguments << it.key() + '='_L1 + it.value();
+    arguments << sandboxWine << sandboxCommand;
     arguments += args;
 
     qCInfo(WineLog) << "Entering Flatpak pid" << pid << "to run" << sandboxCommand << "with" << sandboxWine;
+    // flatpak enter hands its own environment on to the command
     startWineProcess("flatpak"_L1,
                      arguments,
-                     QProcessEnvironment::systemEnvironment(),
+                     hostEnvironment(),
                      prettyName,
                      command,
                      sandboxWine,
@@ -164,7 +218,8 @@ void Wine::runInWine(const QString &prettyName,
                      std::function<void()> successCallback,
                      std::function<void()> failureCallback,
                      bool inLauncherSandbox,
-                     std::function<bool()> verifySuccess)
+                     std::function<bool()> verifySuccess,
+                     const QHash<QString, QString> &extraEnvironment)
 {
     if (!wineRoot)
     {
@@ -250,10 +305,25 @@ void Wine::runInWine(const QString &prettyName,
         commandLog += ' '_L1 + args.join(' ');
     qCInfo(WineLog) << "Executing command" << commandLog << "via Wine" << wineRoot->wineBinary();
 
-    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+    auto env = hostEnvironment();
+
+    // The game's own wineserver, when the game is already running
+    const auto running = WinePrefix::runningEnvironment(wineRoot);
+    const auto sync = syncVariables(running);
+    for (auto it = sync.cbegin(); it != sync.cend(); ++it)
+        env.insert(it.key(), it.value());
+    for (auto it = extraEnvironment.cbegin(); it != extraEnvironment.cend(); ++it)
+    {
+        // Overrides somebody set for all of Wine stay, behind these: Wine lets the last mention of a DLL decide
+        const auto before = it.key() == "WINEDLLOVERRIDES"_L1 ? env.value(it.key()) : QString{};
+        env.insert(it.key(), before.isEmpty() ? it.value() : before + ';'_L1 + it.value());
+    }
     env.insert("WINEPREFIX"_L1, wineRoot->winePrefix());
-    env.insert("STEAM_COMPAT_DATA_PATH"_L1, wineRoot->winePrefix());
-    env.insert("WINEFSYNC"_L1, "1"_L1);
+    env.insert("STEAM_COMPAT_DATA_PATH"_L1,
+               running.value("STEAM_COMPAT_DATA_PATH"_L1, compatDataPath(wineRoot->winePrefix())));
+    qCInfo(WineLog) << (running.isEmpty() ? "Nothing is running in the prefix; using Proton's defaults:" :
+                                            "Matching the Wine processes in the prefix:")
+                    << sync;
     startWineProcess(wineRoot->wineBinary(),
                      QStringList{command} + args,
                      env,

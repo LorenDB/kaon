@@ -129,6 +129,7 @@ int main(int argc, char *argv[])
     UEVR::instance();
     UEVRAFW::instance();
     UUVR::instance();
+    UUVRLegacy::instance();
     UpdateChecker::instance();
     VrPerfKit::instance();
     Wine::instance();

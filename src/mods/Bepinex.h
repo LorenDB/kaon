@@ -20,11 +20,11 @@ public:
     QString settingsGroup() const final { return "bepinex"_L1; }
     QString description() const final { return "Plugin loader for Unity games that UUVR runs on."_L1; }
     QString info() const final;
-    QString launchOptions() const final;
     const QLoggingCategory &logger() const final;
 
     virtual Game::Engines compatibleEngines() const override { return Game::Engine::Unity; }
     virtual bool isInstalledForGame(const Game *game) const override;
+    QString installHoldReason(const Game *game) const override;
 
     virtual QMap<int, Game::LaunchOption> acceptableInstallCandidates(const Game *game) const override;
 
@@ -32,6 +32,12 @@ public:
     // copy shadows BepInEx's MonoMod 22 during preloader probing and misses types BepInEx needs, crashing the
     // preloader. Pointing Mono at BepInEx\core first fixes loading without touching game files.
     void ensureDoorstopSearchPath(const Game *game, const Game::LaunchOption &exe) const;
+
+    // Whether BepInEx itself is next to this executable, whatever else it still needs
+    bool hasFilesFor(const Game *game, const Game::LaunchOption &exe) const;
+
+public slots:
+    void uninstallMod(Game *game) override;
 
 protected:
     void installModImpl(Game *game, const Game::LaunchOption &exe) override;

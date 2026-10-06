@@ -20,6 +20,7 @@ public:
     QString description() const override { return "Full VR conversion for the Windows version of Portal."_L1; }
     QString info() const final;
     QString launchOptions() const final;
+    QStringList conflictingLaunchOptions() const final;
     const QLoggingCategory &logger() const final;
 
     Game::Engines compatibleEngines() const override { return Game::Engine::Source; }

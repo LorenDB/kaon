@@ -6,9 +6,10 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QLoggingCategory>
-#include <QProcess>
 #include <QSettings>
 #include <QTemporaryDir>
+
+#include "Archive.h"
 
 Q_LOGGING_CATEGORY(VrPerfKitLog, "vrperfkit")
 
@@ -31,6 +32,47 @@ namespace
             options.insert(it.key(), exe);
         }
         return options;
+    }
+
+    // The folder the game itself runs from, which is where Windows looks for a dxgi.dll first. Unreal games are
+    // started through a small launcher in their top folder; the game is the executable in <Project>/Binaries/Win64.
+    // vrperfkit's README says the same.
+    QString gameBinaryDir(const Game *game, const Game::LaunchOption &exe)
+    {
+        const QFileInfo launcher{exe.executable};
+        const auto own = launcher.absolutePath();
+        if (game->engine() != Game::Engine::Unreal || own.contains("/Binaries/Win"_L1, Qt::CaseInsensitive))
+            return own;
+
+        QStringList found;
+        // A game that has both builds is started from the 64-bit one
+        for (const auto platform : {"Binaries/Win64"_L1, "Binaries/Win32"_L1})
+        {
+            for (const auto &root : game->layoutRoots())
+            {
+                for (const auto &project : QDir{root}.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot))
+                {
+                    // Engine/Binaries holds the crash reporter, not the game
+                    if (project.fileName().compare("Engine"_L1, Qt::CaseInsensitive) == 0)
+                        continue;
+                    const QDir binaries{Game::resolveWindowsPath(project.absoluteFilePath(), platform)};
+                    if (binaries.exists() && !binaries.entryList({"*.exe"_L1}, QDir::Files).isEmpty() &&
+                        !found.contains(binaries.absolutePath()))
+                        found << binaries.absolutePath();
+                }
+            }
+            if (!found.isEmpty())
+                break;
+        }
+
+        // The launcher is named after the project, so that settles it when a game ships more than one
+        if (found.size() > 1)
+        {
+            const auto named = found.filter('/'_L1 + launcher.completeBaseName() + "/Binaries/"_L1, Qt::CaseInsensitive);
+            if (named.size() == 1)
+                return named.constFirst();
+        }
+        return found.size() == 1 ? found.constFirst() : own;
     }
 
     // Copy onto a staging name first so a failure leaves the game's current file in place.
@@ -67,9 +109,9 @@ VrPerfKit *VrPerfKit::create(QQmlEngine *, QJSEngine *)
 
 QString VrPerfKit::info() const
 {
-    return "Direct3D 11 only. It hooks OpenVR and Oculus, not OpenXR. Paste the launch options so Proton loads its "
-           "dxgi.dll. Fixed foveated rendering is on in vrperfkit.yml and needs an NVIDIA RTX or GTX 16-series GPU. Edit "
-           "that file next to the game. See [GitHub](https://github.com/fholger/vrperfkit)."_L1;
+    return "Direct3D 11 only. It hooks OpenVR and Oculus, not OpenXR. The launch options make Proton load its dxgi.dll. "
+           "Fixed foveated rendering is on in vrperfkit.yml and needs an NVIDIA RTX or GTX 16-series GPU. Edit that file "
+           "next to the game. See [GitHub](https://github.com/fholger/vrperfkit)."_L1;
 }
 
 QString VrPerfKit::launchOptions() const
@@ -96,8 +138,8 @@ bool VrPerfKit::isInstalledForGame(const Game *game) const
         return true;
 
     const auto exes = acceptableInstallCandidates(game);
-    return std::any_of(exes.cbegin(), exes.cend(), [](const auto &exe) {
-        const auto dir = QFileInfo{exe.executable}.absolutePath();
+    return std::any_of(exes.cbegin(), exes.cend(), [game](const auto &exe) {
+        const auto dir = gameBinaryDir(game, exe);
         return QFileInfo::exists(dir + "/dxgi.dll"_L1) && QFileInfo::exists(dir + "/vrperfkit.yml"_L1);
     });
 }
@@ -106,6 +148,22 @@ QMap<int, Game::LaunchOption> VrPerfKit::acceptableInstallCandidates(const Game 
 {
     // Engine is ignored on purpose: this is a tool, not a way to play in VR. The mods page still groups by engine.
     return windowsCandidates(game);
+}
+
+QList<Game::LaunchOption> VrPerfKit::preferredInstallCandidates(const Game *game, const QList<Game::LaunchOption> &all) const
+{
+    // Several launch options of one game often lead to the same folder, and then there is nothing to choose between
+    QList<Game::LaunchOption> distinct;
+    QStringList dirs;
+    for (const auto &exe : all)
+    {
+        if (const auto dir = gameBinaryDir(game, exe); !dirs.contains(dir))
+        {
+            dirs << dir;
+            distinct << exe;
+        }
+    }
+    return distinct;
 }
 
 bool VrPerfKit::isThisFileTheActualModDownload(const QString &file) const
@@ -146,19 +204,18 @@ void VrPerfKit::installModImpl(Game *game, const Game::LaunchOption &exe)
         fail("Couldn't create a temporary folder for VR Performance Toolkit."_L1);
         return;
     }
-
-    QProcess unzip;
-    unzip.start("unzip"_L1, {"-o"_L1, "-qq"_L1, archive, "-d"_L1, extracted.path()});
-    if (!unzip.waitForStarted(10000) || !unzip.waitForFinished(180000) || unzip.exitCode() != 0)
+    if (QString error; !Archive::extract(archive, extracted.path(), &error))
     {
-        const auto detail = QString::fromLocal8Bit(unzip.readAllStandardError()).trimmed();
-        fail(detail.isEmpty() ? "Couldn't extract the VR Performance Toolkit download."_L1 : detail);
+        fail(error);
         return;
     }
 
+    const auto dir = gameBinaryDir(game, exe);
     // The archive also carries a README, a license, and the other architecture. Only the matching proxy and its config go
-    // next to the game.
-    const auto sourceDll = extracted.filePath(exe.arch == Game::Architecture::x86 ? "x86/dxgi.dll"_L1 : "dxgi.dll"_L1);
+    // next to the game. Unreal's folder names the architecture; elsewhere the executable does.
+    const bool x86 = dir.endsWith("/Win32"_L1, Qt::CaseInsensitive) ||
+                     (!dir.endsWith("/Win64"_L1, Qt::CaseInsensitive) && exe.arch == Game::Architecture::x86);
+    const auto sourceDll = extracted.filePath(x86 ? "x86/dxgi.dll"_L1 : "dxgi.dll"_L1);
     const auto sourceYml = extracted.filePath("vrperfkit.yml"_L1);
     if (!QFileInfo::exists(sourceDll) || !QFileInfo::exists(sourceYml))
     {
@@ -166,7 +223,6 @@ void VrPerfKit::installModImpl(Game *game, const Game::LaunchOption &exe)
         return;
     }
 
-    const auto dir = QFileInfo{exe.executable}.absolutePath();
     const auto dllDest = QFileInfo{dir + "/dxgi.dll"_L1}.absoluteFilePath();
     const auto ymlDest = QFileInfo{dir + "/vrperfkit.yml"_L1}.absoluteFilePath();
     const auto exeName = QFileInfo{exe.executable}.fileName();
@@ -220,12 +276,12 @@ void VrPerfKit::uninstallMod(Game *game)
     {
         if (QFileInfo::exists(recorded) && !QFile::remove(recorded))
         {
-            fail("Couldn't remove dxgi.dll. Quit the game and try again."_L1);
+            failUninstall("Couldn't remove dxgi.dll. Quit the game and try again."_L1);
             return;
         }
         if (!createdYml.isEmpty() && QFileInfo::exists(createdYml) && !QFile::remove(createdYml))
         {
-            fail("Couldn't remove vrperfkit.yml. Quit the game and try again."_L1);
+            failUninstall("Couldn't remove vrperfkit.yml. Quit the game and try again."_L1);
             return;
         }
     }
@@ -233,14 +289,14 @@ void VrPerfKit::uninstallMod(Game *game)
     {
         for (const auto &exe : acceptableInstallCandidates(game))
         {
-            const auto dir = QFileInfo{exe.executable}.absolutePath();
+            const auto dir = gameBinaryDir(game, exe);
             const auto dll = dir + "/dxgi.dll"_L1;
             const auto yml = dir + "/vrperfkit.yml"_L1;
             if (!QFileInfo::exists(dll) || !QFileInfo::exists(yml))
                 continue;
             if (!QFile::remove(dll) || !QFile::remove(yml))
             {
-                fail("Couldn't remove VR Performance Toolkit. Quit the game and try again."_L1);
+                failUninstall("Couldn't remove VR Performance Toolkit. Quit the game and try again."_L1);
                 return;
             }
         }

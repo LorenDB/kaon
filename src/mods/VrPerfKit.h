@@ -23,6 +23,7 @@ public:
     }
     QString info() const final;
     QString launchOptions() const final;
+    QString installedNote() const final { return "Edit vrperfkit.yml next to the game to tune it."_L1; }
     const QLoggingCategory &logger() const final;
 
     bool optional() const final { return true; }
@@ -43,6 +44,7 @@ public slots:
 
 protected:
     void installModImpl(Game *game, const Game::LaunchOption &exe) override;
+    QList<Game::LaunchOption> preferredInstallCandidates(const Game *game, const QList<Game::LaunchOption> &all) const final;
     QUrl githubUrl() const final { return {"https://api.github.com/repos/fholger/vrperfkit/releases"_L1}; }
     bool isThisFileTheActualModDownload(const QString &file) const final;
 

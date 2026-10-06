@@ -5,11 +5,11 @@
 #include <QDir>
 #include <QFileInfo>
 #include <QLoggingCategory>
-#include <QProcess>
 #include <QSet>
 #include <QSettings>
 #include <QTemporaryDir>
 
+#include "Archive.h"
 #include "Portal1VRInstall.h"
 
 Q_LOGGING_CATEGORY(P1VRLog, "portal1vr")
@@ -27,8 +27,8 @@ Portal1VR *Portal1VR::create(QQmlEngine *, QJSEngine *)
 
 QString Portal1VR::info() const
 {
-    return "Start SteamVR first. Paste the launch options below into Steam so Proton loads this mod's d3d9.dll. "
-           "See [GitHub](https://github.com/LorenDB/portal1vr#installation)."_L1;
+    return "Start SteamVR before the game. It needs launch options set in Steam, which make Proton load the mod's "
+           "d3d9.dll. See [GitHub](https://github.com/LorenDB/portal1vr#installation)."_L1;
 }
 
 QString Portal1VR::launchOptions() const
@@ -36,6 +36,13 @@ QString Portal1VR::launchOptions() const
     // The shipped d3d9.dll is a patched DXVK, so Proton has to load that file instead of its own.
     return "WINEDLLOVERRIDES=\"d3d9=n,b\" %command% -insecure -fullscreen -novid "
            "+mat_queue_mode 0 +mat_vsync 0 +mat_antialias 0"_L1;
+}
+
+QStringList Portal1VR::conflictingLaunchOptions() const
+{
+    // -vulkan makes the game load the DXVK it ships with (dxvk_d3d9.dll) and never open the mod's d3d9.dll. The mod
+    // also wants fullscreen, not a window.
+    return {"-vulkan"_L1, "-window"_L1, "-windowed"_L1, "-sw"_L1, "-startwindowed"_L1};
 }
 
 const QLoggingCategory &Portal1VR::logger() const
@@ -127,16 +134,13 @@ void Portal1VR::installModImpl(Game *game, const Game::LaunchOption &exe)
         return;
     }
 
-    QProcess unzip;
-    unzip.start("unzip"_L1, {"-o"_L1, "-qq"_L1, archive, "-d"_L1, extracted.path()});
-    if (!unzip.waitForStarted(10000) || !unzip.waitForFinished(180000) || unzip.exitCode() != 0)
+    QString error;
+    if (!Archive::extract(archive, extracted.path(), &error))
     {
-        const auto detail = QString::fromLocal8Bit(unzip.readAllStandardError()).trimmed();
-        fail(detail.isEmpty() ? "Couldn't extract the Portal 1 VR download."_L1 : detail);
+        fail(error);
         return;
     }
 
-    QString error;
     QStringList installed;
     if (!installPortal1VRPackage(QFileInfo{exe.executable}.absolutePath(), extracted.path(), installed, error))
     {

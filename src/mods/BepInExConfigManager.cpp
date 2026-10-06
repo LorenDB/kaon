@@ -4,7 +4,6 @@
 
 #include <QFileInfo>
 #include <QLoggingCategory>
-#include <QProcess>
 
 #include "Bepinex.h"
 
@@ -67,6 +66,17 @@ ModRelease::Asset BepInExConfigManager::chooseAssetToInstall(const Game *game, c
     if (it != assets.cend())
         return *it;
     return {};
+}
+
+QList<Game::LaunchOption> BepInExConfigManager::preferredInstallCandidates(const Game *game,
+                                                                           const QList<Game::LaunchOption> &all) const
+{
+    // A BepInEx plugin belongs next to the executable BepInEx was installed for
+    QList<Game::LaunchOption> withBepinex;
+    for (const auto &exe : all)
+        if (Bepinex::instance()->hasFilesFor(game, exe))
+            withBepinex << exe;
+    return withBepinex.isEmpty() ? all : withBepinex;
 }
 
 BepInExConfigManager::BepInExConfigManager(QObject *parent)
