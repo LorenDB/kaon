@@ -11,13 +11,20 @@
 #include "GamesFilterModel.h"
 #include "ModsFilterModel.h"
 
-ModRelease::ModRelease(
-    int id, QString name, QDateTime timestamp, bool nightly, bool downloaded, QList<Asset> assets, QObject *parent)
+ModRelease::ModRelease(int id,
+                       QString name,
+                       QDateTime timestamp,
+                       bool nightly,
+                       bool prerelease,
+                       bool downloaded,
+                       QList<Asset> assets,
+                       QObject *parent)
     : QObject{parent},
       m_id{id},
       m_name{name},
       m_timestamp{timestamp},
       m_nightly{nightly},
+      m_prerelease{prerelease},
       m_downloaded{downloaded},
       m_assets{assets}
 {}
@@ -57,8 +64,10 @@ Mod::Mod(QObject *parent)
         settings.beginGroup(settingsGroup());
         if (int id = settings.value("currentRelease"_L1, 0).toInt(); id != 0)
         {
+            // Most mods build their release list later and pick this up from m_lastCurrentReleaseId then
             m_lastCurrentReleaseId = id;
-            setCurrentRelease(id);
+            if (releaseFromId(id))
+                setCurrentRelease(id);
         }
     });
 }
@@ -88,6 +97,12 @@ bool Mod::hasNightlies() const
 {
     const auto list = releases();
     return std::any_of(list.cbegin(), list.cend(), [](const auto r) { return r->nightly(); });
+}
+
+bool Mod::hasPrereleases() const
+{
+    const auto list = releases();
+    return std::any_of(list.cbegin(), list.cend(), [](const auto r) { return r->prerelease(); });
 }
 
 bool Mod::isBusyForGame(const Game *game) const
@@ -147,6 +162,12 @@ ModRelease *Mod::releaseInstalledForGame(const Game *game)
     settings.beginGroup(settingsGroup());
     settings.beginGroup(game->settingsId());
     return releaseFromId(settings.value("installedVersion"_L1).toInt());
+}
+
+QString Mod::releaseTitle(const ModRelease *release) const
+{
+    const auto name = release->name();
+    return name.contains(displayName(), Qt::CaseInsensitive) ? name : displayName() + ' ' + name;
 }
 
 int Mod::rowCount(const QModelIndex &parent) const
@@ -270,6 +291,7 @@ void ModReleaseFilter::setMod(Mod *mod)
     QSettings settings;
     settings.beginGroup(m_mod->settingsGroup());
     setShowNightlies(settings.value("showNightlies"_L1, false).toBool());
+    setShowPrereleases(settings.value("showPrereleases"_L1, false).toBool());
 }
 
 void ModReleaseFilter::setShowNightlies(bool state)
@@ -288,6 +310,22 @@ void ModReleaseFilter::setShowNightlies(bool state)
     }
 }
 
+void ModReleaseFilter::setShowPrereleases(bool state)
+{
+    beginFilterChange();
+    m_showPrereleases = state;
+    endFilterChange();
+
+    emit showPrereleasesChanged(state);
+
+    if (m_mod)
+    {
+        QSettings settings;
+        settings.beginGroup(m_mod->settingsGroup());
+        settings.setValue("showPrereleases"_L1, m_showPrereleases);
+    }
+}
+
 bool ModReleaseFilter::filterAcceptsRow(int row, const QModelIndex &parent) const
 {
     if (!m_mod)
@@ -299,6 +337,8 @@ bool ModReleaseFilter::filterAcceptsRow(int row, const QModelIndex &parent) cons
     if (!release || release->assets().isEmpty())
         return false;
     if (!m_showNightlies && release->nightly())
+        return false;
+    if (!m_showPrereleases && release->prerelease())
         return false;
 
     return QSortFilterProxyModel::filterAcceptsRow(row, parent);

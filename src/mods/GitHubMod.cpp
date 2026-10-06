@@ -20,6 +20,7 @@ void GitHubMod::downloadRelease(ModRelease *release)
     if (release->assets().isEmpty())
         return;
 
+    const auto releaseId = release->id();
     for (const auto asset : release->assets())
     {
         if (asset.url.isEmpty())
@@ -27,18 +28,30 @@ void GitHubMod::downloadRelease(ModRelease *release)
 
         DownloadManager::instance()->download(
             QNetworkRequest{asset.url},
-            release->name(),
+            releaseTitle(release),
             true,
-            [this, release, asset](const QByteArray &data) {
+            [this, releaseId, asset](const QByteArray &data) {
+                // A release refresh may have replaced the ModRelease this download started with.
+                const auto release = releaseFromId(releaseId);
+                if (!release)
+                    return;
+
                 QFile file{pathForRelease(release, asset)};
-                if (file.open(QIODevice::WriteOnly))
+                if (!file.open(QIODevice::WriteOnly))
                 {
-                    file.write(data);
-                    file.close();
-                    release->setDownloaded(true);
-                }
-                else
                     qCWarning(logger()).noquote() << "Failed to save" << displayName();
+                    return;
+                }
+                file.write(data);
+                file.close();
+
+                // A release can be several files (BepInEx has one per platform). It isn't downloaded until all of them
+                // are, or an install waiting on it starts without the file it needs.
+                const auto assets = release->assets();
+                if (std::all_of(assets.cbegin(), assets.cend(), [this, release](const auto &a) {
+                        return QFileInfo::exists(pathForRelease(release, a));
+                    }))
+                    release->setDownloaded(true);
             },
             [this](const QNetworkReply::NetworkError error, const QString &errorMessage) {
                 qCWarning(logger()).noquote() << "Download" << displayName() << "failed:" << errorMessage;
@@ -127,17 +140,18 @@ void GitHubMod::parseReleaseInfoJson()
         return;
     }
 
-    beginResetModel();
-
     const auto releases = QJsonDocument::fromJson(cachedReleases.readAll());
-    const int currentId = currentRelease() ? currentRelease()->id() : 0;
+    const int currentId = currentRelease() ? currentRelease()->id() : m_lastCurrentReleaseId;
 
-    for (const auto release : std::as_const(m_releases))
-        release->deleteLater();
-    m_releases.clear();
-
+    QList<ModRelease *> parsed;
     for (const auto &release : releases.array())
     {
+        if (release["draft"_L1].toBool())
+            continue;
+        const bool prerelease = release["prerelease"_L1].toBool();
+        if (prerelease && !offersPrereleases())
+            continue;
+
         const auto name = release["name"_L1].toString();
         const auto id = release["id"_L1].toInt();
         const auto timestamp = QDateTime::fromString(release["published_at"_L1].toString(), Qt::ISODate);
@@ -157,16 +171,48 @@ void GitHubMod::parseReleaseInfoJson()
             }
         }
 
-        auto m = new ModRelease{id, name, timestamp, false, false, assets, this};
+        // Skip releases with nothing Kaon can install (e.g. source-only tags). An empty release must never become
+        // the current release: chooseAssetToInstall() would dereference an empty asset list.
+        if (assets.isEmpty())
+            continue;
+
+        auto m = new ModRelease{id, name, timestamp, false, prerelease, false, assets, this};
         m->setDownloaded(std::all_of(m->assets().cbegin(), m->assets().cend(), [this, m](const auto &a) {
             return QFileInfo::exists(pathForRelease(m, a));
         }));
-        m_releases.push_back(m);
+        parsed.push_back(m);
     }
 
+    // Keep the old list when there is nothing to replace it with, so the current release never points at a deleted one
+    if (parsed.isEmpty())
+        return;
+
+    beginResetModel();
+    for (const auto release : std::as_const(m_releases))
+        release->deleteLater();
+    m_releases = parsed;
     endResetModel();
 
-    setCurrentRelease(currentId == 0 ? m_releases.first()->id() : currentId);
+    // The release that was current stays current, unless it's gone or the version menu now hides it
+    const auto kept = releaseFromId(currentId);
+    setCurrentRelease(kept && (!kept->prerelease() || showsPrereleases()) ? currentId : newestOfferedRelease()->id());
+}
+
+bool GitHubMod::showsPrereleases() const
+{
+    // The version menu's switch, which ModReleaseFilter saves
+    QSettings settings;
+    settings.beginGroup(settingsGroup());
+    return settings.value("showPrereleases"_L1, false).toBool();
+}
+
+ModRelease *GitHubMod::newestOfferedRelease() const
+{
+    const bool prereleases = showsPrereleases();
+    for (const auto release : m_releases)
+        if (prereleases || !release->prerelease())
+            return release;
+    return m_releases.constFirst();
 }
 
 GitHubZipExtractorMod::GitHubZipExtractorMod(QObject *parent)

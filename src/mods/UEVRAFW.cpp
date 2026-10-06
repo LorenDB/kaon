@@ -84,7 +84,7 @@ void UEVRAFW::downloadRelease(ModRelease *release)
 
     DownloadManager::instance()->download(
         QNetworkRequest{release->assets().constFirst().url},
-        release->name(),
+        releaseTitle(release),
         true,
         [this, zipPath, releaseId](const QByteArray &data) {
             QFile file{zipPath};
@@ -251,8 +251,8 @@ void UEVRAFW::parseReleaseInfoJson()
                 .size = asset["size"_L1].toInt(),
             });
 
-            parsed.push_back(
-                new ModRelease{id, releaseName + " ("_L1 + variant + ')', timestamp, false, downloaded, assets, this});
+            parsed.push_back(new ModRelease{
+                id, releaseName + " ("_L1 + variant + ')', timestamp, false, false, downloaded, assets, this});
         }
     };
 

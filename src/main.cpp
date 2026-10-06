@@ -12,6 +12,8 @@
 #include <QSysInfo>
 
 #include "Aptabase.h"
+#include "BepInExConfigManager.h"
+#include "Bepinex.h"
 #include "CustomGames.h"
 #include "Dotnet.h"
 #include "Gamepad.h"
@@ -23,14 +25,9 @@
 #include "Steam.h"
 #include "UEVR.h"
 #include "UEVRAFW.h"
+#include "UUVR.h"
 #include "UpdateChecker.h"
 #include "Wine.h"
-
-#if defined EXPERIMENTAL_UUVR_SUPPORT
-    #include "BepInExConfigManager.h"
-    #include "Bepinex.h"
-    #include "UUVR.h"
-#endif
 
 namespace
 {
@@ -117,6 +114,8 @@ int main(int argc, char *argv[])
     Steam::instance();
     Heroic::instance();
 
+    BepInExConfigManager::instance();
+    Bepinex::instance();
     CustomGames::instance();
     Dotnet::instance();
     Gamepad::instance();
@@ -126,14 +125,9 @@ int main(int argc, char *argv[])
     Portal2VR::instance();
     UEVR::instance();
     UEVRAFW::instance();
+    UUVR::instance();
     UpdateChecker::instance();
     Wine::instance();
-
-#if defined EXPERIMENTAL_UUVR_SUPPORT
-    Bepinex::instance();
-    BepInExConfigManager::instance();
-    UUVR::instance();
-#endif
 
     QQmlApplicationEngine engine;
     QObject::connect(

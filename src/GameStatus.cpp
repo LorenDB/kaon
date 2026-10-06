@@ -334,22 +334,24 @@ QVariantList GameStatus::steps(Game *game) const
         else if (installable && mod->isInstalledForGame(game))
         {
             const auto installed = mod->releaseInstalledForGame(game);
-            auto step = makeStep(
-                key, installed ? installed->name() : mod->displayName(), "Installed in the game folder"_L1, "ok"_L1);
+            auto step = makeStep(key,
+                                 installed ? mod->releaseTitle(installed) : mod->displayName(),
+                                 "Installed in the game folder"_L1,
+                                 "ok"_L1);
             step["secondaryAction"_L1] = "uninstall"_L1;
             step["secondaryLabel"_L1] = "Uninstall"_L1;
             out << step;
         }
         else if (mod->isBusyForGame(game))
-            out << makeStep(key, release->name(), "Installing"_L1, "busy"_L1);
+            out << makeStep(key, mod->releaseTitle(release), "Installing"_L1, "busy"_L1);
         else if (isDownloading(mod, release))
-            out << makeStep(key, release->name(), "Downloading"_L1, "busy"_L1);
+            out << makeStep(key, mod->releaseTitle(release), "Downloading"_L1, "busy"_L1);
         else if (const auto hold = mod->installHoldReason(game); installable && !hold.isEmpty())
         {
             if (release->downloaded())
-                out << makeStep(key, release->name(), hold, "wait"_L1);
+                out << makeStep(key, mod->releaseTitle(release), hold, "wait"_L1);
             else
-                out << makeStep(key, release->name(), hold, "todo"_L1, "download"_L1, "Download"_L1);
+                out << makeStep(key, mod->releaseTitle(release), hold, "todo"_L1, "download"_L1, "Download"_L1);
         }
         else if (!release->downloaded())
         {
@@ -358,17 +360,21 @@ QVariantList GameStatus::steps(Game *game) const
                 detail += installable ? ". Downloads %1 first."_L1.arg(formatSize(release->size())) :
                                         " (%1)"_L1.arg(formatSize(release->size()));
             out << makeStep(key,
-                            release->name(),
+                            mod->releaseTitle(release),
                             detail,
                             "todo"_L1,
                             installable ? "install"_L1 : "download"_L1,
                             installable ? "Install"_L1 : "Download"_L1);
         }
         else if (installable)
-            out << makeStep(
-                key, release->name(), "Downloaded, not installed in this game"_L1, "todo"_L1, "install"_L1, "Install"_L1);
+            out << makeStep(key,
+                            mod->releaseTitle(release),
+                            "Downloaded, not installed in this game"_L1,
+                            "todo"_L1,
+                            "install"_L1,
+                            "Install"_L1);
         else
-            out << makeStep(key, release->name(), "Downloaded"_L1, "ok"_L1);
+            out << makeStep(key, mod->releaseTitle(release), "Downloaded"_L1, "ok"_L1);
     }
 
     m_stepsCache.insert(game, out);
@@ -584,7 +590,7 @@ void GameStatus::download(Mod *mod, ModRelease *release)
 {
     if (!mod || !release || release->downloaded() || release->assets().isEmpty())
         return;
-    m_pendingDownloads.insert(downloadKey(mod, release), release->name());
+    m_pendingDownloads.insert(downloadKey(mod, release), mod->releaseTitle(release));
     mod->downloadRelease(release);
     invalidate();
 }

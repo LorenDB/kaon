@@ -208,6 +208,7 @@ QList<ModRelease *> Dotnet::releases() const
                                                    ".NET Desktop Runtime 6.0.36"_L1,
                                                    QDateTime{{2024, 11, 12}, {0, 0, 0}},
                                                    false,
+                                                   false,
                                                    hasDotnetCached(),
                                                    {ModRelease::Asset{
                                                         .id = 420,

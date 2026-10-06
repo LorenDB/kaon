@@ -73,7 +73,7 @@ void UEVR::downloadRelease(ModRelease *release)
 
     DownloadManager::instance()->download(
         QNetworkRequest{release->assets().constFirst().url},
-        release->name(),
+        releaseTitle(release),
         true,
         [this, zipPath, release](const QByteArray &data) {
             QFile file(zipPath);
@@ -253,7 +253,7 @@ void UEVR::parseReleaseInfoJson()
             }
         }
 
-        return new ModRelease{id, name, timestamp, nightly, downloaded, assets, this};
+        return new ModRelease{id, name, timestamp, nightly, false, downloaded, assets, this};
     };
 
     for (const auto &release : releases.array())
@@ -263,5 +263,7 @@ void UEVR::parseReleaseInfoJson()
 
     endResetModel();
 
-    setCurrentRelease(currentId == 0 ? m_releases.first()->id() : currentId);
+    if (currentId != 0 && !releaseFromId(currentId))
+        qCWarning(UEVRLog) << "Saved UEVR release" << currentId << "is no longer available";
+    setCurrentRelease(releaseFromId(currentId) ? currentId : m_releases.first()->id());
 }

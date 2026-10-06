@@ -18,6 +18,7 @@ class ModRelease : public QObject
     Q_PROPERTY(QString name READ name CONSTANT)
     Q_PROPERTY(QDateTime timestamp READ timestamp CONSTANT)
     Q_PROPERTY(bool nightly READ nightly CONSTANT)
+    Q_PROPERTY(bool prerelease READ prerelease CONSTANT)
     Q_PROPERTY(bool downloaded READ downloaded NOTIFY downloadedChanged)
     Q_PROPERTY(qint64 size READ size CONSTANT FINAL)
 
@@ -35,6 +36,7 @@ public:
                QString name,
                QDateTime timestamp,
                bool nightly,
+               bool prerelease,
                bool downloaded,
                QList<Asset> assets,
                QObject *parent = nullptr);
@@ -43,6 +45,8 @@ public:
     QString name() const { return m_name; }
     QDateTime timestamp() const { return m_timestamp; }
     bool nightly() const { return m_nightly; }
+    // Marked as a prerelease by whoever published it, e.g. a preview build
+    bool prerelease() const { return m_prerelease; }
     bool downloaded() const { return m_downloaded; }
     QList<Asset> assets() const { return m_assets; }
     // Total download size in bytes, or 0 if GitHub didn't say
@@ -58,6 +62,7 @@ private:
     QString m_name;
     QDateTime m_timestamp;
     bool m_nightly = false;
+    bool m_prerelease = false;
     bool m_downloaded = false;
     QList<Asset> m_assets;
 };
@@ -128,6 +133,7 @@ public:
         return game && !acceptableInstallCandidates(game).isEmpty();
     }
     Q_INVOKABLE bool hasNightlies() const;
+    Q_INVOKABLE bool hasPrereleases() const;
 
     // Set while something asynchronous, like an installer running in Wine, is working on this mod for a game.
     Q_INVOKABLE bool isBusyForGame(const Game *game) const;
@@ -139,6 +145,9 @@ public:
     Q_INVOKABLE ModRelease *releaseFromId(const int id) const;
     Q_INVOKABLE int downloadedCount() const;
     Q_INVOKABLE ModRelease *releaseInstalledForGame(const Game *game);
+    // What to call a release where the mod isn't named next to it. "UEVR 1.05" stays as it is; a bare "0.4.0" becomes
+    // "UUVR 0.4.0".
+    QString releaseTitle(const ModRelease *release) const;
 
     // Override this to apply filters to both the entire game and individual executables
     virtual QMap<int, Game::LaunchOption> acceptableInstallCandidates(const Game *game) const;
@@ -201,20 +210,24 @@ class ModReleaseFilter : public QSortFilterProxyModel
 
     Q_PROPERTY(Mod *mod READ mod WRITE setMod NOTIFY modChanged FINAL)
     Q_PROPERTY(bool showNightlies READ showNightlies WRITE setShowNightlies NOTIFY showNightliesChanged FINAL)
+    Q_PROPERTY(bool showPrereleases READ showPrereleases WRITE setShowPrereleases NOTIFY showPrereleasesChanged FINAL)
 
 public:
     explicit ModReleaseFilter(QObject *parent = nullptr);
 
     Mod *mod() const { return m_mod; }
     bool showNightlies() const { return m_showNightlies; }
+    bool showPrereleases() const { return m_showPrereleases; }
     Q_INVOKABLE int indexFromRelease(ModRelease *release) const;
 
     void setMod(Mod *mod);
     void setShowNightlies(bool state);
+    void setShowPrereleases(bool state);
 
 signals:
     void modChanged(Mod *mod);
     void showNightliesChanged(bool state);
+    void showPrereleasesChanged(bool state);
 
 protected:
     bool filterAcceptsRow(int row, const QModelIndex &parent) const override;
@@ -223,4 +236,5 @@ protected:
 private:
     Mod *m_mod{nullptr};
     bool m_showNightlies{false};
+    bool m_showPrereleases{false};
 };

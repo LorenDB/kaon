@@ -3,6 +3,7 @@
 #include <QFileInfo>
 #include <QLoggingCategory>
 #include <QProcess>
+#include <QRegularExpression>
 
 Q_LOGGING_CATEGORY(BepinexLog, "bepinex")
 
@@ -21,7 +22,16 @@ QString Bepinex::info() const
 {
     return "Extra setup required; see instructions for "
            "[Linux](https://docs.bepinex.dev/articles/advanced/steam_interop.html#3-configure-steam-to-run-the-script) "
-           "and [Windows](https://docs.bepinex.dev/articles/advanced/proton_wine.html) binaries"_L1;
+           "and [Windows](https://docs.bepinex.dev/articles/advanced/proton_wine.html) binaries. For Windows games "
+           "played through Proton, paste the launch options below into Steam so BepInEx actually loads."_L1;
+}
+
+QString Bepinex::launchOptions() const
+{
+    // Doorstop hooks Windows games via winhttp.dll; Proton only loads it with this override. Native Linux games
+    // don't need it (they use run_bepinex.sh instead), but showing it unconditionally matches how Kaon presents
+    // launch options elsewhere, and UUVR only supports Windows games anyway.
+    return "WINEDLLOVERRIDES=\"winhttp=n,b\" %command%"_L1;
 }
 
 const QLoggingCategory &Bepinex::logger() const
@@ -65,6 +75,65 @@ void Bepinex::installModImpl(Game *game, const Game::LaunchOption &exe)
             file.close();
         }
     }
+    else if (exe.platform == Game::Platform::Windows)
+    {
+        ensureDoorstopSearchPath(game, exe);
+    }
+}
+
+void Bepinex::ensureDoorstopSearchPath(const Game *game, const Game::LaunchOption &exe) const
+{
+    const auto installDir = modInstallDirForGame(game, exe);
+
+    // Only needed when the game bundles its own MonoMod (e.g. Haste_Data/Managed/MonoMod.Utils.dll). Otherwise the
+    // stock doorstop config is correct and we leave it alone.
+    const QFileInfo exeInfo{exe.executable};
+    const QString managedDir = exeInfo.absolutePath() + '/' + exeInfo.completeBaseName() + "_Data/Managed"_L1;
+    if (!QFileInfo::exists(managedDir + "/MonoMod.Utils.dll"_L1) &&
+        !QFileInfo::exists(managedDir + "/MonoMod.RuntimeDetour.dll"_L1))
+        return;
+
+    // Without BepInEx there is no config to fix, and opening one for writing would leave a stray file behind
+    QFile config{installDir + "/doorstop_config.ini"_L1};
+    if (!config.exists())
+        return;
+    if (!config.open(QIODevice::ReadWrite))
+    {
+        qCWarning(BepinexLog) << "Could not open doorstop_config.ini to set DLL search path override";
+        return;
+    }
+
+    // Doorstop 4 (BepInEx 5.4.23 and later) spells the key dll_search_path_override, Doorstop 3 dllSearchPathOverride.
+    // Lines are edited in place, without a text mode, so everything else keeps its bytes and line endings.
+    static const QRegularExpression key{R"(^\s*(dll_search_path_override|dllSearchPathOverride)\s*=\s*(.*?)\s*$)"_L1};
+    const QString searchPath = "BepInEx\\core"_L1;
+    auto lines = QString::fromLatin1(config.readAll()).split('\n');
+    for (auto &line : lines)
+    {
+        const bool cr = line.endsWith('\r');
+        const auto match = key.match(cr ? line.chopped(1) : line);
+        if (!match.hasMatch())
+            continue;
+
+        // Someone who set this to something else (unstripped_corlib, say) needed that more than this fix
+        if (!match.captured(2).isEmpty())
+        {
+            if (match.captured(2) != searchPath)
+                qCInfo(BepinexLog) << "Leaving the doorstop DLL search path override at" << match.captured(2);
+            return;
+        }
+
+        line = match.captured(1) + '=' + searchPath;
+        if (cr)
+            line += '\r';
+        config.seek(0);
+        config.resize(0);
+        config.write(lines.join('\n').toLatin1());
+        qCInfo(BepinexLog) << "Set doorstop DLL search path override for game with bundled MonoMod";
+        return;
+    }
+
+    qCWarning(BepinexLog) << "doorstop_config.ini has no DLL search path override to set";
 }
 
 QMap<int, Game::LaunchOption> Bepinex::acceptableInstallCandidates(const Game *game) const

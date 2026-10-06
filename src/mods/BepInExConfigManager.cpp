@@ -1,5 +1,7 @@
 #include "BepInExConfigManager.h"
 
+#include <algorithm>
+
 #include <QFileInfo>
 #include <QLoggingCategory>
 #include <QProcess>
@@ -56,7 +58,15 @@ QString BepInExConfigManager::modInstallDirForGame(const Game *game, const Game:
 
 ModRelease::Asset BepInExConfigManager::chooseAssetToInstall(const Game *game, const Game::LaunchOption &exe) const
 {
-    return currentRelease()->assets().constFirst();
+    // Releases ship one zip per scripting backend (e.g. BepInExConfigManager.Mono.zip). UUVR only supports Mono
+    // games, so pick the Mono asset explicitly instead of relying on asset order.
+    const auto assets = currentRelease()->assets();
+    const auto it = std::find_if(assets.cbegin(), assets.cend(), [](const ModRelease::Asset &asset) {
+        return asset.name.contains("mono"_L1, Qt::CaseInsensitive) && !asset.name.contains("il2cpp"_L1, Qt::CaseInsensitive);
+    });
+    if (it != assets.cend())
+        return *it;
+    return {};
 }
 
 BepInExConfigManager::BepInExConfigManager(QObject *parent)

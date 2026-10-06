@@ -25,12 +25,17 @@ protected:
     virtual QUrl githubUrl() const = 0;
     virtual bool isThisFileTheActualModDownload(const QString &file) const = 0;
     virtual ModRelease::Asset chooseAssetToInstall(const Game *game, const Game::LaunchOption &exe) const;
+    // False for mods whose prereleases must never be offered, not even behind the version menu's switch
+    virtual bool offersPrereleases() const { return true; }
 
 private:
     virtual QList<ModRelease *> releases() const final { return m_releases; }
 
     void updateAvailableReleases();
     void parseReleaseInfoJson();
+    bool showsPrereleases() const;
+    // The release a mod starts out on when it has no saved one: the newest that the version menu shows
+    ModRelease *newestOfferedRelease() const;
 
     QList<ModRelease *> m_releases;
 };

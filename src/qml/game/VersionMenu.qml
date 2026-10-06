@@ -3,7 +3,7 @@ import QtQuick.Controls.Basic
 
 import dev.lorendb.kaon
 
-// Version, nightly builds, download and delete for one mod, folded into a single dropdown. The choice applies to every
+// Version, nightly builds, prereleases, download and delete for one mod, folded into a single dropdown. The choice applies to every
 // game, as it always has.
 Item {
     id: picker
@@ -22,6 +22,13 @@ Item {
         releases.showNightlies = false;
         // The current release may have been a nightly that's now hidden
         if (current && current.nightly && releases.rowCount() > 0)
+            mod.setCurrentRelease(releases.data(releases.index(0, 0), Qt.UserRole + 1));
+    }
+
+    function hidePrereleases() {
+        releases.showPrereleases = false;
+        // The current release may have been a prerelease that's now hidden
+        if (current && current.prerelease && releases.rowCount() > 0)
             mod.setCurrentRelease(releases.data(releases.index(0, 0), Qt.UserRole + 1));
     }
 
@@ -135,6 +142,8 @@ Item {
                     id: row
 
                     readonly property bool downloading: (GameStatus.revision, GameStatus.isDownloading(picker.mod, release))
+                    readonly property string kind: !release ? "" : release.nightly ? "Nightly, " : release.prerelease
+                                                                                     ? "Prerelease, " : ""
                     required property var model
                     readonly property ModRelease release: picker.mod.releaseFromId(model.id)
                     readonly property bool selected: picker.current !== null && picker.current.id === model.id
@@ -189,8 +198,7 @@ Item {
                         VText {
                             color: Theme.glassFaint
                             font.pixelSize: 11
-                            text: (row.release && row.release.nightly ? "Nightly, " : "")
-                                  + row.model.timestamp.toLocaleDateString(Qt.locale(), Locale.ShortFormat)
+                            text: row.kind + row.model.timestamp.toLocaleDateString(Qt.locale(), Locale.ShortFormat)
                         }
                     }
 
@@ -231,7 +239,7 @@ Item {
             Rectangle {
                 color: Theme.glassLine
                 height: 1
-                visible: nightlyRow.visible || deleteButton.visible
+                visible: nightlyRow.visible || prereleaseRow.visible || deleteButton.visible
                 width: 324
             }
 
@@ -262,6 +270,33 @@ Item {
                 }
             }
 
+            Item {
+                id: prereleaseRow
+
+                height: 40
+                visible: (GameStatus.revision, picker.mod.hasPrereleases())
+                width: 324
+
+                VText {
+                    anchors.verticalCenter: parent.verticalCenter
+                    color: Theme.glassMuted
+                    font.pixelSize: 13
+                    text: "Include prereleases"
+                    x: 14
+                }
+
+                ToggleSwitch {
+                    id: prereleaseSwitch
+
+                    anchors.right: parent.right
+                    anchors.rightMargin: 12
+                    anchors.verticalCenter: parent.verticalCenter
+                    checked: releases.showPrereleases
+
+                    onToggled: releases.showPrereleases ? picker.hidePrereleases() : releases.showPrereleases = true
+                }
+            }
+
             VButton {
                 id: deleteButton
 
@@ -288,6 +323,8 @@ Item {
                 first.forceActiveFocus();
             else if (nightlySwitch.visible)
                 nightlySwitch.forceActiveFocus();
+            else if (prereleaseSwitch.visible)
+                prereleaseSwitch.forceActiveFocus();
         })
     }
 }

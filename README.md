@@ -12,6 +12,7 @@ can be disabled in the settings page.
 - Install any UEVR release, including nightly builds
 - Install the .NET runtime in Proton to make UEVR work
 - Install Portal and Portal 2 VR mods
+- Install UUVR for Unity games, along with the BepInEx setup it needs
 - Works on the Steam Frame! (Only UEVR has been confirmed working so far)
 - Flatpak Steam and Flatpak Heroic are supported, and a native install of the same launcher is listed separately. The Flatpak launcher has to already be running, and user namespaces have to be enabled so Kaon can enter the game sandbox. Snap stores and the Flatpak itch app are still unsupported.
 
