@@ -78,7 +78,7 @@ QString OpenXrCas::info() const
 {
     return "Each game gets its own copy in that game's Proton prefix. Direct3D 11 OpenXR only. Quit the game before "
            "turning it on or off. Sharpness is set in AppData\\Local\\XR_APILAYER_OPENXR_SHARPENER\\config.cfg in "
-           "the prefix. See [GitHub](https://github.com/elliotttate/OpenXR-CAS)."_L1;
+           "the prefix."_L1;
 }
 
 const QLoggingCategory &OpenXrCas::logger() const

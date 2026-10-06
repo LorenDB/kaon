@@ -19,6 +19,7 @@ public:
     bool providesVr() const override { return false; }
     QString settingsGroup() const final { return "bepinex"_L1; }
     QString description() const final { return "Plugin loader for Unity games that UUVR runs on."_L1; }
+    QString homepage() const final { return "https://github.com/BepInEx/BepInEx"_L1; }
     QString info() const final;
     const QLoggingCategory &logger() const final;
 

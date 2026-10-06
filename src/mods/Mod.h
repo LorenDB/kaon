@@ -85,6 +85,8 @@ class Mod : public QAbstractListModel
     Q_PROPERTY(ModRelease *currentRelease READ currentRelease NOTIFY currentReleaseChanged FINAL)
     Q_PROPERTY(QString info READ info CONSTANT FINAL)
     Q_PROPERTY(QString description READ description CONSTANT FINAL)
+    // Project homepage, e.g. the mod's GitHub page. Empty when the mod has nowhere to link to.
+    Q_PROPERTY(QString homepage READ homepage CONSTANT FINAL)
     // Steam (or another launcher) options to paste in. Empty when the mod doesn't need any.
     Q_PROPERTY(QString launchOptions READ launchOptions CONSTANT FINAL)
 
@@ -109,6 +111,7 @@ public:
     virtual QString info() const { return {}; }
     // One plain sentence saying what the mod does
     virtual QString description() const { return {}; }
+    virtual QString homepage() const { return {}; }
     virtual QString launchOptions() const { return {}; }
     // Arguments that keep the mod from loading, and so have to come out of a game's launch options
     virtual QStringList conflictingLaunchOptions() const { return {}; }

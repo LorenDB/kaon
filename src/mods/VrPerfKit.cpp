@@ -109,9 +109,9 @@ VrPerfKit *VrPerfKit::create(QQmlEngine *, QJSEngine *)
 
 QString VrPerfKit::info() const
 {
-    return "Direct3D 11 only. It hooks OpenVR and Oculus, not OpenXR. The launch options make Proton load its dxgi.dll. "
+    return "Direct3D 11 only. It hooks OpenVR and Oculus, not OpenXR. "
            "Fixed foveated rendering is on in vrperfkit.yml and needs an NVIDIA RTX or GTX 16-series GPU. Edit that file "
-           "next to the game. See [GitHub](https://github.com/fholger/vrperfkit)."_L1;
+           "next to the game."_L1;
 }
 
 QString VrPerfKit::launchOptions() const

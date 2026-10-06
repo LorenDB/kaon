@@ -18,6 +18,7 @@ public:
     QString displayName() const override { return "Portal 1 VR"_L1; }
     QString settingsGroup() const override { return "portal1vr"_L1; }
     QString description() const override { return "Full VR conversion for the Windows version of Portal."_L1; }
+    QString homepage() const final { return "https://github.com/LorenDB/portal1vr"_L1; }
     QString info() const final;
     QString launchOptions() const final;
     QStringList conflictingLaunchOptions() const final;

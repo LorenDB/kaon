@@ -27,6 +27,7 @@ protected:
     virtual QString assetName() const = 0;
     // A null version means the game's files didn't say which Unity made them
     virtual bool supportsUnity(const QVersionNumber &version) const = 0;
+    QString homepage() const final { return "https://github.com/Raicuparta/uuvr"_L1; }
 
     void installModImpl(Game *game, const Game::LaunchOption &exe) override;
     QList<Game::LaunchOption> preferredInstallCandidates(const Game *game,

@@ -21,6 +21,7 @@ public:
     {
         return "Upscales and sharpens Direct3D 11 games, and can render the edges cheaper."_L1;
     }
+    QString homepage() const final { return "https://github.com/fholger/vrperfkit"_L1; }
     QString info() const final;
     QString launchOptions() const final;
     QString installedNote() const final { return "Edit vrperfkit.yml next to the game to tune it."_L1; }

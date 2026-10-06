@@ -42,11 +42,8 @@ Bepinex *Bepinex::create(QQmlEngine *, QJSEngine *)
 
 QString Bepinex::info() const
 {
-    return "For Windows games, Kaon also tells the game's Proton prefix to load BepInEx, so there are no launch options "
-           "to set. A native Linux game needs "
-           "[its launch options "
-           "changed](https://docs.bepinex.dev/articles/advanced/steam_interop.html#3-configure-steam-to-run-the-script) "
-           "by hand."_L1;
+    return "For Windows games, Kaon also tells the game's Proton prefix to load BepInEx. A native Linux game still needs "
+           "its startup script set up by hand."_L1;
 }
 
 const QLoggingCategory &Bepinex::logger() const

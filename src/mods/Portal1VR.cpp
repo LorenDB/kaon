@@ -27,8 +27,7 @@ Portal1VR *Portal1VR::create(QQmlEngine *, QJSEngine *)
 
 QString Portal1VR::info() const
 {
-    return "Start SteamVR before the game. It needs launch options set in Steam, which make Proton load the mod's "
-           "d3d9.dll. See [GitHub](https://github.com/LorenDB/portal1vr#installation)."_L1;
+    return "Start SteamVR before the game."_L1;
 }
 
 QString Portal1VR::launchOptions() const

@@ -320,6 +320,24 @@ Flickable {
                                     VText {
                                         color: Theme.glassFaint
                                         font.pixelSize: 12
+                                        linkColor: Theme.ledBlue
+                                        text: row.modelData.homepage !== "" ? '<a href="' + row.modelData.homepage
+                                                                              + '">Project page</a>' : ""
+                                        textFormat: Text.StyledText
+                                        visible: row.modelData.homepage !== ""
+                                        width: parent.width
+                                        wrapMode: Text.Wrap
+
+                                        onLinkActivated: link => Qt.openUrlExternally(link)
+
+                                        HoverHandler {
+                                            cursorShape: parent.hoveredLink !== "" ? Qt.PointingHandCursor : Qt.ArrowCursor
+                                        }
+                                    }
+
+                                    VText {
+                                        color: Theme.glassFaint
+                                        font.pixelSize: 12
                                         text: (row.stored === 0 ? "Nothing on disk" : row.stored === 1 ? "1 version on disk" :
                                                                                                          row.stored
                                                                                                          + " versions on disk")

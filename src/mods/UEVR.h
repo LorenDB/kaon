@@ -22,6 +22,7 @@ public:
     QString displayName() const final { return "UEVR"_L1; }
     QString settingsGroup() const final { return "uevr"_L1; }
     QString description() const final { return "Injects into most Unreal Engine 4 and 5 games."_L1; }
+    QString homepage() const final { return "https://github.com/praydog/UEVR"_L1; }
     const QLoggingCategory &logger() const final;
 
     bool hasRepairOption() const override { return false; }

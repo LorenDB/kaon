@@ -18,6 +18,7 @@ public:
     QString displayName() const final { return "OpenXR CAS"_L1; }
     QString settingsGroup() const final { return "openxr-cas"_L1; }
     QString description() const final { return "Sharpens Direct3D 11 OpenXR games."_L1; }
+    QString homepage() const final { return "https://github.com/elliotttate/OpenXR-CAS"_L1; }
     QString info() const final;
     QString installedNote() const final { return "On in this game's prefix"_L1; }
     const QLoggingCategory &logger() const final;

@@ -18,6 +18,7 @@ public:
     QString displayName() const override { return "Portal 2 VR"_L1; }
     QString settingsGroup() const override { return "portal2vr"_L1; }
     QString description() const override { return "Full VR conversion for Portal 2 and Portal Stories: Mel."_L1; }
+    QString homepage() const final { return "https://github.com/Gistix/portal2vr"_L1; }
     QString info() const final;
     QString launchOptions() const final;
     QStringList conflictingLaunchOptions() const final;

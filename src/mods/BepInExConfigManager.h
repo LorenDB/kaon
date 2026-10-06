@@ -17,6 +17,7 @@ public:
     bool providesVr() const override { return false; }
     QString settingsGroup() const final { return "bepinex-config-manager"_L1; }
     QString description() const final { return "In-game settings window for BepInEx plugins."_L1; }
+    QString homepage() const final { return "https://github.com/sinai-dev/BepInExConfigManager"_L1; }
     const QLoggingCategory &logger() const final;
 
     Game::Engines compatibleEngines() const override { return Game::Engine::Unity; }

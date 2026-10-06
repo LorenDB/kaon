@@ -42,8 +42,7 @@ UEVRAFW *UEVRAFW::create(QQmlEngine *, QJSEngine *)
 
 QString UEVRAFW::info() const
 {
-    return "DX12 only. Enable DLSS, then select AFW in the in-game menu. "
-           "[GitHub](https://github.com/PureDark/UEVR/releases)"_L1;
+    return "DX12 only. Enable DLSS, then select AFW in the in-game menu."_L1;
 }
 
 const QLoggingCategory &UEVRAFW::logger() const

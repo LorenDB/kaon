@@ -20,6 +20,7 @@ public:
     QString displayName() const final { return ".NET Desktop Runtime"_L1; }
     QString settingsGroup() const final { return "dotnet"_L1; }
     QString description() const final { return "Windows runtime that UEVR needs inside each game's Proton prefix."_L1; }
+    QString homepage() const final { return "https://dotnet.microsoft.com"_L1; }
     const QLoggingCategory &logger() const final;
 
     bool hasRepairOption() const override { return false; }
