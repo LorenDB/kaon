@@ -11,7 +11,9 @@ QtObject {
     // Where "Add a game" was opened from, which is where leaving it goes back to
     property string addGameFrom: "library"
     // Pages that are a step into another page, and so have a way back
-    readonly property bool canGoBack: view === "game" || view === "addGame"
+    readonly property bool canGoBack: view === "game" || view === "addGame" || view === "modConfig"
+    // Set while a navigation is allowed to drop unsaved mod settings, such as the game disappearing.
+    property bool discardConfig: false
     property Game game: null
 
     // Rescans replace every Game object, so the open game is remembered by store and id as well
@@ -32,6 +34,8 @@ QtObject {
     }
     // How many menus and dialogs are open. They take Escape and the scrolling keys for themselves.
     property int openPopups: 0
+    // The page a dirty settings form was asked to leave for. Empty unless that question is open.
+    property string pendingView: ""
     readonly property Connections rescans: Connections {
         function onGamesChanged() {
             if (nav.gameId === "")
@@ -45,13 +49,18 @@ QtObject {
                 return;
             }
             nav.game = null;
-            if (nav.view === "game")
+            if (nav.view === "game" || nav.view === "modConfig") {
+                nav.discardConfig = true;
                 nav.view = "library";
+                nav.discardConfig = false;
+            }
         }
 
         target: GamesFilterModel
     }
-    property string view: "library" // library | game | mods | settings | addGame
+    // The last page that was actually settled on. Assigning view away from dirty settings bounces back.
+    property string settledView: "library"
+    property string view: "library" // library | game | modConfig | mods | settings | addGame
 
     signal confirmRequested(string title, string text, string actionLabel, var onConfirm)
 
@@ -61,7 +70,9 @@ QtObject {
     }
 
     function back() {
-        if (view === "addGame")
+        if (view === "modConfig")
+            view = "game";
+        else if (view === "addGame")
             view = addGameFrom;
         else if (view === "game")
             view = "library";
@@ -73,6 +84,46 @@ QtObject {
 
     function goLibrary() {
         view = "library";
+    }
+
+    // Nothing is written until Save, so leaving a dirty form asks first. Cancel stays on the form.
+    function guardConfigLeave() {
+        if (pendingView !== "") {
+            // The question is already open. Stay on the form until it is answered.
+            if (view !== "modConfig") {
+                discardConfig = true;
+                view = "modConfig";
+                discardConfig = false;
+            }
+            return;
+        }
+        if (discardConfig) {
+            settledView = view;
+            return;
+        }
+        if (settledView !== "modConfig" || view === "modConfig") {
+            settledView = view;
+            return;
+        }
+        const doc = ModConfigs.document;
+        if (!doc || !doc.dirty) {
+            settledView = view;
+            return;
+        }
+        const dest = view;
+        pendingView = dest;
+        discardConfig = true;
+        view = "modConfig";
+        discardConfig = false;
+        confirm("Leave these settings?", "Nothing is written until you save.", "Leave", () => {
+            const next = pendingView;
+            pendingView = "";
+            if (settledView !== "modConfig" || next === "")
+                return;
+            discardConfig = true;
+            view = next;
+            discardConfig = false;
+        });
     }
 
     function notify(text) {
@@ -87,8 +138,18 @@ QtObject {
         view = "game";
     }
 
+    function openModConfig(mod) {
+        if (!game || !ModConfigs.open(mod, game)) {
+            notify(ModConfigs.error !== "" ? ModConfigs.error : "Couldn't open those settings");
+            return;
+        }
+        view = "modConfig";
+    }
+
     // Every menu and dialog reports its visible property here as it changes
     function popupShown(shown) {
         openPopups = Math.max(0, openPopups + (shown ? 1 : -1));
     }
+
+    onViewChanged: guardConfigLeave()
 }

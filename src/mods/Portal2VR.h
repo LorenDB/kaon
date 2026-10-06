@@ -26,6 +26,7 @@ public:
 
     Game::Engines compatibleEngines() const override { return Game::Engine::Source; }
     virtual bool isInstalledForGame(const Game *game) const override;
+    QString configFileForGame(const Game *game) const final;
 
     virtual QMap<int, Game::LaunchOption> acceptableInstallCandidates(const Game *game) const override;
 

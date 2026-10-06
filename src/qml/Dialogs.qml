@@ -33,6 +33,12 @@ Item {
                 }
             }
         ]
+
+        // Leave-settings stores where it was going on Nav. Clearing that on close covers Cancel and Escape.
+        // callLater runs after a Leave button's onClicked, which reads pendingView before this wipes it.
+        onClosed: Qt.callLater(() => {
+            Nav.pendingView = "";
+        })
     }
 
     GlassDialog {

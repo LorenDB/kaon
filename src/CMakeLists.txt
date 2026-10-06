@@ -37,6 +37,7 @@ qt_add_qml_module(kaon
 
         qml/game/GameView.qml
         qml/game/LensView.qml
+        qml/game/ModConfigView.qml
         qml/game/ToolsPanel.qml
         qml/game/VersionMenu.qml
 
@@ -83,6 +84,10 @@ qt_add_qml_module(kaon
 
         mods/BepInExConfigManager.cpp
         mods/BepInExConfigManager.h
+        mods/ConfigText.cpp
+        mods/ConfigText.h
+        mods/ModConfig.cpp
+        mods/ModConfig.h
         mods/Bepinex.cpp
         mods/Bepinex.h
         mods/Dotnet.cpp

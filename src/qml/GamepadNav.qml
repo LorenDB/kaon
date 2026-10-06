@@ -460,7 +460,8 @@ Item {
         if (topModal() || openPopups().length)
             return;
         const tabs = ["library", "mods", "settings"];
-        let view = Nav.view === "game" ? "library" : Nav.view === "addGame" ? Nav.addGameFrom : Nav.view;
+        let view = Nav.view === "game" || Nav.view === "modConfig" ? "library" : Nav.view === "addGame" ? Nav.addGameFrom :
+                                                                                                          Nav.view;
         let index = tabs.indexOf(view);
         if (index < 0)
             index = 0;

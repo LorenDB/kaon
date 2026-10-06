@@ -203,6 +203,17 @@ ApplicationWindow {
                 sourceComponent: addGameC
                 visible: Nav.view === "addGame"
             }
+
+            Loader {
+                id: modConfigPage
+
+                // Created only while it's open. Left loaded, it sat under the game page and picked up that page's scroll.
+                active: Nav.view === "modConfig"
+                anchors.fill: parent
+                focus: visible
+                sourceComponent: modConfigC
+                visible: Nav.view === "modConfig"
+            }
         }
     }
 
@@ -238,6 +249,13 @@ ApplicationWindow {
         id: addGameC
 
         AddGameView {
+        }
+    }
+
+    Component {
+        id: modConfigC
+
+        ModConfigView {
         }
     }
 
@@ -330,15 +348,15 @@ ApplicationWindow {
 
                     // A page opened from a tab keeps that tab lit: a game is still Games
                     readonly property bool active: modelData.id === "library" ? (Nav.view === "library" || Nav.view
-                                                                                 === "game" || (Nav.view === "addGame"
-                                                                                                && Nav.addGameFrom
-                                                                                                === "library")) : Nav.view
-                                                                                === modelData.id || (modelData.id
-                                                                                                     === "settings"
-                                                                                                     && Nav.view
-                                                                                                     === "addGame"
-                                                                                                     && Nav.addGameFrom
-                                                                                                     === "settings")
+                                                                                 === "game" || Nav.view === "modConfig" || (
+                                                                                     Nav.view === "addGame"
+                                                                                     && Nav.addGameFrom === "library")) :
+                                                                                Nav.view === modelData.id || (modelData.id
+                                                                                                              === "settings"
+                                                                                                              && Nav.view
+                                                                                                              === "addGame"
+                                                                                                              && Nav.addGameFrom
+                                                                                                              === "settings")
                     required property var modelData
 
                     activeFocusOnTab: true

@@ -77,6 +77,19 @@ const QLoggingCategory &Portal2VR::logger() const
     return P2VRLog();
 }
 
+QString Portal2VR::configFileForGame(const Game *game) const
+{
+    if (!game)
+        return {};
+    for (const auto &exe : acceptableInstallCandidates(game))
+    {
+        const auto path = modInstallDirForGame(game, exe) + "/VR/config.txt"_L1;
+        if (QFileInfo::exists(path))
+            return QFileInfo{path}.absoluteFilePath();
+    }
+    return {};
+}
+
 bool Portal2VR::isInstalledForGame(const Game *game) const
 {
     if (!game)

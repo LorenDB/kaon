@@ -56,6 +56,22 @@ bool Bepinex::hasFilesFor(const Game *game, const Game::LaunchOption &exe) const
     return QFileInfo::exists(modInstallDirForGame(game, exe) + "/BepInEx/core/BepInEx.dll"_L1);
 }
 
+QString Bepinex::configFileForGame(const Game *game) const
+{
+    if (!game)
+        return {};
+    // Linux builds ship a startup script instead of doorstop_config.ini.
+    for (const auto &exe : acceptableInstallCandidates(game))
+    {
+        if (!hasFilesFor(game, exe))
+            continue;
+        const auto path = modInstallDirForGame(game, exe) + "/doorstop_config.ini"_L1;
+        if (QFileInfo::exists(path))
+            return QFileInfo{path}.absoluteFilePath();
+    }
+    return {};
+}
+
 bool Bepinex::isInstalledForGame(const Game *game) const
 {
     if (!game)

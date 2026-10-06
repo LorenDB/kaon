@@ -10,6 +10,13 @@ Item {
     // The mod the card on the right shows. It holds on to the last one while there is none, so that the card's bindings
     // have something to read until its loader has taken the card away.
     property Mod cardMod: null
+    // Installed mods that put a config file in the game. revision keeps this live across installs.
+    readonly property var configMods: {
+        const revision = GameStatus.revision;
+        if (!game)
+            return [];
+        return GameStatus.allMods().filter(mod => ModConfigs.available(mod, game, revision));
+    }
     readonly property Game game: Nav.game
     readonly property string group: game ? GameStatus.group(game, GameStatus.revision) : "none"
     property string heldId: ""
@@ -109,11 +116,13 @@ Item {
         readonly property real pinnedTop: 60
 
         // A mouse scrolls with its wheel. Dragging is left for selecting the text on the page.
+        // While another page covers this one, leave the wheel to that page. This offset stays where it was.
         acceptedButtons: Qt.NoButton
         anchors.fill: parent
         boundsBehavior: Flickable.StopAtBounds
         clip: true
         contentHeight: body.y + body.height + Theme.notchHeight + 36
+        interactive: view.shown
         opacity: 1 - lensView.shown
         visible: view.game !== null
 
@@ -495,7 +504,7 @@ Item {
                 id: side
 
                 spacing: 12
-                visible: view.mod !== null || view.tools.length > 0
+                visible: view.mod !== null || view.tools.length > 0 || view.configMods.length > 0
                 width: body.wide ? body.width * 0.44 - 28 : body.width
                 x: body.wide ? body.width - width : 0
                 y: body.wide ? 4 : checks.height + 22
@@ -533,6 +542,33 @@ Item {
                     sourceComponent: modCard
                     visible: active
                     width: parent.width
+                }
+
+                Column {
+                    spacing: 8
+                    visible: view.configMods.length > 0
+                    width: parent.width
+
+                    VText {
+                        color: Theme.glassFaint
+                        font.pixelSize: 12
+                        font.weight: Font.Bold
+                        text: "Configure"
+                    }
+
+                    Repeater {
+                        model: view.configMods
+
+                        VButton {
+                            required property var modelData
+
+                            icon: "sliders"
+                            small: true
+                            text: modelData.name
+
+                            onClicked: Nav.openModConfig(modelData)
+                        }
+                    }
                 }
 
                 ToolsPanel {

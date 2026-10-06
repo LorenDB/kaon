@@ -49,6 +49,19 @@ const QLoggingCategory &Portal1VR::logger() const
     return P1VRLog();
 }
 
+QString Portal1VR::configFileForGame(const Game *game) const
+{
+    if (!game)
+        return {};
+    for (const auto &exe : acceptableInstallCandidates(game))
+    {
+        const auto path = QFileInfo{exe.executable}.absolutePath() + "/bin/VR/config.txt"_L1;
+        if (QFileInfo::exists(path))
+            return QFileInfo{path}.absoluteFilePath();
+    }
+    return {};
+}
+
 bool Portal1VR::isInstalledForGame(const Game *game) const
 {
     if (!game)

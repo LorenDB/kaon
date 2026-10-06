@@ -110,8 +110,7 @@ VrPerfKit *VrPerfKit::create(QQmlEngine *, QJSEngine *)
 QString VrPerfKit::info() const
 {
     return "Direct3D 11 only. It hooks OpenVR and Oculus, not OpenXR. "
-           "Fixed foveated rendering is on in vrperfkit.yml and needs an NVIDIA RTX or GTX 16-series GPU. Edit that file "
-           "next to the game."_L1;
+           "Fixed foveated rendering starts on, and needs an NVIDIA RTX or GTX 16-series GPU."_L1;
 }
 
 QString VrPerfKit::launchOptions() const
@@ -123,6 +122,32 @@ QString VrPerfKit::launchOptions() const
 const QLoggingCategory &VrPerfKit::logger() const
 {
     return VrPerfKitLog();
+}
+
+QString VrPerfKit::configFileForGame(const Game *game) const
+{
+    if (!game)
+        return {};
+
+    QSettings settings;
+    settings.beginGroup(settingsGroup());
+    settings.beginGroup(game->settingsId());
+    const auto recorded = settings.value("installedDll"_L1).toString();
+    if (!recorded.isEmpty())
+    {
+        const auto yml = QFileInfo{recorded}.absolutePath() + "/vrperfkit.yml"_L1;
+        if (QFileInfo::exists(yml))
+            return QFileInfo{yml}.absoluteFilePath();
+    }
+
+    for (const auto &exe : acceptableInstallCandidates(game))
+    {
+        const auto dir = gameBinaryDir(game, exe);
+        const auto yml = dir + "/vrperfkit.yml"_L1;
+        if (QFileInfo::exists(dir + "/dxgi.dll"_L1) && QFileInfo::exists(yml))
+            return QFileInfo{yml}.absoluteFilePath();
+    }
+    return {};
 }
 
 bool VrPerfKit::isInstalledForGame(const Game *game) const

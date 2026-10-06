@@ -24,7 +24,7 @@ public:
     QString homepage() const final { return "https://github.com/fholger/vrperfkit"_L1; }
     QString info() const final;
     QString launchOptions() const final;
-    QString installedNote() const final { return "Edit vrperfkit.yml next to the game to tune it."_L1; }
+    QString installedNote() const final { return "On for this game. Configure edits vrperfkit.yml."_L1; }
     const QLoggingCategory &logger() const final;
 
     bool optional() const final { return true; }
@@ -38,6 +38,7 @@ public:
                Game::Engine::Source;
     }
     bool isInstalledForGame(const Game *game) const final;
+    QString configFileForGame(const Game *game) const final;
     QMap<int, Game::LaunchOption> acceptableInstallCandidates(const Game *game) const final;
 
 public slots:

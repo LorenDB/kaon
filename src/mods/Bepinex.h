@@ -37,6 +37,8 @@ public:
     // Whether BepInEx itself is next to this executable, whatever else it still needs
     bool hasFilesFor(const Game *game, const Game::LaunchOption &exe) const;
 
+    QString configFileForGame(const Game *game) const final;
+
 public slots:
     void uninstallMod(Game *game) override;
 
