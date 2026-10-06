@@ -88,6 +88,9 @@ Popup {
         }
     }
 
+    Component.onDestruction: if (visible)
+                                 Nav.popupShown(false)
     // A gamepad (and the keyboard) lands on the action that confirms, which is the solid button.
     onOpened: Qt.callLater(dialog.focusDefaultButton)
+    onVisibleChanged: Nav.popupShown(visible)
 }

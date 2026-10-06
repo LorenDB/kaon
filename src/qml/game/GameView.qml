@@ -3,25 +3,47 @@ import QtQuick.Controls.Basic
 
 import dev.lorendb.kaon
 
+// One game: what stands between it and VR on the left, what it is played with on the right.
 Item {
     id: view
 
-    readonly property var extraMods: game ? (GameStatus.revision, GameStatus.extraMods(game)) : []
+    // The mod the card on the right shows. It holds on to the last one while there is none, so that the card's bindings
+    // have something to read until its loader has taken the card away.
+    property Mod cardMod: null
     readonly property Game game: Nav.game
-    readonly property string group: game ? (GameStatus.revision, GameStatus.group(game)) : "none"
+    readonly property string group: game ? GameStatus.group(game, GameStatus.revision) : "none"
     property string heldId: ""
     property int heldStore: -1
-    readonly property real heroH: Math.max(190, Math.min(height * 0.36, width * 0.25))
+    // Without art there is nothing to show up there, and the title moves up under the way back
+    readonly property real heroH: game && game.heroImage !== "" ? Math.max(190, Math.min(height * 0.36, width * 0.25)) : 104
     readonly property bool launching: game !== null && Launcher.game === game && Launcher.phase !== Launcher.Idle
-    readonly property string mergedLaunch: game ? (GameStatus.revision, GameStatus.launchOptions(game)) : ""
-    readonly property Mod mod: game ? (GameStatus.revision, GameStatus.preferredMod(game)) : null
+    // A game with its own VR mode is not offered a mod, even when one would fit its engine
+    readonly property Mod mod: game && group !== "native" ? GameStatus.preferredMod(game, GameStatus.revision) : null
+    // The first check that isn't settled, which is the one everything after it is waiting for
+    readonly property string openKey: steps.find(s => s.state !== "ok" && s.state !== "warn")?.key ?? ""
     property int popupEpoch: 0
     readonly property int remaining: steps.filter(s => s.state === "todo" || s.state === "busy" || s.state === "wait").length
     property bool showOtherMods: false
     // The loader hides this page without destroying it, so scroll and open menus survive a trip back to the library.
     readonly property bool shown: parent !== null && parent.visible
-    readonly property var steps: game ? (GameStatus.revision, GameStatus.steps(game)) : []
-    readonly property var vrMods: game ? (GameStatus.revision, GameStatus.vrMods(game)) : []
+    readonly property string statusLine: {
+        if (!game)
+            return "";
+        if (group === "ready" && mod) {
+            // Only the mod's own options are worth a warning up here; a tool's are in the list below
+            if (mod.launchOptions !== "" && steps.some(s => s.key === "launchOptions" && s.state === "warn"))
+                return mod.name + " is in place. Set the launch options below before you play.";
+            return mod.type === Mod.Launchable ? "Ready for VR with " + mod.name : mod.name + " is installed";
+        }
+        if (group === "setup")
+            return remaining === 1 ? "One step before VR" : remaining + " steps before VR";
+        if (group === "native")
+            return "Has its own VR mode, so it doesn't need a mod";
+        return GameStatus.summary(game, GameStatus.revision);
+    }
+    readonly property var steps: game ? GameStatus.steps(game, GameStatus.revision) : []
+    readonly property var tools: game ? GameStatus.tools(game, GameStatus.revision) : []
+    readonly property var vrMods: game ? GameStatus.vrMods(game, GameStatus.revision) : []
 
     // "Unreal Engine game on Steam", or "Game on Flatpak Steam" for a sandboxed install
     function describe(g) {
@@ -72,9 +94,22 @@ Item {
     onShownChanged: if (!shown)
                         popupEpoch += 1
 
+    Binding {
+        property: "cardMod"
+        restoreMode: Binding.RestoreNone
+        target: view
+        value: view.mod
+        when: view.mod !== null
+    }
+
     Flickable {
         id: pageFlick
 
+        // How much of the top the way back covers, for whatever scrolls a focused item into view
+        readonly property real pinnedTop: 60
+
+        // A mouse scrolls with its wheel. Dragging is left for selecting the text on the page.
+        acceptedButtons: Qt.NoButton
         anchors.fill: parent
         boundsBehavior: Flickable.StopAtBounds
         clip: true
@@ -141,23 +176,6 @@ Item {
                         color: Theme.glass
                         position: 1
                     }
-                }
-            }
-
-            VButton {
-                icon: "back"
-                small: true
-                text: "Library"
-                x: 14
-                y: 14
-
-                onClicked: Nav.goLibrary()
-
-                Rectangle {
-                    anchors.fill: parent
-                    color: "#99050608"
-                    radius: height / 2
-                    z: -1
                 }
             }
 
@@ -233,16 +251,7 @@ Item {
                     color: Theme.glassMuted
                     font.pixelSize: 14
                     rightPadding: 10
-                    text: view.group === "ready" ? (view.mod.type === Mod.Launchable ? "Ready for VR with " + view.mod.name :
-                                                                                       view.mod.name + " is installed") :
-                                                   view.group === "setup" ? (view.remaining === 1 ? "One step before VR" :
-                                                                                                    view.remaining
-                                                                                                    + " steps before VR") :
-                                                                            view.group === "native"
-                                                                            ? "Has its own VR mode, so it doesn't need a mod" :
-                                                                              (view.game ? (GameStatus.revision,
-                                                                                            GameStatus.summary(view.game)) :
-                                                                                           "")
+                    text: view.statusLine
                 }
 
                 VText {
@@ -258,18 +267,20 @@ Item {
 
             readonly property bool wide: view.width > 860
 
-            height: Math.max(checks.height, mods.visible ? mods.y + mods.height : 0)
+            height: Math.max(checks.height, side.visible ? side.y + side.height : 0)
             width: view.width - 2 * Theme.pad
             x: Theme.pad
             y: titleBlock.y + titleBlock.height + 18
 
+            // ------------------------------------------------------------ what stands between the game and VR
             Column {
                 id: checks
 
                 spacing: 0
-                width: body.wide && mods.visible ? body.width * 0.56 : body.width
+                width: body.wide && side.visible ? body.width * 0.56 : body.width
 
                 VText {
+                    bottomPadding: 12
                     color: Theme.glassMuted
                     font.pixelSize: 14
                     lineHeight: 1.4
@@ -284,74 +295,130 @@ Item {
                                                                                                    ? "this game's engine" :
                                                                                                      view.engineName(
                                                                                                          view.game)
-                                                                                                     + " games")
+                                                                                                     + " games like this one")
                                                                         + " yet. You can still play it normally."
                     visible: view.group === "native" || view.group === "none"
                     width: parent.width
                     wrapMode: Text.Wrap
                 }
 
+                // A check that passed takes one quiet line. One that needs something gets a panel, its explanation, and
+                // the button that deals with it.
                 Repeater {
-                    model: view.group === "native" || view.group === "none" ? [] : view.steps
+                    // A game that needs no mod has no checklist, but a tool switched on for it can still ask for
+                    // launch options
+                    model: view.group === "native" || view.group === "none" ? view.steps.filter(s => s.key === "launchOptions") :
+                                                                              view.steps
 
                     Item {
                         id: row
 
-                        required property int index
                         required property var modelData
+                        // Also one line: a check that can only wait for an earlier one, with nothing to press. The
+                        // first one that waits is what the page is stuck on, and says so in full.
+                        readonly property bool passed: modelData.state === "ok" || (modelData.state === "wait" &&
+                                                                                    !modelData.action && modelData.key
+                                                                                    !== view.openKey)
+                        // Launch options to copy into Steam, when that is what this step asks for
+                        readonly property string paste: modelData.copyText ?? ""
 
-                        height: Math.max(50, rowText.height + 18)
+                        height: passed ? 32 : rowText.height + (paste !== "" ? pasteBox.height + 10 : 0) + 30
                         width: checks.width
 
                         Rectangle {
-                            color: Theme.glassLine
-                            height: 1
-                            visible: row.index > 0
-                            width: parent.width
+                            anchors.bottomMargin: 4
+                            anchors.fill: parent
+                            anchors.topMargin: 4
+                            border.color: Theme.glassLine
+                            border.width: 1
+                            color: Theme.glassPanel
+                            radius: 14
+                            visible: !row.passed
                         }
 
                         Led {
                             blinking: row.modelData.state === "busy"
                             color: Theme.stepLed(row.modelData.state)
                             size: 9
-                            x: 3
-                            y: 16
+                            x: 14
+                            y: row.passed ? 11.5 : 20
+                        }
+
+                        VText {
+                            id: passedTitle
+
+                            anchors.verticalCenter: parent.verticalCenter
+                            elide: Text.ElideRight
+                            font.pixelSize: 14
+                            font.weight: Font.Bold
+                            text: row.modelData.title
+                            visible: row.passed
+                            width: Math.min(implicitWidth, row.width - x - actions.width - 20)
+                            x: 38
+                        }
+
+                        VText {
+                            anchors.left: passedTitle.right
+                            anchors.leftMargin: 10
+                            anchors.right: actions.left
+                            anchors.rightMargin: 10
+                            anchors.verticalCenter: parent.verticalCenter
+                            color: Theme.glassFaint
+                            elide: Text.ElideRight
+                            font.pixelSize: 13
+                            font.weight: Font.Normal
+                            text: row.modelData.detail
+                            visible: row.passed
                         }
 
                         Column {
                             id: rowText
 
-                            spacing: 1
-                            width: parent.width - 28 - (actions.width > 0 ? actions.width + 14 : 0)
-                            x: 28
-                            y: 9
+                            spacing: 2
+                            visible: !row.passed
+                            width: row.width - x - (actions.width > 0 ? actions.width + 26 : 14)
+                            x: 38
+                            y: 14
 
                             VText {
-                                elide: Text.ElideRight
                                 font.pixelSize: 14
                                 font.weight: Font.Bold
                                 text: row.modelData.title
                                 width: parent.width
+                                wrapMode: Text.Wrap
                             }
 
                             VText {
                                 color: Theme.glassMuted
                                 font.pixelSize: 13
                                 font.weight: Font.Normal
+                                lineHeight: 1.25
                                 text: row.modelData.detail
                                 width: parent.width
                                 wrapMode: Text.Wrap
                             }
                         }
 
+                        LaunchOptions {
+                            id: pasteBox
+
+                            options: row.paste
+                            showLabel: false
+                            width: row.width - x - 14
+                            x: 38
+                            y: rowText.y + rowText.height + 10
+                        }
+
                         Row {
                             id: actions
 
                             anchors.right: parent.right
+                            anchors.rightMargin: row.passed ? 0 : 12
                             spacing: 6
-                            y: 9
+                            y: row.passed ? 0 : 14
 
                             VButton {
+                                quiet: row.passed
                                 small: true
                                 text: row.modelData.secondaryLabel ?? ""
                                 visible: !!row.modelData.secondaryAction
@@ -390,189 +457,231 @@ Item {
                         model: view.showOtherMods ? GameStatus.allMods().filter(m => m.providesVr && m.type
                                                                                      === Mod.Launchable) : []
 
-                        Row {
+                        Flow {
+                            id: otherMod
+
                             required property var modelData
 
                             spacing: 10
+                            width: parent.width
 
                             VButton {
                                 small: true
-                                text: "Open " + parent.modelData.name
+                                text: "Open " + otherMod.modelData.name
 
                                 onClicked: {
-                                    const r = parent.modelData.currentRelease;
+                                    const r = otherMod.modelData.currentRelease;
                                     if (r && r.downloaded)
-                                        parent.modelData.launchMod(view.game);
+                                        otherMod.modelData.launchMod(view.game);
                                     else
-                                        Nav.notify("Download " + parent.modelData.name + " on the Mods page first");
+                                        Nav.notify("Download " + otherMod.modelData.name + " on the Mods page first");
                                 }
                             }
 
                             VText {
-                                anchors.verticalCenter: parent.verticalCenter
                                 color: Theme.glassFaint
                                 font.pixelSize: 12
+                                height: 32
                                 text: "It may not work, and it needs its own requirements installed."
+                                verticalAlignment: Text.AlignVCenter
                             }
                         }
                     }
                 }
             }
 
+            // ------------------------------------------------------------ what the game is played with
             Column {
-                id: mods
+                id: side
 
-                spacing: 8
-                visible: view.vrMods.length > 0 || view.extraMods.length > 0
+                spacing: 12
+                visible: view.mod !== null || view.tools.length > 0
                 width: body.wide ? body.width * 0.44 - 28 : body.width
                 x: body.wide ? body.width - width : 0
-                y: body.wide ? 0 : checks.height + 22
+                y: body.wide ? 4 : checks.height + 22
 
-                VText {
-                    color: Theme.glassFaint
-                    font.pixelSize: 12
-                    font.weight: Font.Bold
-                    text: "Play with"
-                    visible: view.vrMods.length > 1
-                }
+                // Only the mod in use is spelled out. The others are a click away, not a card each.
+                Flow {
+                    spacing: 10
+                    visible: view.mod !== null && view.vrMods.length > 1
+                    width: parent.width
 
-                Repeater {
-                    model: view.vrMods
+                    VText {
+                        color: Theme.glassFaint
+                        font.pixelSize: 12
+                        font.weight: Font.Bold
+                        height: 32
+                        text: "Play with"
+                        verticalAlignment: Text.AlignVCenter
+                    }
 
-                    Rectangle {
-                        id: modRow
+                    Segmented {
+                        current: view.mod ? view.mod.settingsGroup : ""
+                        options: view.vrMods.map(m => ({
+                            "id": m.settingsGroup,
+                            "label": m.name
+                        }))
 
-                        required property var modelData
-                        readonly property bool selected: view.mod === modelData
+                        onPicked: key => GameStatus.setPreferredMod(view.game, view.vrMods.find(m => m.settingsGroup
+                                                                                                     === key))
 
-                        border.color: selected ? Theme.glassMuted : Theme.glassLine
-                        border.width: 1.5
-                        color: selected ? Theme.glassPanel : "transparent"
-                        height: modCol.height + 22
-                        radius: 16
-                        width: mods.width
-
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: view.vrMods.length > 1 ? Qt.PointingHandCursor : Qt.ArrowCursor
-
-                            onClicked: GameStatus.setPreferredMod(view.game, modRow.modelData)
-                        }
-
-                        Column {
-                            id: modCol
-
-                            spacing: 4
-                            width: parent.width - 28
-                            x: 14
-                            y: 11
-
-                            // Above the card's click target, so the launch-option text can be selected.
-                            z: 1
-
-                            Item {
-                                height: 32
-                                width: parent.width
-
-                                // The name picks this mod. The version menu beside it is its own control.
-                                Item {
-                                    id: modName
-
-                                    activeFocusOnTab: view.vrMods.length > 1
-                                    anchors.left: parent.left
-                                    anchors.right: versions.left
-                                    anchors.rightMargin: 8
-                                    height: 32
-
-                                    Keys.onReturnPressed: GameStatus.setPreferredMod(view.game, modRow.modelData)
-                                    Keys.onSpacePressed: GameStatus.setPreferredMod(view.game, modRow.modelData)
-
-                                    Rectangle {
-                                        anchors.fill: parent
-                                        anchors.margins: -4
-                                        border.color: Theme.ledBlue
-                                        border.width: 2
-                                        color: "transparent"
-                                        radius: height / 2
-                                        visible: modName.activeFocus
-                                    }
-
-                                    VText {
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        elide: Text.ElideRight
-                                        font.pixelSize: 15
-                                        font.weight: Font.ExtraBold
-                                        text: modRow.modelData.name
-                                        width: parent.width
-                                    }
-                                }
-
-                                VersionMenu {
-                                    id: versions
-
-                                    anchors.right: parent.right
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    game: view.game
-                                    mod: modRow.modelData
-                                    popupEpoch: view.popupEpoch
-                                }
-                            }
-
-                            VText {
-                                color: Theme.glassMuted
-                                font.pixelSize: 13
-                                font.weight: Font.Normal
-                                lineHeight: 1.3
-                                linkColor: Theme.ledBlue
-                                text: Theme.linkify(modRow.modelData.description + (modRow.modelData.info !== "" ? " "
-                                                                                                                   + modRow.modelData.info :
-                                                                                                                   ""))
-                                textFormat: Text.StyledText
-                                width: parent.width
-                                wrapMode: Text.Wrap
-
-                                onLinkActivated: link => Qt.openUrlExternally(link)
-
-                                HoverHandler {
-                                    cursorShape: parent.hoveredLink !== "" ? Qt.PointingHandCursor : Qt.ArrowCursor
-                                }
-                            }
-
-                            LaunchOptions {
-                                options: modRow.selected ? view.mergedLaunch : modRow.modelData.launchOptions
-                            }
-
-                            VText {
-                                color: Theme.glassFaint
-                                font.pixelSize: 12
-                                text: "Includes extras that are on for this game."
-                                visible: modRow.selected && view.mergedLaunch !== "" && view.mergedLaunch
-                                         !== modRow.modelData.launchOptions
-                                width: parent.width
-                                wrapMode: Text.Wrap
-                            }
-
-                            VButton {
-                                small: true
-                                text: "Open " + modRow.modelData.name + " without starting the game"
-                                visible: modRow.selected && view.group === "ready" && modRow.modelData.type
-                                         === Mod.Launchable && !view.launching
-
-                                onClicked: modRow.modelData.launchMod(view.game)
-                            }
-                        }
                     }
                 }
 
-                ExtrasPanel {
+                Loader {
+                    active: view.mod !== null && view.cardMod !== null
+                    sourceComponent: modCard
+                    visible: active
+                    width: parent.width
+                }
+
+                ToolsPanel {
                     game: view.game
-                    mods: view.extraMods
-                    showLaunchOptions: view.vrMods.length === 0
-                    spaced: view.vrMods.length > 0
-                    width: mods.width
+                    tools: view.tools
+                    width: side.width
                 }
             }
         }
+    }
+
+    Component {
+        id: modCard
+
+        Rectangle {
+            border.color: Theme.glassLine
+            border.width: 1.5
+            color: Theme.glassPanel
+            height: modCol.height + 26
+            radius: 16
+
+            Column {
+                id: modCol
+
+                spacing: 8
+                width: parent.width - 28
+                x: 14
+                y: 12
+
+                Item {
+                    height: 32
+                    width: parent.width
+
+                    VText {
+                        anchors.left: parent.left
+                        anchors.right: versions.left
+                        anchors.rightMargin: 10
+                        anchors.verticalCenter: parent.verticalCenter
+                        elide: Text.ElideRight
+                        font.pixelSize: 16
+                        font.weight: Font.ExtraBold
+                        text: view.cardMod.name
+                    }
+
+                    VersionMenu {
+                        id: versions
+
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        game: view.game
+                        mod: view.cardMod
+                        popupEpoch: view.popupEpoch
+                    }
+                }
+
+                VText {
+                    color: Theme.glassMuted
+                    font.pixelSize: 13
+                    font.weight: Font.Normal
+                    lineHeight: 1.3
+                    linkColor: Theme.ledBlue
+                    text: Theme.linkify(view.cardMod.description + (view.cardMod.info !== "" ? " " + view.cardMod.info : ""))
+                    textFormat: Text.StyledText
+                    width: parent.width
+                    wrapMode: Text.Wrap
+
+                    onLinkActivated: link => Qt.openUrlExternally(link)
+
+                    HoverHandler {
+                        cursorShape: parent.hoveredLink !== "" ? Qt.PointingHandCursor : Qt.ArrowCursor
+                    }
+                }
+
+                // How long Play in VR waits before it opens an injector. Games differ in how long they take to load.
+                Row {
+                    spacing: 8
+                    visible: GameStatus.usesLaunchDelay(view.game, GameStatus.revision)
+
+                    VText {
+                        ToolTip.delay: 500
+                        ToolTip.text: "How long Play in VR gives the game to load before it opens " + view.cardMod.name
+                        ToolTip.visible: delayHover.hovered
+                        anchors.verticalCenter: parent.verticalCenter
+                        color: Theme.glassMuted
+                        font.pixelSize: 13
+                        rightPadding: 4
+                        text: "Opens after"
+
+                        HoverHandler {
+                            id: delayHover
+                        }
+                    }
+
+                    VButton {
+                        ToolTip.delay: 500
+                        ToolTip.text: "Wait less"
+                        ToolTip.visible: hovered
+                        enabled: view.cardMod.launchDelay > 5
+                        icon: "minus"
+                        small: true
+
+                        onClicked: view.cardMod.launchDelay = Math.max(5, view.cardMod.launchDelay - 5)
+                    }
+
+                    VText {
+                        anchors.verticalCenter: parent.verticalCenter
+                        font.features: ({
+                                            "tnum": 1
+                                        })
+                        font.pixelSize: 14
+                        font.weight: Font.ExtraBold
+                        horizontalAlignment: Text.AlignHCenter
+                        text: view.cardMod.launchDelay + " s"
+                        width: 40
+                    }
+
+                    VButton {
+                        ToolTip.delay: 500
+                        ToolTip.text: "Wait longer"
+                        ToolTip.visible: hovered
+                        enabled: view.cardMod.launchDelay < 300
+                        icon: "plus"
+                        small: true
+
+                        onClicked: view.cardMod.launchDelay = Math.min(300, view.cardMod.launchDelay + 5)
+                    }
+                }
+
+                VButton {
+                    small: true
+                    text: "Open " + view.cardMod.name + " now"
+                    visible: view.group === "ready" && view.cardMod.type === Mod.Launchable && !view.launching
+
+                    onClicked: view.cardMod.launchMod(view.game)
+                }
+            }
+        }
+    }
+
+    // ------------------------------------------------------------ the way back, which never scrolls away
+    BackBar {
+        led: Theme.led(view.group)
+        opacity: 1 - lensView.shown
+        raised: pageFlick.contentY > titleBlock.y - 8
+        title: view.game ? view.game.name : ""
+        visible: view.game !== null
+        width: view.width
+
+        onBack: Nav.back()
     }
 
     LensView {

@@ -7,6 +7,8 @@ Column {
     id: box
 
     property string options
+    // Off where whatever sits above the box already says what it holds
+    property bool showLabel: true
 
     spacing: 6
     visible: options !== ""
@@ -17,6 +19,7 @@ Column {
         font.pixelSize: 12
         font.weight: Font.Bold
         text: "Launch options"
+        visible: box.showLabel
     }
 
     Row {
@@ -62,6 +65,7 @@ Column {
         VButton {
             id: copyButton
 
+            icon: "copy"
             small: true
             text: "Copy"
 

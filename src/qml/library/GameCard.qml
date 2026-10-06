@@ -5,16 +5,18 @@ import dev.lorendb.kaon
 Item {
     id: card
 
-    readonly property bool busy: game ? (GameStatus.revision, GameStatus.steps(game).some(s => s.state === "busy")) : false
+    readonly property bool busy: game ? GameStatus.steps(game, GameStatus.revision).some(s => s.state === "busy") : false
     property real cardWidth: 132
     readonly property Game game: modelData
-    readonly property string group: game ? (GameStatus.revision, GameStatus.group(game)) : "none"
+    readonly property string group: game ? GameStatus.group(game, GameStatus.revision) : "none"
     readonly property bool hot: mouse.containsMouse || activeFocus
     required property var modelData
 
     // The bundled rounded font draws U+2026 vertically centered (Japanese-style), so Qt's built-in eliding floats
-    // mid-line. Truncate manually with three baseline periods instead.
-    function dotsElided(fontMetrics, source, availWidth) {
+    // mid-line. Truncate manually with three baseline periods instead. The font is an argument only so that a binding
+    // which calls this runs again when the font does change: a value that is read and not used gets dropped by the QML
+    // compiler.
+    function dotsElided(fontMetrics, source, availWidth, font) {
         if (!source || availWidth <= 0)
             return "";
         if (fontMetrics.advanceWidth(source) <= availWidth)
@@ -132,7 +134,7 @@ Item {
         font.pixelSize: 13
         font.weight: Font.Bold
         maximumLineCount: 1
-        text: (titleFontMetrics.font, dotsElided(titleFontMetrics, card.game ? card.game.name : "", width))
+        text: dotsElided(titleFontMetrics, card.game ? card.game.name : "", width, titleFontMetrics.font)
         width: parent.width
         wrapMode: Text.NoWrap
         y: cover.height + 10
@@ -164,8 +166,8 @@ Item {
             color: Theme.glassMuted
             font.pixelSize: 12
             maximumLineCount: 1
-            text: (statusFontMetrics.font, dotsElided(statusFontMetrics, card.game ? (GameStatus.revision, GameStatus.summary(
-                                                                                          card.game)) : "", width))
+            text: dotsElided(statusFontMetrics, card.game ? GameStatus.summary(card.game, GameStatus.revision) : "", width,
+                             statusFontMetrics.font)
             width: parent.width - 14
             wrapMode: Text.NoWrap
         }

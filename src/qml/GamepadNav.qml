@@ -58,8 +58,8 @@ Item {
             return;
         }
 
-        if (Nav.view === "game" || Nav.view === "addGame") {
-            Nav.goLibrary();
+        if (Nav.canGoBack) {
+            Nav.back();
             Qt.callLater(focusDefault);
             return;
         }
@@ -107,9 +107,11 @@ Item {
                 const bottom = top + item.height;
                 const flickBottom = parentItem.mapToItem(host.contentItem, 0, parentItem.height).y;
                 const marginBottom = flickBottom > host.height - Theme.bottomStrap ? Theme.notchHeight + 52 : 12;
+                // A page with its way back pinned over the top says how much that covers
+                const marginTop = (parentItem.pinnedTop ?? 0) + 12;
                 let y = parentItem.contentY;
-                if (top < y + 12)
-                    y = top - 12;
+                if (top < y + marginTop)
+                    y = top - marginTop;
                 else if (bottom > y + parentItem.height - marginBottom)
                     y = bottom - parentItem.height + marginBottom;
                 const maxY = parentItem.originY + Math.max(0, parentItem.contentHeight - parentItem.height);
@@ -424,11 +426,41 @@ Item {
         }
     }
 
+    // Page Up, Page Down, Home and End for whatever page is showing
+    function scrollPage(direction) {
+        const flick = mainFlickable();
+        if (flick)
+            scrollTo(flick, flick.contentY + direction * Math.max(120, flick.height - Theme.notchHeight - 80));
+    }
+
+    function scrollTo(flick, y) {
+        const maxY = flick.originY + Math.max(0, flick.contentHeight - flick.height);
+        glide.stop();
+        glide.target = flick;
+        glide.to = Math.max(flick.originY, Math.min(y, maxY));
+        glide.start();
+    }
+
+    function scrollToEnd(direction) {
+        const flick = mainFlickable();
+        if (!flick)
+            return;
+        // A list only guesses how long it is until its rows exist, so it has to find its own ends
+        if (flick.positionViewAtEnd !== undefined) {
+            glide.stop();
+            if (direction < 0)
+                flick.positionViewAtBeginning();
+            else
+                flick.positionViewAtEnd();
+        } else
+            scrollTo(flick, direction < 0 ? flick.originY : flick.originY + flick.contentHeight);
+    }
+
     function switchTab(direction) {
         if (topModal() || openPopups().length)
             return;
         const tabs = ["library", "mods", "settings"];
-        let view = Nav.view === "game" ? "library" : Nav.view === "addGame" ? "settings" : Nav.view;
+        let view = Nav.view === "game" ? "library" : Nav.view === "addGame" ? Nav.addGameFrom : Nav.view;
         let index = tabs.indexOf(view);
         if (index < 0)
             index = 0;
@@ -444,6 +476,18 @@ Item {
                 modal = pops[i];
         }
         return modal;
+    }
+
+    NumberAnimation {
+        id: glide
+
+        duration: 160
+        easing.type: Easing.OutCubic
+        property: "contentY"
+
+        // A list only guesses its length until its rows exist. Where the guess was long, this settles on the real end.
+        onFinished: if (target)
+                        target.returnToBounds()
     }
 
     Timer {

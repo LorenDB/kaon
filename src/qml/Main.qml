@@ -10,32 +10,74 @@ import dev.lorendb.kaon
 ApplicationWindow {
     id: root
 
-    readonly property bool compact: width < 1180
+    // A game with a mod installed into it starts in VR however it is launched, so there is no flat launch to offer.
+    // Without a mod there is only one way to start the game, and the notch button is it.
+    readonly property bool canPlayFlat: inGame && game.canLaunch && (group === "ready" || group === "setup") &&
+                                        !staticVrInstalled
+
+    readonly property bool downloading: DownloadManager.downloading && !DownloadManager.background
+    readonly property bool editingText: activeFocusItem instanceof TextInput || activeFocusItem instanceof TextEdit
     readonly property Game game: Nav.game
     property int gameCount: 0
-    readonly property Mod gameMod: inGame ? (GameStatus.revision, GameStatus.preferredMod(game)) : null
-    readonly property string group: inGame ? (GameStatus.revision, GameStatus.group(game)) : ""
+    readonly property string group: inGame ? GameStatus.group(game, GameStatus.revision) : ""
     readonly property bool inGame: Nav.view === "game" && game !== null
     property bool keepAdd: false
     property bool keepGame: false
     property bool keepMods: false
     property bool keepSettings: false
     readonly property bool launching: inGame && Launcher.game === game && Launcher.phase !== Launcher.Idle
-    readonly property var openStep: inGame ? (GameStatus.revision, GameStatus.steps(game).find(s => s.state !== "ok" && s.state
-                                                                                                    !== "warn")) : undefined
+    // Too little room on the bottom strip for the game's buttons; they move into its menu
+    readonly property bool narrow: width < 820
+    readonly property var openStep: inGame ? GameStatus.steps(game, GameStatus.revision).find(s => s.state !== "ok"
+                                                                                                   && s.state !== "warn") :
+                                             undefined
+    // Menus and dialogs take Escape and the scrolling keys for themselves while they are open
+    readonly property bool popupOpen: Nav.openPopups > 0
     // An Installable VR mod is copied into the game, so launching the game still runs it. A Launchable mod injects
     // afterwards, and the game itself can still be started flat.
-    readonly property bool staticVrInstalled: inGame && (GameStatus.revision, flatLaunchBlocked(game))
+    readonly property bool staticVrInstalled: inGame && flatLaunchBlocked(game, GameStatus.revision)
+    readonly property string statusText: {
+        if (downloading) {
+            const progress = DownloadManager.progress;
+            return "Downloading " + DownloadManager.currentDownloadName + (progress >= 0 ? " · " + Math.round(progress
+                                                                                                              * 100) + "%" :
+                                                                                           "");
+        }
+        if (Nav.notice !== "")
+            return Nav.notice;
+        if (Launcher.phase === Launcher.Countdown && Launcher.game !== root.game)
+            return "Opening " + Launcher.mod.name + " for " + Launcher.game.name + " in " + Launcher.remaining + " s";
+        if (GamesFilterModel.scanning)
+            return "Scanning libraries";
+        if (Nav.view !== "library")
+            return "";
+        return root.gameCount === 1 ? "1 game" : root.gameCount + " games";
+    }
 
-    // vrMods() does not notify, so callers pass GameStatus.revision through the comma expression above.
-    function flatLaunchBlocked(game) {
-        if (!game)
-            return false;
-        const mods = GameStatus.vrMods(game);
+    function flatLaunchBlocked(game, revision) {
+        const mods = GameStatus.vrMods(game, revision);
         for (let i = 0; i < mods.length; ++i)
-            if (mods[i].type === Mod.Installable && mods[i].isInstalledForGame(game))
+            if (mods[i].type === Mod.Installable && GameStatus.isInstalled(mods[i], game, revision))
                 return true;
         return false;
+    }
+
+    function playFlat() {
+        game.launch();
+        Nav.notify("Starting " + game.name + " without VR");
+    }
+
+    function removeGame() {
+        const g = game;
+        Nav.confirm("Remove " + g.name + " from Kaon?", "The game's files stay where they are.", "Remove", () => {
+            Nav.goLibrary();
+            CustomGames.deleteGame(g);
+        });
+    }
+
+    function rescan() {
+        GameStatus.rescanLibraries();
+        Nav.notify("Scanning your libraries");
     }
 
     function retainPage() {
@@ -49,6 +91,11 @@ ApplicationWindow {
             keepAdd = true;
     }
 
+    function startSteamVr() {
+        Steam.launchSteamVR();
+        Nav.notify("Starting SteamVR");
+    }
+
     color: Theme.shell
     height: 720
     minimumHeight: 480
@@ -58,6 +105,9 @@ ApplicationWindow {
     width: 950
 
     Component.onCompleted: retainPage()
+    // Tab can land on something that is scrolled out of sight
+    onActiveFocusItemChanged: if (activeFocusItem && activeFocusItem.activeFocusOnTab)
+                                  pads.ensureVisible(activeFocusItem)
 
     Settings {
         property alias windowHeight: root.height
@@ -89,6 +139,14 @@ ApplicationWindow {
         width: root.width - 2 * Theme.side
         x: Theme.side
         y: Theme.topStrap
+
+        // The back button on a mouse. It sits under the pages, so it only gets what nothing on a page takes.
+        MouseArea {
+            acceptedButtons: Qt.BackButton
+            anchors.fill: parent
+
+            onClicked: Nav.back()
+        }
 
         // Pages stay loaded after the first visit. Destroying them threw away scroll position, open menus,
         // and anything the page was in the middle of showing.
@@ -270,10 +328,17 @@ ApplicationWindow {
                 Item {
                     id: tab
 
+                    // A page opened from a tab keeps that tab lit: a game is still Games
                     readonly property bool active: modelData.id === "library" ? (Nav.view === "library" || Nav.view
-                                                                                 === "game") : Nav.view === modelData.id || (
-                                                                                    modelData.id === "settings" && Nav.view
-                                                                                    === "addGame")
+                                                                                 === "game" || (Nav.view === "addGame"
+                                                                                                && Nav.addGameFrom
+                                                                                                === "library")) : Nav.view
+                                                                                === modelData.id || (modelData.id
+                                                                                                     === "settings"
+                                                                                                     && Nav.view
+                                                                                                     === "addGame"
+                                                                                                     && Nav.addGameFrom
+                                                                                                     === "settings")
                     required property var modelData
 
                     activeFocusOnTab: true
@@ -361,8 +426,8 @@ ApplicationWindow {
                 activeFocusOnTab: true
                 anchors.left: parent.left
                 anchors.leftMargin: 40
-                anchors.right: parent.right
-                anchors.rightMargin: 14
+                anchors.right: clearButton.visible ? clearButton.left : parent.right
+                anchors.rightMargin: clearButton.visible ? 4 : 14
                 anchors.verticalCenter: parent.verticalCenter
                 clip: true
                 color: Theme.ink
@@ -396,6 +461,48 @@ ApplicationWindow {
                     visible: search.text === ""
                 }
             }
+
+            // The search is kept between runs, so a way to drop it has to be in plain sight
+            Item {
+                id: clearButton
+
+                activeFocusOnTab: visible
+                anchors.right: parent.right
+                anchors.rightMargin: 6
+                anchors.verticalCenter: parent.verticalCenter
+                height: 24
+                visible: search.text !== ""
+                width: 24
+
+                Keys.onReturnPressed: search.clearSearch()
+                Keys.onSpacePressed: search.clearSearch()
+
+                Rectangle {
+                    anchors.fill: parent
+                    border.color: clearButton.activeFocus ? Theme.ledBlue : "transparent"
+                    border.width: 2
+                    color: clearMouse.containsMouse ? Theme.shellLine : "transparent"
+                    radius: 12
+                }
+
+                Icon {
+                    anchors.centerIn: parent
+                    color: Theme.inkMuted
+                    name: "x"
+                    size: 14
+                    stroke: 2.2
+                }
+
+                MouseArea {
+                    id: clearMouse
+
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    hoverEnabled: true
+
+                    onClicked: search.clearSearch()
+                }
+            }
         }
     }
 
@@ -409,10 +516,68 @@ ApplicationWindow {
     }
 
     Shortcut {
-        enabled: Nav.view === "game" || Nav.view === "addGame"
-        sequence: "Esc"
+        enabled: Nav.canGoBack && !root.popupOpen
+        sequences: ["Esc", StandardKey.Back]
 
-        onActivated: Nav.goLibrary()
+        onActivated: Nav.back()
+    }
+
+    // The arrow keys move the focus ring the way a gamepad's stick does. A text field keeps them for its cursor.
+    Shortcut {
+        enabled: !root.editingText
+        sequence: "Up"
+
+        onActivated: pads.move(0, -1)
+    }
+
+    Shortcut {
+        enabled: !root.editingText
+        sequence: "Down"
+
+        onActivated: pads.move(0, 1)
+    }
+
+    Shortcut {
+        enabled: !root.editingText
+        sequence: "Left"
+
+        onActivated: pads.move(-1, 0)
+    }
+
+    Shortcut {
+        enabled: !root.editingText
+        sequence: "Right"
+
+        onActivated: pads.move(1, 0)
+    }
+
+    // The keys that scroll a page everywhere else. A text field keeps them for moving its cursor.
+    Shortcut {
+        enabled: !root.editingText && !root.popupOpen
+        sequence: "PgDown"
+
+        onActivated: pads.scrollPage(1)
+    }
+
+    Shortcut {
+        enabled: !root.editingText && !root.popupOpen
+        sequence: "PgUp"
+
+        onActivated: pads.scrollPage(-1)
+    }
+
+    Shortcut {
+        enabled: !root.editingText && !root.popupOpen
+        sequence: "Home"
+
+        onActivated: pads.scrollToEnd(-1)
+    }
+
+    Shortcut {
+        enabled: !root.editingText && !root.popupOpen
+        sequence: "End"
+
+        onActivated: pads.scrollToEnd(1)
     }
 
     // ------------------------------------------------------------ bottom strip
@@ -421,75 +586,20 @@ ApplicationWindow {
         height: Theme.bottomStrap
         width: parent.width
 
-        // Left: the injection delay for this game's mod, or whatever Kaon is busy with
-        Row {
-            anchors.left: parent.left
-            anchors.leftMargin: Theme.side + 12
-            anchors.verticalCenter: parent.verticalCenter
-            spacing: 8
-            visible: root.gameMod !== null && root.gameMod.type === Mod.Launchable && root.game.canLaunch && (root.group
-                                                                                                              === "ready"
-                                                                                                              || root.group
-                                                                                                              === "setup")
-                     && !DownloadManager.downloading && Nav.notice === ""
-
-            VText {
-                anchors.verticalCenter: parent.verticalCenter
-                color: Theme.inkMuted
-                font.pixelSize: 13
-                text: root.compact ? "Wait" : "Open " + (root.gameMod ? root.gameMod.name : "") + " after"
-            }
-
-            VButton {
-                anchors.verticalCenter: parent.verticalCenter
-                icon: "minus"
-                shellStyle: true
-                small: true
-
-                onClicked: root.gameMod.launchDelay = Math.max(5, root.gameMod.launchDelay - 5)
-            }
-
-            VText {
-                anchors.verticalCenter: parent.verticalCenter
-                color: Theme.ink
-                font.features: ({
-                                    "tnum": 1
-                                })
-                font.pixelSize: 15
-                font.weight: Font.ExtraBold
-                horizontalAlignment: Text.AlignHCenter
-                text: (root.gameMod ? root.gameMod.launchDelay : 30) + " s"
-                width: 44
-            }
-
-            VButton {
-                anchors.verticalCenter: parent.verticalCenter
-                icon: "plus"
-                shellStyle: true
-                small: true
-
-                onClicked: root.gameMod.launchDelay = Math.min(300, root.gameMod.launchDelay + 5)
-            }
-        }
-
+        // Left: whatever Kaon is busy with, or the size of the library
         Row {
             anchors.left: parent.left
             anchors.leftMargin: Theme.side + 14
             anchors.verticalCenter: parent.verticalCenter
             spacing: 10
-            visible: !(root.gameMod !== null && root.gameMod.type === Mod.Launchable && root.game.canLaunch && (root.group
-                                                                                                                === "ready"
-                                                                                                                || root.group
-                                                                                                                === "setup"))
-                     || DownloadManager.downloading || Nav.notice !== ""
+            visible: root.statusText !== ""
 
             Led {
                 anchors.verticalCenter: parent.verticalCenter
-                blinking: DownloadManager.downloading || (Launcher.phase === Launcher.Countdown && Launcher.game
-                                                          !== root.game)
+                blinking: root.downloading || (Launcher.phase === Launcher.Countdown && Launcher.game !== root.game)
+                color: root.downloading || Nav.notice !== "" || Launcher.phase !== Launcher.Idle ? Theme.ledGreen :
+                                                                                                   Theme.ledOff
 
-                color: DownloadManager.downloading || Nav.notice !== "" || Launcher.phase !== Launcher.Idle ? Theme.ledGreen :
-                                                                                                              Theme.ledOff
                 size: 8
             }
 
@@ -498,21 +608,7 @@ ApplicationWindow {
                 color: Theme.inkMuted
                 elide: Text.ElideRight
                 font.pixelSize: 13
-                text: {
-                    if (DownloadManager.downloading)
-                        return "Downloading " + DownloadManager.currentDownloadName;
-                    if (Nav.notice !== "")
-                        return Nav.notice;
-                    if (Launcher.phase === Launcher.Countdown && Launcher.game !== root.game)
-                        return "Opening " + Launcher.mod.name + " for " + Launcher.game.name + " in " + Launcher.remaining
-                                + " s";
-
-
-                    if (GamesFilterModel.scanning)
-                        return "Scanning libraries";
-
-                    return root.gameCount === 1 ? "1 game" : root.gameCount + " games";
-                }
+                text: root.statusText
                 width: Math.min(implicitWidth, root.width / 2 - Theme.button - 40)
             }
         }
@@ -522,84 +618,70 @@ ApplicationWindow {
             anchors.right: parent.right
             anchors.rightMargin: Theme.side + 6
             anchors.verticalCenter: parent.verticalCenter
-            spacing: 2
+            spacing: 4
 
             VButton {
-                ToolTip.delay: 500
-                ToolTip.text: "Play without VR"
-                ToolTip.visible: root.compact && hovered
-                icon: root.compact ? "play" : ""
-                shellStyle: true
-                small: true
-                text: root.compact ? "" : "Play without VR"
-                visible: root.inGame && root.game.canLaunch && root.group !== "none" && !root.staticVrInstalled
-
-                onClicked: {
-                    root.game.launch();
-                    Nav.notify("Starting " + root.game.name + " without VR");
-                }
-            }
-
-            VButton {
-                ToolTip.delay: 500
-                ToolTip.text: "Open the game's folder"
-                ToolTip.visible: hovered
-                icon: "folder"
-                shellStyle: true
-                small: true
-                text: root.compact ? "" : "Folder"
-                visible: root.inGame
-
-                onClicked: Qt.openUrlExternally("file://" + root.game.installDir)
-            }
-
-            VButton {
-                ToolTip.delay: 500
-                ToolTip.text: "Open the game's properties in Steam"
-                ToolTip.visible: root.compact && hovered
-                icon: "external"
-                shellStyle: true
-                small: true
-                text: root.compact ? "" : "Steam properties"
-                visible: root.inGame && root.game.canOpenSettings
-
-                onClicked: Qt.openUrlExternally("steam://gameproperties/" + root.game.id)
-            }
-
-            VButton {
-                ToolTip.delay: 500
-                ToolTip.text: "Remove from Kaon"
-                ToolTip.visible: root.compact && hovered
-                icon: "trash"
-                shellStyle: true
-                small: true
-                text: root.compact ? "" : "Remove"
-                visible: root.inGame && root.game.store === Game.Custom
-
-                onClicked: {
-                    const g = root.game;
-                    Nav.confirm("Remove " + g.name + " from Kaon?", "The game's files stay where they are.", "Remove", ()
-                                => {
-
-                                    Nav.goLibrary();
-                                    CustomGames.deleteGame(g);
-                                });
-                }
-            }
-
-            VButton {
-                ToolTip.delay: 500
-                ToolTip.text: "Start SteamVR"
-                ToolTip.visible: root.compact && hovered
                 icon: "headset"
                 shellStyle: true
                 small: true
-                text: root.compact ? "" : "Start SteamVR"
-                visible: root.inGame && Steam.hasSteamVR
+                text: "Start SteamVR"
+                visible: root.inGame && Steam.hasSteamVR && !root.narrow
 
-                onClicked: {
-                    Steam.launchSteamVR();
-                    Nav.notify("Starting SteamVR");
+                onClicked: root.startSteamVr()
+            }
+
+            VButton {
+                shellStyle: true
+                small: true
+                text: "Play without VR"
+                visible: root.canPlayFlat && !root.narrow
+
+                onClicked: root.playFlat()
+            }
+
+            VButton {
+                id: more
+
+                ToolTip.delay: 500
+                ToolTip.text: "More for this game"
+                ToolTip.visible: hovered && !gameMenu.opened
+                icon: "more"
+                shellStyle: true
+                small: true
+                visible: root.inGame
+
+                onClicked: gameMenu.opened ? gameMenu.close() : gameMenu.open()
+
+                GlassMenu {
+                    id: gameMenu
+
+                    actions: [root.narrow && Steam.hasSteamVR ? {
+                                                                    "icon": "headset",
+                                                                    "text": "Start SteamVR",
+                                                                    "run": root.startSteamVr
+                                                                } : null, root.narrow && root.canPlayFlat ? {
+                                                                                                                "icon": "play",
+                                                                                                                "text": "Play without VR",
+                                                                                                                "run": root.playFlat
+                                                                                                            } : null,
+                        {
+                            "icon": "folder",
+                            "text": "Open the game's folder",
+                            "run": () => GameStatus.openFolder(root.game)
+                        },
+                        root.game !== null && root.game.canOpenSettings ? {
+                                                                              "icon": "external",
+                                                                              "text": "Steam properties",
+                                                                              "run": () => GameStatus.openSteamProperties(
+                                                                                               root.game)
+                                                                          } : null, root.game !== null && root.game.store
+                        === Game.Custom ? {
+                                              "icon": "trash",
+                                              "text": "Remove from Kaon",
+                                              "run": root.removeGame
+                                          } : null]
+                    x: more.width - width
+                    y: -height - 10
                 }
             }
 
@@ -610,10 +692,7 @@ ApplicationWindow {
                 text: GamesFilterModel.scanning ? "Scanning" : "Rescan"
                 visible: Nav.view === "library"
 
-                onClicked: {
-                    GameStatus.rescanLibraries();
-                    Nav.notify("Scanning your libraries");
-                }
+                onClicked: root.rescan()
             }
 
             VButton {
@@ -623,7 +702,7 @@ ApplicationWindow {
                 text: "Add a game"
                 visible: Nav.view === "library"
 
-                onClicked: Nav.view = "addGame"
+                onClicked: Nav.addGame()
             }
 
             VButton {
@@ -632,7 +711,7 @@ ApplicationWindow {
                 text: "Cancel"
                 visible: Nav.view === "addGame"
 
-                onClicked: Nav.goLibrary()
+                onClicked: Nav.back()
             }
         }
     }
@@ -642,6 +721,7 @@ ApplicationWindow {
         id: notch
 
         readonly property bool busy: root.openStep !== undefined && root.openStep.state === "busy"
+        readonly property bool canSetUp: root.inGame && GameStatus.canSetUp(root.game, GameStatus.revision)
 
         enabled: {
             if (Nav.view === "addGame")
@@ -649,8 +729,7 @@ ApplicationWindow {
             if (!root.inGame || root.launching)
                 return true;
             if (root.group === "setup")
-                return GameStatus.canSetUp(root.game) || (root.openStep !== undefined && root.openStep.state === "todo" && !
-                                                          !root.openStep.action);
+                return canSetUp || (root.openStep !== undefined && root.openStep.state !== "busy" && !!root.openStep.action);
             if (root.group === "none")
                 return root.game.canLaunch;
             return true;
@@ -660,7 +739,12 @@ ApplicationWindow {
                 return "plus";
             if (!root.inGame)
                 return Steam.hasSteamVR ? "headset" : "refresh";
-            return root.group === "setup" ? "download" : "play";
+            if (root.group !== "setup")
+                return "play";
+            // The button does whatever the first open step needs, and shows which kind of thing that is
+            const action = canSetUp || root.openStep === undefined ? "" : root.openStep.action;
+            return action === "launchOnce" ? "play" : action === "steamSettings" ? "external" : action === "refresh"
+                                                                                   ? "refresh" : "download";
         }
         label: {
             if (Nav.view === "addGame")
@@ -670,8 +754,10 @@ ApplicationWindow {
             if (root.launching)
                 return Launcher.phase === Launcher.Countdown ? "Open now" : "Done";
             if (root.group === "setup")
-                return busy ? "Working" : GameStatus.canSetUp(root.game) || root.openStep === undefined ? "Set up" :
-                                                                                                          root.openStep.actionLabel;
+                return busy ? "Working" : canSetUp || root.openStep === undefined || !root.openStep.action ? "Set up" :
+                                                                                                             root.openStep.actionLabel;
+
+
             return root.group === "none" ? "Play" : "Play in VR";
         }
         led: !root.inGame ? Theme.ledOff : root.launching ? Theme.ledGreen : Theme.led(root.group)
@@ -687,17 +773,14 @@ ApplicationWindow {
             if (Nav.view === "addGame")
                 (addPage.item as AddGameView)?.submit();
             else if (!root.inGame) {
-                if (Steam.hasSteamVR) {
-                    Steam.launchSteamVR();
-                    Nav.notify("Starting SteamVR");
-                } else {
-                    GameStatus.rescanLibraries();
-                    Nav.notify("Scanning your libraries");
-                }
+                if (Steam.hasSteamVR)
+                    root.startSteamVr();
+                else
+                    root.rescan();
             } else if (root.launching)
                 Launcher.phase === Launcher.Countdown ? Launcher.openModNow() : Launcher.stop();
             else if (root.group === "setup") {
-                if (GameStatus.canSetUp(root.game))
+                if (canSetUp)
                     GameStatus.setUp(root.game);
                 else if (root.openStep !== undefined)
                     GameStatus.runStep(root.game, root.openStep.key, false);
@@ -713,6 +796,8 @@ ApplicationWindow {
     }
 
     GamepadNav {
+        id: pads
+
         notch: notch
         searchField: search
     }

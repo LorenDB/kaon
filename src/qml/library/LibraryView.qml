@@ -21,12 +21,20 @@ Item {
                           })
     property real heldY: 0
     readonly property real inner: width - 2 * Theme.pad
+    // The chips wrap onto three lines in a small window unless they say less
+    readonly property bool narrow: width < 1030
     readonly property var order: ["ready", "setup", "native", "none"]
     property bool ready: false
     property string rowsKey: ""
     property bool scrollLocked: false
     property int scrollTries: 0
     property bool settled: false
+    readonly property var shortTitles: ({
+                                            "ready": "Ready",
+                                            "setup": "Setup",
+                                            "native": "Built-in VR",
+                                            "none": "No mod"
+                                        })
     // The loader hides this page without destroying it. parent.visible is that loader.
     readonly property bool shown: parent !== null && parent.visible
     readonly property var titles: ({
@@ -60,14 +68,18 @@ Item {
 
     function rebuild() {
         let rows = [];
+        // A search looks in every group. Someone who types a game's name wants that game, whichever group it is in.
+        const searching = GamesFilterModel.search !== "";
         for (const key of order) {
             const list = groups[key];
-            if (list.length === 0 || librarySettings.shownGroups.indexOf(key) < 0)
+            const hidden = librarySettings.shownGroups.indexOf(key) < 0;
+            if (list.length === 0 || (hidden && !searching))
                 continue;
             rows.push({
                           "kind": "header",
                           "group": key,
-                          "count": list.length
+                          "count": list.length,
+                          "found": hidden
                       });
             for (let i = 0; i < list.length; i += cols)
                 rows.push({
@@ -77,8 +89,8 @@ Item {
                           });
         }
 
-        const key = cols + "|" + rows.map(r => r.kind === "header" ? r.group + r.count : r.games.map(g => g.store + ":"
-                                                                                                          + g.id).join(
+        const key = cols + "|" + rows.map(r => r.kind === "header" ? r.group + r.count + r.found : r.games.map(g => g.store
+                                                                                                                    + ":" + g.id).join(
                                                                          ",")).join("|");
         if (key === rowsKey)
             return;
@@ -206,7 +218,7 @@ Item {
                         checked: librarySettings.shownGroups.indexOf(modelData) >= 0
                         count: view.groups[modelData].length
                         led: Theme.led(modelData)
-                        text: view.titles[modelData]
+                        text: view.narrow ? view.shortTitles[modelData] : view.titles[modelData]
 
                         onToggled: view.toggleGroup(modelData)
                     }
@@ -258,6 +270,8 @@ Item {
     ListView {
         id: list
 
+        // A mouse scrolls with its wheel; dragging the covers around is for touch screens
+        acceptedButtons: Qt.NoButton
         anchors.bottom: parent.bottom
         anchors.left: parent.left
         anchors.right: parent.right
@@ -310,8 +324,9 @@ Item {
                     elide: Text.ElideRight
                     font.pixelSize: 13
                     leftPadding: 6
-                    text: "Kaon's mods cover Unreal Engine games and Portal 2. Engine detection is a best guess."
-                    visible: row.modelData.group === "none"
+                    text: row.modelData.found === true ? "Hidden group, shown because it has what you searched for" :
+                                                         "Kaon has mods for Unreal Engine and Unity games, Portal and Portal 2. Engines are a best guess."
+                    visible: row.modelData.group === "none" || row.modelData.found === true
                     width: Math.min(implicitWidth, view.width - 2 * Theme.pad - 280)
                 }
             }
@@ -345,7 +360,7 @@ Item {
     Column {
         id: emptyState
 
-        // Groups that have games but are switched off; a search can land entirely inside one of them
+        // Groups that have games but are switched off
         readonly property var hiddenGroups: view.order.filter(k => view.groups[k].length > 0 && librarySettings.shownGroups.indexOf(
                                                                        k) < 0)
 
@@ -364,8 +379,7 @@ Item {
             if (view.total === 0)
                 return GamesFilterModel.search !== "" ? "No games match “" + GamesFilterModel.search + "”" :
                                                         "No games found";
-            return GamesFilterModel.search !== "" ? "Your matches are in a hidden group" :
-                                                    "Every group with games is switched off";
+            return "Every group with games is switched off";
         }
 
         spacing: 8

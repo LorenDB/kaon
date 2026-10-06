@@ -77,7 +77,7 @@ Popup {
                 Chip {
                     required property var modelData
 
-                    checked: (GamesFilterModel.engineFilter, GamesFilterModel.isEngineFilterSet(modelData.value))
+                    checked: GamesFilterModel.isEngineFilterSet(modelData.value, GamesFilterModel.filterRevision)
                     showLed: false
                     text: modelData.label
 
@@ -129,7 +129,7 @@ Popup {
                 Chip {
                     required property var modelData
 
-                    checked: (GamesFilterModel.typeFilter, GamesFilterModel.isTypeFilterSet(modelData.value))
+                    checked: GamesFilterModel.isTypeFilterSet(modelData.value, GamesFilterModel.filterRevision)
                     showLed: false
                     text: modelData.label
 
@@ -179,7 +179,7 @@ Popup {
                 Chip {
                     required property var modelData
 
-                    checked: (GamesFilterModel.storeFilter, GamesFilterModel.isStoreFilterSet(modelData.value))
+                    checked: GamesFilterModel.isStoreFilterSet(modelData.value, GamesFilterModel.filterRevision)
                     count: modelData.count
                     showLed: false
                     text: modelData.label
@@ -190,5 +190,8 @@ Popup {
         }
     }
 
+    Component.onDestruction: if (visible)
+                                 Nav.popupShown(false)
     onOpened: Qt.callLater(pop.focusFirst)
+    onVisibleChanged: Nav.popupShown(visible)
 }

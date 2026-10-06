@@ -8,6 +8,10 @@ import dev.lorendb.kaon
 QtObject {
     id: nav
 
+    // Where "Add a game" was opened from, which is where leaving it goes back to
+    property string addGameFrom: "library"
+    // Pages that are a step into another page, and so have a way back
+    readonly property bool canGoBack: view === "game" || view === "addGame"
     property Game game: null
 
     // Rescans replace every Game object, so the open game is remembered by store and id as well
@@ -19,6 +23,15 @@ QtObject {
 
         onTriggered: nav.notice = ""
     }
+    readonly property Connections notices: Connections {
+        function onNoticed(text) {
+            nav.notify(text);
+        }
+
+        target: GameStatus
+    }
+    // How many menus and dialogs are open. They take Escape and the scrolling keys for themselves.
+    property int openPopups: 0
     readonly property Connections rescans: Connections {
         function onGamesChanged() {
             if (nav.gameId === "")
@@ -42,6 +55,18 @@ QtObject {
 
     signal confirmRequested(string title, string text, string actionLabel, var onConfirm)
 
+    function addGame() {
+        addGameFrom = view === "settings" ? "settings" : "library";
+        view = "addGame";
+    }
+
+    function back() {
+        if (view === "addGame")
+            view = addGameFrom;
+        else if (view === "game")
+            view = "library";
+    }
+
     function confirm(title, text, actionLabel, onConfirm) {
         confirmRequested(title, text, actionLabel, onConfirm);
     }
@@ -60,5 +85,10 @@ QtObject {
         gameId = g.id;
         gameStore = g.store;
         view = "game";
+    }
+
+    // Every menu and dialog reports its visible property here as it changes
+    function popupShown(shown) {
+        openPopups = Math.max(0, openPopups + (shown ? 1 : -1));
     }
 }

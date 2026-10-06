@@ -29,6 +29,7 @@ Flickable {
     }
     readonly property bool wide: width > 900
 
+    acceptedButtons: Qt.NoButton
     boundsBehavior: Flickable.StopAtBounds
     clip: true
     contentHeight: Math.max(left.height, right.y + right.height) + Theme.notchHeight + 50
@@ -117,14 +118,14 @@ Flickable {
                 small: true
                 text: "Add a game by hand"
 
-                onClicked: Nav.view = "addGame"
+                onClicked: Nav.addGame()
             }
         }
 
         VText {
             color: Theme.glassFaint
             font.pixelSize: 12
-            text: "Flatpak and Snap installs of Steam and Heroic aren't supported yet."
+            text: "Flatpak Steam and Heroic have to be running for Kaon to reach their games. Snap installs and the Flatpak itch app aren't supported yet."
             topPadding: 14
             width: parent.width
             wrapMode: Text.Wrap
@@ -215,7 +216,7 @@ Flickable {
                 text: "Check for updates now"
 
                 onClicked: {
-                    UpdateChecker.checkUpdates();
+                    UpdateChecker.checkUpdates(true);
                     Nav.notify("Checking for a new Kaon version");
                 }
             }

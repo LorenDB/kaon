@@ -8,8 +8,11 @@ ScrollBar {
     id: bar
 
     background: null
+    // The visor's corners are round, and a bar that ran into them would be cut off at an angle
+    bottomPadding: 12
     minimumSize: 0.06
     padding: 3
+    topPadding: 12
 
     contentItem: Rectangle {
         color: bar.pressed ? Theme.glassMuted : bar.hovered ? Theme.glassFaint : Theme.glassLine

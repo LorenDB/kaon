@@ -8,14 +8,14 @@ import dev.lorendb.kaon
 Item {
     id: picker
 
-    readonly property ModRelease current: (GameStatus.revision, mod.currentRelease)
+    readonly property ModRelease current: mod.currentRelease
     // When the mod is installed in this game, its version can't change until it's uninstalled
     property Game game: null
-    readonly property bool locked: game !== null && mod.type === Mod.Installable && (GameStatus.revision, mod.isInstalledForGame(
-                                                                                         game))
+    readonly property bool locked: game !== null && mod.type === Mod.Installable && GameStatus.isInstalled(mod, game,
+                                                                                                           GameStatus.revision)
     required property Mod mod
     property int popupEpoch: 0
-    readonly property ModRelease shown: locked ? (GameStatus.revision, mod.releaseInstalledForGame(game)) ?? current :
+    readonly property ModRelease shown: locked ? GameStatus.installedRelease(mod, game, GameStatus.revision) ?? current :
                                                  current
 
     function hideNightlies() {
@@ -81,7 +81,7 @@ Item {
         elide: Text.ElideRight
         font.pixelSize: 12
         font.weight: Font.Bold
-        text: picker.shown ? picker.shown.name : "Looking for releases"
+        text: picker.shown ? picker.mod.releaseLabel(picker.shown) : "Looking for releases"
     }
 
     Icon {
@@ -141,7 +141,7 @@ Item {
                 delegate: Item {
                     id: row
 
-                    readonly property bool downloading: (GameStatus.revision, GameStatus.isDownloading(picker.mod, release))
+                    readonly property bool downloading: GameStatus.isDownloading(picker.mod, release, GameStatus.revision)
                     readonly property string kind: !release ? "" : release.nightly ? "Nightly, " : release.prerelease
                                                                                      ? "Prerelease, " : ""
                     required property var model
@@ -247,7 +247,7 @@ Item {
                 id: nightlyRow
 
                 height: 40
-                visible: (GameStatus.revision, picker.mod.hasNightlies())
+                visible: picker.mod.hasNightlies
                 width: 324
 
                 VText {
@@ -274,7 +274,7 @@ Item {
                 id: prereleaseRow
 
                 height: 40
-                visible: (GameStatus.revision, picker.mod.hasPrereleases())
+                visible: picker.mod.hasPrereleases
                 width: 324
 
                 VText {
@@ -317,6 +317,8 @@ Item {
             }
         }
 
+        Component.onDestruction: if (visible)
+                                     Nav.popupShown(false)
         onOpened: Qt.callLater(() => {
             const first = releaseList.itemAtIndex(0);
             if (first)
@@ -326,5 +328,6 @@ Item {
             else if (prereleaseSwitch.visible)
                 prereleaseSwitch.forceActiveFocus();
         })
+        onVisibleChanged: Nav.popupShown(visible)
     }
 }

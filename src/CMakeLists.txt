@@ -18,8 +18,10 @@ qt_add_qml_module(kaon
         qml/Nav.qml
         qml/Theme.qml
 
+        qml/components/BackBar.qml
         qml/components/Chip.qml
         qml/components/GlassDialog.qml
+        qml/components/GlassMenu.qml
         qml/components/GlassScrollBar.qml
         qml/components/Icon.qml
         qml/components/LaunchOptions.qml
@@ -33,9 +35,9 @@ qt_add_qml_module(kaon
         qml/components/VisorFrame.qml
         qml/components/VText.qml
 
-        qml/game/ExtrasPanel.qml
         qml/game/GameView.qml
         qml/game/LensView.qml
+        qml/game/ToolsPanel.qml
         qml/game/VersionMenu.qml
 
         qml/library/FilterPopup.qml

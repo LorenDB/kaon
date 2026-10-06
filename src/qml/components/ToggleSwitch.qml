@@ -7,7 +7,6 @@ Item {
     id: sw
 
     property bool checked
-    property bool enabled: true
     property bool shellStyle: false
 
     signal toggled

@@ -207,6 +207,14 @@ Item {
     }
 
     Connections {
+        function onCheckFailed() {
+            Nav.notify("Couldn't reach GitHub to check for a new version");
+        }
+
+        function onUpToDate() {
+            Nav.notify("This is the newest version of Kaon");
+        }
+
         function onUpdateAvailable(version: string, url: string) {
             updateDialog.version = version;
             updateDialog.url = url;
