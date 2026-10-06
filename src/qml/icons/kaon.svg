@@ -1,183 +1,66 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<svg
-   viewBox="0 0 100 100"
-   width="100"
-   height="100"
-   version="1.1"
-   id="svg5"
-   sodipodi:docname="kaon.svg"
-   inkscape:version="1.4.2 (unknown)"
-   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
-   xmlns:xlink="http://www.w3.org/1999/xlink"
-   xmlns="http://www.w3.org/2000/svg"
-   xmlns:svg="http://www.w3.org/2000/svg">
-  <defs
-     id="defs5">
-    <linearGradient
-       id="linearGradient6"
-       inkscape:collect="always">
-      <stop
-         style="stop-color:#000000;stop-opacity:1;"
-         offset="0.25"
-         id="stop6" />
-      <stop
-         style="stop-color:#23002d;stop-opacity:1;"
-         offset="1"
-         id="stop7" />
-    </linearGradient>
-    <linearGradient
-       id="linearGradient4"
-       inkscape:collect="always">
-      <stop
-         style="stop-color:#000000;stop-opacity:1;"
-         offset="0.25"
-         id="stop4" />
-      <stop
-         style="stop-color:#23002d;stop-opacity:1;"
-         offset="1"
-         id="stop5" />
-    </linearGradient>
-    <linearGradient
-       id="linearGradient1"
-       inkscape:collect="always">
-      <stop
-         style="stop-color:#000000;stop-opacity:1;"
-         offset="0.25"
-         id="stop1" />
-      <stop
-         style="stop-color:#23002d;stop-opacity:1;"
-         offset="1"
-         id="stop2" />
-    </linearGradient>
-    <linearGradient
-       id="linearGradient15"
-       inkscape:collect="always">
-      <stop
-         style="stop-color:#52ff5b;stop-opacity:1;"
-         offset="0"
-         id="stop15" />
-      <stop
-         style="stop-color:#0effe1;stop-opacity:1;"
-         offset="0.84831154"
-         id="stop16" />
-    </linearGradient>
-    <linearGradient
-       inkscape:collect="always"
-       xlink:href="#linearGradient15"
-       id="linearGradient16"
-       x1="39.388432"
-       y1="10.397021"
-       x2="60.611599"
-       y2="89.602951"
-       gradientUnits="userSpaceOnUse" />
-    <linearGradient
-       inkscape:collect="always"
-       xlink:href="#linearGradient1"
-       id="linearGradient2"
-       x1="35"
-       y1="41"
-       x2="35"
-       y2="59"
-       gradientUnits="userSpaceOnUse"
-       gradientTransform="translate(-2)" />
-    <linearGradient
-       inkscape:collect="always"
-       xlink:href="#linearGradient4"
-       id="linearGradient5"
-       x1="54.5"
-       y1="50"
-       x2="75.5"
-       y2="50"
-       gradientUnits="userSpaceOnUse"
-       gradientTransform="translate(11.80127,-83.023702)" />
-    <linearGradient
-       inkscape:collect="always"
-       xlink:href="#linearGradient6"
-       id="linearGradient7"
-       x1="54.5"
-       y1="50"
-       x2="75.5"
-       y2="50"
-       gradientUnits="userSpaceOnUse"
-       gradientTransform="translate(-55.19873,-133.0237)" />
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <!-- Only gradients and plain shapes, no filters, masks or <use>, so Qt's SVG renderer draws it the same as a browser. -->
+  <defs>
+    <linearGradient id="shell" x1="0" y1="67" x2="0" y2="196" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#5f6470"/><stop offset=".55" stop-color="#40444d"/><stop offset="1" stop-color="#2b2e35"/></linearGradient>
+    <radialGradient id="sheen" cx="64" cy="70" r="130" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#c8ffe2" stop-opacity=".16"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+    <linearGradient id="bevel" x1="0" y1="68.5" x2="0" y2="194.5" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#fff" stop-opacity=".32"/><stop offset=".3" stop-color="#fff" stop-opacity="0"/><stop offset=".65" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".4"/></linearGradient>
+    <linearGradient id="visor" x1="0" y1="80" x2="0" y2="182" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#15171c"/><stop offset=".6" stop-color="#050608"/></linearGradient>
+    <!-- The shell's top lip casts a shadow into the visor -->
+    <linearGradient id="lip" x1="0" y1="80" x2="0" y2="95" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#000" stop-opacity=".7"/><stop offset="1" stop-color="#000" stop-opacity="0"/></linearGradient>
+    <linearGradient id="visor-sheen" x1="28" y1="80" x2="130" y2="182" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#b8ffd8" stop-opacity=".13"/><stop offset=".55" stop-color="#b8ffd8" stop-opacity="0"/></linearGradient>
+    <!-- Light catches the shell's lower lip around the visor -->
+    <linearGradient id="rim" x1="0" y1="80" x2="0" y2="182" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#000" stop-opacity=".6"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" stop-opacity=".22"/></linearGradient>
+    <linearGradient id="bezel" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5a626f"/><stop offset=".45" stop-color="#23272e"/><stop offset="1" stop-color="#0c0d10"/></linearGradient>
+    <radialGradient id="glass" cx=".4" cy=".34" r=".72"><stop offset="0" stop-color="#232c3e"/><stop offset=".5" stop-color="#0a0c12"/><stop offset="1" stop-color="#050608"/></radialGradient>
+    <!-- The lenses keep a little of the old icon's purple at the bottom. -->
+    <linearGradient id="tint" x1="0" y1="0" x2="0" y2="1"><stop offset=".45" stop-color="#23002d" stop-opacity="0"/><stop offset="1" stop-color="#23002d" stop-opacity=".85"/></linearGradient>
+    <radialGradient id="glow" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#32d77f" stop-opacity=".72"/><stop offset=".6" stop-color="#22d8e6" stop-opacity=".2"/><stop offset="1" stop-color="#22d8e6" stop-opacity="0"/></radialGradient>
+    <linearGradient id="orbit" x1="153" y1="108" x2="199" y2="148" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#8affb8"/><stop offset="1" stop-color="#5cf2ff"/></linearGradient>
+    <radialGradient id="nucleus" cx=".38" cy=".36" r=".7"><stop offset="0" stop-color="#fff"/><stop offset=".45" stop-color="#8affb8"/><stop offset="1" stop-color="#22c46c"/></radialGradient>
+    <radialGradient id="led" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#32d77f" stop-opacity=".7"/><stop offset="1" stop-color="#32d77f" stop-opacity="0"/></radialGradient>
   </defs>
-  <sodipodi:namedview
-     id="namedview5"
-     pagecolor="#ffffff"
-     bordercolor="#000000"
-     borderopacity="0.25"
-     inkscape:showpageshadow="2"
-     inkscape:pageopacity="0.0"
-     inkscape:pagecheckerboard="0"
-     inkscape:deskcolor="#d1d1d1"
-     showgrid="false"
-     inkscape:zoom="10.693212"
-     inkscape:cx="43.812842"
-     inkscape:cy="47.880843"
-     inkscape:window-width="1920"
-     inkscape:window-height="1136"
-     inkscape:window-x="0"
-     inkscape:window-y="0"
-     inkscape:window-maximized="1"
-     inkscape:current-layer="svg5" />
-  <!-- Headset body with smooth curved nose notch and rounded corners -->
-  <path
-     d="M20 30 H80 A10 10 0 0 1 90 40 V60 A10 10 0 0 1 80 70 H56 C53 70 53 59 50 59 S47 70 44 70 H20 A10 10 0 0 1 10 60 V40 A10 10 0 0 1 20 30 Z"
-     fill="none"
-     stroke="#000"
-     stroke-width="2"
-     id="path1"
-     style="fill:url(#linearGradient16)" />
-  <ellipse
-     cx="76.80127"
-     cy="-33.023701"
-     rx="10"
-     ry="5"
-     fill="none"
-     stroke="#000"
-     stroke-width="1"
-     transform="rotate(60)"
-     id="ellipse3"
-     style="fill:none;fill-opacity:0;stroke:url(#linearGradient5);stroke-opacity:1" />
-  <ellipse
-     cx="67"
-     cy="50"
-     rx="10"
-     ry="5"
-     fill="none"
-     stroke="#000000"
-     stroke-width="1"
-     id="ellipse2" />
-  <ellipse
-     cx="9.8012705"
-     cy="-83.023705"
-     rx="10"
-     ry="5"
-     fill="none"
-     stroke="#000"
-     stroke-width="1"
-     transform="rotate(120)"
-     id="ellipse4"
-     style="stroke:url(#linearGradient7)" />
-  <!-- Left lens (plain circle) -->
-  <!-- Right lens (atom representation) -->
-  <!-- Nucleus -->
-  <!-- Orbits -->
-  <!-- Simple straps -->
-  <circle
-     cx="67"
-     cy="50"
-     r="2"
-     fill="#000000"
-     id="circle2" />
-  <circle
-     cx="33"
-     cy="50"
-     fill="none"
-     stroke="#000"
-     stroke-width="2"
-     id="circle1"
-     style="fill:url(#linearGradient2);fill-opacity:1;stroke:none"
-     r="8" />
+
+  <g transform="translate(0 -4)">
+  <!-- Shell -->
+  <path d="M56 67 H200 A40 40 0 0 1 240 107 V156 A40 40 0 0 1 200 196 H180 C149.8 196 160.2 166 128 166 C95.8 166 106.2 196 76 196 H56 A40 40 0 0 1 16 156 V107 A40 40 0 0 1 56 67 Z" fill="url(#shell)"/>
+  <path d="M56 67 H200 A40 40 0 0 1 240 107 V156 A40 40 0 0 1 200 196 H180 C149.8 196 160.2 166 128 166 C95.8 166 106.2 196 76 196 H56 A40 40 0 0 1 16 156 V107 A40 40 0 0 1 56 67 Z" fill="url(#sheen)"/>
+  <path d="M56 68.5 H200 A38.5 38.5 0 0 1 238.5 107 V156 A38.5 38.5 0 0 1 200 194.5 H181 C150.3 194.5 160.9 164.5 128 164.5 C95.1 164.5 105.7 194.5 75 194.5 H56 A38.5 38.5 0 0 1 17.5 156 V107 A38.5 38.5 0 0 1 56 68.5 Z" fill="none" stroke="url(#bevel)" stroke-width="2.5"/>
+
+  <!-- Visor, set into the shell with the same nose notch -->
+  <path d="M56 80 H200 A28 28 0 0 1 228 108 V154 A28 28 0 0 1 200 182 H168 C144.8 182 152.8 156 128 156 C103.2 156 111.2 182 88 182 H56 A28 28 0 0 1 28 154 V108 A28 28 0 0 1 56 80 Z" fill="url(#visor)"/>
+  <path d="M56 80 H200 A28 28 0 0 1 228 108 V154 A28 28 0 0 1 200 182 H168 C144.8 182 152.8 156 128 156 C103.2 156 111.2 182 88 182 H56 A28 28 0 0 1 28 154 V108 A28 28 0 0 1 56 80 Z" fill="url(#visor-sheen)"/>
+  <path d="M56 80 H200 A28 28 0 0 1 228 108 V154 A28 28 0 0 1 200 182 H168 C144.8 182 152.8 156 128 156 C103.2 156 111.2 182 88 182 H56 A28 28 0 0 1 28 154 V108 A28 28 0 0 1 56 80 Z" fill="url(#lip)"/>
+  <path d="M56 80 H200 A28 28 0 0 1 228 108 V154 A28 28 0 0 1 200 182 H168 C144.8 182 152.8 156 128 156 C103.2 156 111.2 182 88 182 H56 A28 28 0 0 1 28 154 V108 A28 28 0 0 1 56 80 Z" fill="none" stroke="url(#rim)" stroke-width="2.5"/>
+
+  <!-- Left lens -->
+  <circle cx="80" cy="128" r="34" fill="url(#bezel)" stroke="#000" stroke-width="2"/>
+  <circle cx="80" cy="128" r="29.5" fill="url(#glass)"/>
+  <circle cx="80" cy="128" r="29.5" fill="url(#tint)"/>
+  <g fill="none" stroke="#a8bed4" stroke-opacity=".07" stroke-width="1">
+    <circle cx="80" cy="128" r="9"/><circle cx="80" cy="128" r="14"/><circle cx="80" cy="128" r="19"/><circle cx="80" cy="128" r="24"/>
+  </g>
+  <path d="M59.3 120.5 A22 22 0 0 1 70.7 108.1" fill="none" stroke="#fff" stroke-opacity=".42" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="76.9" cy="106.2" r="2.2" fill="#fff" opacity=".85"/>
+  <!-- The atom's light, reflected -->
+  <path d="M101.6 135.9 A23 23 0 0 1 91.5 147.9" fill="none" stroke="#4ef08c" stroke-opacity=".22" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- Right lens, with the atom inside -->
+  <circle cx="176" cy="128" r="34" fill="url(#bezel)" stroke="#000" stroke-width="2"/>
+  <circle cx="176" cy="128" r="29.5" fill="url(#glass)"/>
+  <circle cx="176" cy="128" r="29.5" fill="url(#tint)"/>
+  <g fill="none" stroke="#a8bed4" stroke-opacity=".07" stroke-width="1">
+    <circle cx="176" cy="128" r="9"/><circle cx="176" cy="128" r="14"/><circle cx="176" cy="128" r="19"/><circle cx="176" cy="128" r="24"/>
+  </g>
+  <circle cx="176" cy="128" r="27" fill="url(#glow)"/>
+  <g fill="none" stroke="url(#orbit)" stroke-width="3.2">
+    <ellipse cx="176" cy="128" rx="23" ry="8.5" transform="rotate(-32 176 128)"/>
+    <ellipse cx="176" cy="128" rx="23" ry="8.5" transform="rotate(32 176 128)"/>
+  </g>
+  <circle cx="193.7" cy="114.4" r="2.7" fill="#eafff3"/>
+  <circle cx="158.3" cy="141.6" r="2.7" fill="#eafff3"/>
+  <circle cx="176" cy="128" r="9" fill="url(#led)"/>
+  <circle cx="176" cy="128" r="4.8" fill="url(#nucleus)"/>
+  <path d="M155.3 120.5 A22 22 0 0 1 166.7 108.1" fill="none" stroke="#fff" stroke-opacity=".42" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="172.9" cy="106.2" r="2.2" fill="#fff" opacity=".85"/>
+  </g>
 </svg>

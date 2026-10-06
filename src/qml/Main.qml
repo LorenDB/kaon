@@ -1,7 +1,6 @@
 import QtCore
 import QtQuick
 import QtQuick.Controls.Basic
-import QtQuick.Shapes
 
 import dev.lorendb.kaon
 
@@ -274,43 +273,16 @@ ApplicationWindow {
             anchors.verticalCenter: parent.verticalCenter
             spacing: 9
 
-            // Kaon's icon, cut to this frame: a visor with its notch and two lenses
-            Shape {
+            // The app logo
+            Image {
                 anchors.verticalCenter: parent.verticalCenter
-                height: 20
-                preferredRendererType: Shape.CurveRenderer
-                width: 36
-
-                ShapePath {
-                    fillColor: Theme.ink
-                    scale: Qt.size(0.45, 0.45)
-                    strokeColor: "transparent"
-
-                    PathSvg {
-                        path: "M 12 0 H 68 A 12 12 0 0 1 80 12 V 32 A 12 12 0 0 1 68 44 H 47 C 44 44 44.5 33 40 33 C 35.5 33 36 44 33 44 H 12 A 12 12 0 0 1 0 32 V 12 A 12 12 0 0 1 12 0 Z"
-                    }
-                }
-
-                ShapePath {
-                    fillColor: Theme.shell
-                    strokeColor: "transparent"
-
-                    PathAngleArc {
-                        centerX: 9.9
-                        centerY: 9.5
-                        radiusX: 4
-                        radiusY: 4
-                        sweepAngle: 360
-                    }
-
-                    PathAngleArc {
-                        centerX: 26.1
-                        centerY: 9.5
-                        radiusX: 4
-                        radiusY: 4
-                        sweepAngle: 360
-                    }
-                }
+                fillMode: Image.PreserveAspectFit
+                height: 32
+                smooth: true
+                source: "icons/kaon.svg"
+                sourceSize.height: 64
+                sourceSize.width: 64
+                width: 32
             }
 
             VText {
