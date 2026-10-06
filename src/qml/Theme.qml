@@ -12,13 +12,13 @@ QtObject {
     // "system", "light" or "dark"
     property alias appearance: appearanceSettings.shell
     readonly property FontLoader bold: FontLoader {
-        source: "fonts/MPLUSRounded1c-Bold.ttf"
+        source: "fonts/Nunito-Bold.ttf"
     }
     readonly property int bottomStrap: 60
     readonly property int button: 58
     readonly property bool dark: appearance === "dark" || (appearance === "system" && systemDark)
     readonly property FontLoader extraBold: FontLoader {
-        source: "fonts/MPLUSRounded1c-ExtraBold.ttf"
+        source: "fonts/Nunito-ExtraBold.ttf"
     }
     readonly property string font: regular.name
     readonly property color glass: "#050608"
@@ -37,7 +37,7 @@ QtObject {
     readonly property color ledOff: "#525866"
     readonly property color ledRed: "#ff5a52"
     readonly property FontLoader medium: FontLoader {
-        source: "fonts/MPLUSRounded1c-Medium.ttf"
+        source: "fonts/Nunito-Medium.ttf"
     }
     readonly property int notchHalfWidth: 58
     readonly property int notchHeight: 36
@@ -46,7 +46,7 @@ QtObject {
     }
     readonly property int radius: 22
     readonly property FontLoader regular: FontLoader {
-        source: "fonts/MPLUSRounded1c-Regular.ttf"
+        source: "fonts/Nunito-Regular.ttf"
     }
     // Qt.ColorScheme: 0 unknown, 1 light, 2 dark. Fall back to the palette when the platform doesn't say.
     readonly property int scheme: Application.styleHints.colorScheme
