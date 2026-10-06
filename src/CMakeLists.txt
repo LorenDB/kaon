@@ -50,6 +50,8 @@ qt_add_qml_module(kaon
     SOURCES
         Aptabase.cpp
         Aptabase.h
+        Archive.cpp
+        Archive.h
         DownloadManager.cpp
         DownloadManager.h
         Game.cpp
@@ -64,12 +66,16 @@ qt_add_qml_module(kaon
         GameStatus.h
         Launcher.cpp
         Launcher.h
+        LaunchOptions.cpp
+        LaunchOptions.h
         UpdateChecker.cpp
         UpdateChecker.h
         VDF.cpp
         VDF.h
         Wine.cpp
         Wine.h
+        WinePrefix.cpp
+        WinePrefix.h
         Flatpak.cpp
         Flatpak.h
 
