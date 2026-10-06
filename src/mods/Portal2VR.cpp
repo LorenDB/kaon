@@ -18,7 +18,17 @@ Portal2VR *Portal2VR::create(QQmlEngine *, QJSEngine *)
 
 QString Portal2VR::info() const
 {
-    return "See [GitHub](https://github.com/Gistix/portal2vr?tab=readme-ov-file#how-to-use) for required Portal 2 launch options"_L1;
+    return "Start SteamVR first. Paste the launch options below into Steam so Proton loads this mod's d3d9.dll. "
+           "See [GitHub](https://github.com/Gistix/portal2vr?tab=readme-ov-file#how-to-use)."_L1;
+}
+
+QString Portal2VR::launchOptions() const
+{
+    // The shipped d3d9.dll is a patched DXVK build, so Proton has to load that file instead of its own. Remaining
+    // flags are the mod's required settings from
+    // https://github.com/Gistix/portal2vr?tab=readme-ov-file#how-to-use
+    return "WINEDLLOVERRIDES=\"d3d9=n,b\" %command% -insecure -window -novid +mat_motion_blur_percent_of_screen_max 0 "
+           "+mat_queue_mode 0 +mat_vsync 0 +mat_antialias 0 +mat_grain_scale_override 0 -width 1280 -height 720"_L1;
 }
 
 const QLoggingCategory &Portal2VR::logger() const
