@@ -20,6 +20,7 @@
 #include "GamesFilterModel.h"
 #include "Heroic.h"
 #include "Itch.h"
+#include "OpenXrCas.h"
 #include "Portal1VR.h"
 #include "Portal2VR.h"
 #include "Steam.h"
@@ -27,6 +28,7 @@
 #include "UEVRAFW.h"
 #include "UUVR.h"
 #include "UpdateChecker.h"
+#include "VrPerfKit.h"
 #include "Wine.h"
 
 namespace
@@ -121,12 +123,14 @@ int main(int argc, char *argv[])
     Gamepad::instance();
     GamesFilterModel::instance();
     Itch::instance();
+    OpenXrCas::instance();
     Portal1VR::instance();
     Portal2VR::instance();
     UEVR::instance();
     UEVRAFW::instance();
     UUVR::instance();
     UpdateChecker::instance();
+    VrPerfKit::instance();
     Wine::instance();
 
     QQmlApplicationEngine engine;

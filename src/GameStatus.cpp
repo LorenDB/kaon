@@ -1,12 +1,17 @@
 #include "GameStatus.h"
 
+#include <algorithm>
+#include <iterator>
+
 #include <QDesktopServices>
 #include <QDir>
 #include <QFileInfo>
 #include <QGuiApplication>
+#include <QHash>
 #include <QLocale>
 #include <QLoggingCategory>
 #include <QProcess>
+#include <QRegularExpression>
 #include <QSettings>
 #include <QTimer>
 #include <QUrl>
@@ -92,6 +97,132 @@ namespace
     {
         return QString::fromLatin1(QMetaEnum::fromType<Game::Store>().valueToKey(static_cast<quint64>(game->store()))) +
                '/' + game->settingsId();
+    }
+
+    // dlls that share a mode become one clause. A different mode stays its own clause.
+    QString mergeOverrides(const QString &a, const QString &b)
+    {
+        QList<QPair<QString, QStringList>> modes;
+        const auto absorb = [&](const QString &spec) {
+            for (const auto &clause : spec.split(u';', Qt::SkipEmptyParts))
+            {
+                const auto eq = clause.indexOf(u'=');
+                if (eq < 0)
+                    continue;
+                const auto mode = clause.mid(eq + 1).trimmed();
+                auto it = std::find_if(modes.begin(), modes.end(), [&](const auto &entry) { return entry.first == mode; });
+                if (it == modes.end())
+                {
+                    modes.push_back({mode, {}});
+                    it = std::prev(modes.end());
+                }
+                for (auto dll : clause.left(eq).split(u',', Qt::SkipEmptyParts))
+                {
+                    dll = dll.trimmed();
+                    if (dll.isEmpty())
+                        continue;
+                    const auto listed = std::any_of(it->second.cbegin(), it->second.cend(), [&](const QString &existing) {
+                        return existing.compare(dll, Qt::CaseInsensitive) == 0;
+                    });
+                    if (!listed)
+                        it->second << dll;
+                }
+            }
+        };
+        absorb(a);
+        absorb(b);
+        QStringList clauses;
+        for (const auto &mode : modes)
+            if (!mode.second.isEmpty())
+                clauses << mode.second.join(u',') + u'=' + mode.first;
+        return clauses.join(u';');
+    }
+
+    struct ParsedLaunch
+    {
+        QStringList envKeys;
+        QHash<QString, QString> env;
+        QString leftover;
+        QString args;
+    };
+
+    ParsedLaunch parseLaunch(const QString &text)
+    {
+        ParsedLaunch out;
+        const auto marker = "%command%"_L1;
+        const auto at = text.indexOf(marker);
+        const auto head = at < 0 ? text : text.left(at);
+        out.args = at < 0 ? QString{} : text.mid(at + marker.size()).trimmed();
+
+        static const QRegularExpression re{R"re(([A-Za-z_][A-Za-z0-9_]*)="([^"]*)")re"};
+        auto it = re.globalMatch(head);
+        int cursor = 0;
+        QString leftover;
+        while (it.hasNext())
+        {
+            const auto match = it.next();
+            leftover += head.mid(cursor, match.capturedStart() - cursor);
+            cursor = match.capturedEnd();
+            const auto key = match.captured(1);
+            if (!out.env.contains(key))
+            {
+                out.envKeys << key;
+                out.env.insert(key, match.captured(2));
+            }
+            else if (key.compare("WINEDLLOVERRIDES"_L1, Qt::CaseInsensitive) == 0)
+                out.env[key] = mergeOverrides(out.env.value(key), match.captured(2));
+        }
+        leftover += head.mid(cursor);
+        out.leftover = leftover.simplified();
+        return out;
+    }
+
+    QString mergeLaunchOptions(const QStringList &parts)
+    {
+        QStringList envKeys;
+        QHash<QString, QString> env;
+        QString leftover;
+        QStringList argTails;
+
+        for (const auto &part : parts)
+        {
+            const auto parsed = parseLaunch(part);
+            for (const auto &key : parsed.envKeys)
+            {
+                if (!env.contains(key))
+                {
+                    envKeys << key;
+                    env.insert(key, parsed.env.value(key));
+                }
+                else if (key.compare("WINEDLLOVERRIDES"_L1, Qt::CaseInsensitive) == 0)
+                    env[key] = mergeOverrides(env.value(key), parsed.env.value(key));
+            }
+            if (leftover.isEmpty())
+                leftover = parsed.leftover;
+            if (!parsed.args.isEmpty() && !argTails.contains(parsed.args))
+                argTails << parsed.args;
+        }
+
+        if (envKeys.isEmpty() && leftover.isEmpty() && argTails.isEmpty())
+            return {};
+
+        QStringList bits;
+        for (const auto &key : envKeys)
+            bits << "%1=\"%2\""_L1.arg(key, env.value(key));
+        if (!leftover.isEmpty())
+            bits << leftover;
+
+        QString out = bits.join(u' ');
+        if (!envKeys.isEmpty())
+            out += (out.isEmpty() ? QString{} : QString{u' '}) + "%command%"_L1;
+        if (!argTails.isEmpty())
+        {
+            const auto args = argTails.join(u' ');
+            if (envKeys.isEmpty() && leftover.isEmpty())
+                return args;
+            out += (out.isEmpty() ? QString{} : QString{u' '}) + args;
+        }
+        return out;
     }
 } // namespace
 
@@ -474,6 +605,29 @@ QList<Mod *> GameStatus::extraMods(Game *game) const
     return list;
 }
 
+QString GameStatus::launchOptions(Game *game) const
+{
+    if (!game)
+        return {};
+
+    QStringList parts;
+    if (const auto mod = preferredMod(game))
+    {
+        const auto options = mod->launchOptions();
+        if (!options.isEmpty())
+            parts << options;
+    }
+    for (const auto mod : extraMods(game))
+    {
+        if (!mod->isInstalledForGame(game))
+            continue;
+        const auto options = mod->launchOptions();
+        if (!options.isEmpty())
+            parts << options;
+    }
+    return mergeLaunchOptions(parts);
+}
+
 QList<Mod *> GameStatus::allMods() const
 {
     auto list = ModsFilterModel::allMods();
@@ -584,6 +738,23 @@ void GameStatus::advanceSetUp()
 
     m_setUpGame.clear();
     m_setUpLastKey.clear();
+}
+
+void GameStatus::installForGame(Game *game, Mod *mod)
+{
+    if (!game || !mod)
+        return;
+
+    const auto release = mod->currentRelease();
+    if (!release)
+        return;
+    if (release->downloaded())
+        mod->installMod(game);
+    else if (!release->assets().isEmpty())
+    {
+        m_installAfterDownload.insert(mod, game);
+        download(mod, release);
+    }
 }
 
 void GameStatus::download(Mod *mod, ModRelease *release)

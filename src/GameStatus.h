@@ -49,6 +49,12 @@ public:
     Q_INVOKABLE QList<Mod *> extraMods(Game *game) const;
     Q_INVOKABLE QList<Mod *> allMods() const;
 
+    // Preferred mod's launch options, with overrides from extras that are on for this game folded in.
+    Q_INVOKABLE QString launchOptions(Game *game) const;
+
+    // Downloads the current release when it isn't on disk, then installs it for this game.
+    Q_INVOKABLE void installForGame(Game *game, Mod *mod);
+
     Q_INVOKABLE void runStep(Game *game, const QString &key, bool secondary = false);
     // Works through every step Kaon can do by itself, one after another
     Q_INVOKABLE void setUp(Game *game);

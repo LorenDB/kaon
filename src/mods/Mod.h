@@ -84,6 +84,11 @@ class Mod : public QAbstractListModel
 
     Q_PROPERTY(bool hasRepairOption READ hasRepairOption CONSTANT FINAL)
     Q_PROPERTY(bool providesVr READ providesVr CONSTANT FINAL)
+    // Optional tools download like other mods. Each game turns one on itself, and it is not a setup step.
+    Q_PROPERTY(bool optional READ optional CONSTANT FINAL)
+    // Which VR runtime this tool works with, e.g. "OpenVR" or "OpenXR". Empty when the mod isn't a
+    // runtime-specific tool. Shown as "Name · Runtime" on the game's page so players know what each tool supports.
+    Q_PROPERTY(QString vrRuntime READ vrRuntime CONSTANT FINAL)
     Q_PROPERTY(int launchDelay READ launchDelay WRITE setLaunchDelay NOTIFY launchDelayChanged FINAL)
 
 public:
@@ -102,10 +107,12 @@ public:
     // False for mods that only exist to support other mods, like the .NET runtime. Those aren't offered as a way to play
     // in VR; they show up as a setup step of the mod that needs them.
     virtual bool providesVr() const { return true; }
+    virtual bool optional() const { return false; }
+    virtual QString vrRuntime() const { return {}; }
     // True if installing the mod runs something inside the game's Wine prefix, which therefore has to exist first.
     virtual bool installsIntoPrefix() const { return false; }
     // Non-empty when the mod fits this game but installation has to wait. Shown instead of the install button.
-    virtual QString installHoldReason(const Game *game) const { return {}; }
+    Q_INVOKABLE virtual QString installHoldReason(const Game *game) const { return {}; }
     // True for mods that bring VR into an Unreal game themselves, so that the VR plugins such a game ships with get in
     // their way. See UnrealVrPlugins.
     virtual bool conflictsWithBundledVrPlugins() const { return false; }

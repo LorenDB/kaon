@@ -28,6 +28,11 @@ Flickable {
         {
             "label": "Other",
             "engine": 0
+        },
+        {
+            "label": "Tools",
+            "engine": -1,
+            "detail": "Optional. The download is shared. Each game has its own switch."
         }
     ]
 
@@ -41,7 +46,9 @@ Flickable {
     }
 
     function modsFor(engine) {
-        const all = GameStatus.allMods();
+        const all = GameStatus.allMods().filter(mod => !mod.optional);
+        if (engine === -1)
+            return GameStatus.allMods().filter(mod => mod.optional);
         if (engine === 0) {
             return all.filter(mod => !mod.supportsEngine(Game.Unreal) && !mod.supportsEngine(Game.Unity) &&
                                      !mod.supportsEngine(Game.Source) && !mod.supportsEngine(Game.Godot));
@@ -79,7 +86,7 @@ Flickable {
                 id: section
 
                 required property var modelData
-                readonly property var mods: view.modsFor(modelData.engine)
+                readonly property var mods: (GameStatus.revision, view.modsFor(modelData.engine))
 
                 spacing: 12
                 visible: mods.length > 0
@@ -90,6 +97,15 @@ Flickable {
                     font.pixelSize: 12
                     font.weight: Font.Bold
                     text: section.modelData.label
+                }
+
+                VText {
+                    color: Theme.glassMuted
+                    font.pixelSize: 13
+                    text: section.modelData.detail ?? ""
+                    visible: text !== ""
+                    width: parent.width
+                    wrapMode: Text.Wrap
                 }
 
                 Row {
@@ -202,7 +218,8 @@ Flickable {
                 font.pixelSize: 12
                 text: (card.stored === 0 ? "Nothing on disk" : card.stored === 1 ? "1 version on disk" : card.stored
                                                                                    + " versions on disk") + (
-                          card.modelData.providesVr ? "" : ". Installed into each game that needs it.")
+                          card.modelData.optional ? ". Turn it on from a game's page." : card.modelData.providesVr ? "" :
+                                                                                                                     ". Installed into each game that needs it.")
                 width: parent.width
                 wrapMode: Text.Wrap
             }

@@ -33,6 +33,7 @@ qt_add_qml_module(kaon
         qml/components/VisorFrame.qml
         qml/components/VText.qml
 
+        qml/game/ExtrasPanel.qml
         qml/game/GameView.qml
         qml/game/LensView.qml
         qml/game/VersionMenu.qml
@@ -84,6 +85,8 @@ qt_add_qml_module(kaon
         mods/Mod.h
         mods/ModsFilterModel.cpp
         mods/ModsFilterModel.h
+        mods/OpenXrCas.cpp
+        mods/OpenXrCas.h
         mods/Portal1VR.cpp
         mods/Portal1VR.h
         mods/Portal1VRInstall.cpp
@@ -98,6 +101,8 @@ qt_add_qml_module(kaon
         mods/UnrealVrPlugins.h
         mods/UUVR.cpp
         mods/UUVR.h
+        mods/VrPerfKit.cpp
+        mods/VrPerfKit.h
 
         stores/CustomGames.cpp
         stores/CustomGames.h

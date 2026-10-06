@@ -7,16 +7,20 @@ Item {
     id: sw
 
     property bool checked
+    property bool enabled: true
     property bool shellStyle: false
 
     signal toggled
 
-    activeFocusOnTab: true
+    activeFocusOnTab: enabled
     implicitHeight: 24
     implicitWidth: 42
+    opacity: enabled ? 1 : 0.45
 
-    Keys.onReturnPressed: sw.toggled()
-    Keys.onSpacePressed: sw.toggled()
+    Keys.onReturnPressed: if (sw.enabled)
+                              sw.toggled()
+    Keys.onSpacePressed: if (sw.enabled)
+                             sw.toggled()
 
     Rectangle {
         anchors.fill: parent
@@ -59,8 +63,9 @@ Item {
     MouseArea {
         anchors.fill: parent
         anchors.margins: -4
-        cursorShape: Qt.PointingHandCursor
+        cursorShape: sw.enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
 
-        onClicked: sw.toggled()
+        onClicked: if (sw.enabled)
+                       sw.toggled()
     }
 }

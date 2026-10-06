@@ -13,6 +13,7 @@ Item {
     property int heldStore: -1
     readonly property real heroH: Math.max(190, Math.min(height * 0.36, width * 0.25))
     readonly property bool launching: game !== null && Launcher.game === game && Launcher.phase !== Launcher.Idle
+    readonly property string mergedLaunch: game ? (GameStatus.revision, GameStatus.launchOptions(game)) : ""
     readonly property Mod mod: game ? (GameStatus.revision, GameStatus.preferredMod(game)) : null
     property int popupEpoch: 0
     readonly property int remaining: steps.filter(s => s.state === "todo" || s.state === "busy" || s.state === "wait").length
@@ -538,7 +539,17 @@ Item {
                             }
 
                             LaunchOptions {
-                                options: modRow.modelData.launchOptions
+                                options: modRow.selected ? view.mergedLaunch : modRow.modelData.launchOptions
+                            }
+
+                            VText {
+                                color: Theme.glassFaint
+                                font.pixelSize: 12
+                                text: "Includes extras that are on for this game."
+                                visible: modRow.selected && view.mergedLaunch !== "" && view.mergedLaunch
+                                         !== modRow.modelData.launchOptions
+                                width: parent.width
+                                wrapMode: Text.Wrap
                             }
 
                             VButton {
@@ -553,65 +564,12 @@ Item {
                     }
                 }
 
-                VText {
-                    color: Theme.glassFaint
-                    font.pixelSize: 12
-                    font.weight: Font.Bold
-                    text: "Also available"
-                    topPadding: 8
-                    visible: view.extraMods.length > 0
-                }
-
-                Repeater {
-                    model: view.extraMods
-
-                    Item {
-                        id: extraRow
-
-                        readonly property bool installed: (GameStatus.revision, modelData.isInstalledForGame(view.game))
-                        required property var modelData
-
-                        height: 44
-                        width: mods.width
-
-                        Column {
-                            anchors.verticalCenter: parent.verticalCenter
-                            width: parent.width - extraButton.width - 12
-
-                            VText {
-                                font.pixelSize: 14
-                                font.weight: Font.Bold
-                                text: extraRow.modelData.name
-                            }
-
-                            VText {
-                                color: Theme.glassMuted
-                                elide: Text.ElideRight
-                                font.pixelSize: 12
-                                text: extraRow.modelData.description
-                                width: parent.width
-                            }
-                        }
-
-                        VButton {
-                            id: extraButton
-
-                            anchors.right: parent.right
-                            anchors.verticalCenter: parent.verticalCenter
-                            small: true
-                            text: extraRow.installed ? "Uninstall" : "Install"
-
-                            onClicked: {
-                                const m = extraRow.modelData;
-                                if (extraRow.installed)
-                                    m.uninstallMod(view.game);
-                                else if (m.currentRelease && m.currentRelease.downloaded)
-                                    m.installMod(view.game);
-                                else
-                                    GameStatus.download(m, m.currentRelease);
-                            }
-                        }
-                    }
+                ExtrasPanel {
+                    game: view.game
+                    mods: view.extraMods
+                    showLaunchOptions: view.vrMods.length === 0
+                    spaced: view.vrMods.length > 0
+                    width: mods.width
                 }
             }
         }
