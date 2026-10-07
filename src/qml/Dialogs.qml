@@ -12,18 +12,21 @@ Item {
         id: confirmDialog
 
         property string actionLabel
+        property bool danger: false
         property var onConfirm: null
 
         buttons: [
             VButton {
                 small: true
+                solid: confirmDialog.danger
                 text: "Cancel"
 
                 onClicked: confirmDialog.close()
             },
             VButton {
+                danger: confirmDialog.danger
                 small: true
-                solid: true
+                solid: !confirmDialog.danger
                 text: confirmDialog.actionLabel
 
                 onClicked: {
@@ -190,11 +193,12 @@ Item {
     }
 
     Connections {
-        function onConfirmRequested(title, text, actionLabel, onConfirm) {
+        function onConfirmRequested(title, text, actionLabel, onConfirm, danger) {
             confirmDialog.title = title;
             confirmDialog.text = text;
             confirmDialog.actionLabel = actionLabel;
             confirmDialog.onConfirm = onConfirm;
+            confirmDialog.danger = danger;
             confirmDialog.open();
         }
 

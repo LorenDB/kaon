@@ -84,7 +84,7 @@ Item {
                                                Nav.notify("Restored the settings from the download");
                                            else
                                                Nav.notify(view.doc.error);
-                                       })
+                                       }, true)
             }
 
             Repeater {

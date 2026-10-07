@@ -14,19 +14,23 @@ Popup {
 
     function focusDefaultButton() {
         let fallback = null;
+        let safeSolid = null;
         const buttons = buttonRow.children;
         for (let i = 0; i < buttons.length; ++i) {
             const button = buttons[i];
             if (!button.visible || button.enabled === false || button.width < 2)
                 continue;
-            fallback = button;
-            if (button.solid) {
-                button.forceActiveFocus();
-                return;
-            }
+            if (fallback === null)
+                fallback = button;
+            // Destructive confirms keep focus on Cancel (or another non-danger action).
+            if (button.danger)
+                continue;
+            if (safeSolid === null && button.solid)
+                safeSolid = button;
+            if (fallback.danger)
+                fallback = button;
         }
-        if (fallback)
-            fallback.forceActiveFocus();
+        (safeSolid || fallback)?.forceActiveFocus();
     }
 
     anchors.centerIn: Overlay.overlay
@@ -90,7 +94,7 @@ Popup {
 
     Component.onDestruction: if (visible)
                                  Nav.popupShown(false)
-    // A gamepad (and the keyboard) lands on the action that confirms, which is the solid button.
+    // A gamepad (and the keyboard) lands on the constructive solid button. Danger stays one deliberate step away.
     onOpened: Qt.callLater(dialog.focusDefaultButton)
     onVisibleChanged: Nav.popupShown(visible)
 }

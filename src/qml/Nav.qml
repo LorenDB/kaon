@@ -64,7 +64,7 @@ QtObject {
     property string settledView: "library"
     property string view: "library" // library | game | modConfig | mods | settings | addGame
 
-    signal confirmRequested(string title, string text, string actionLabel, var onConfirm)
+    signal confirmRequested(string title, string text, string actionLabel, var onConfirm, bool danger)
 
     function addGame() {
         addGameFrom = view === "settings" ? "settings" : "library";
@@ -80,8 +80,8 @@ QtObject {
             view = "library";
     }
 
-    function confirm(title, text, actionLabel, onConfirm) {
-        confirmRequested(title, text, actionLabel, onConfirm);
+    function confirm(title, text, actionLabel, onConfirm, danger) {
+        confirmRequested(title, text, actionLabel, onConfirm, danger === true);
     }
 
     function goLibrary() {

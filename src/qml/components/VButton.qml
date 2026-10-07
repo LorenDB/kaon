@@ -10,6 +10,8 @@ Item {
     property string icon
     // No outline until the pointer is on it, for an action that should stay out of the way
     property bool quiet: false
+    // Destructive confirm: red fill, light text. Takes priority over solid's white pill.
+    property bool danger: false
     property bool shellStyle: false
     property bool small: false
     property bool solid: false
@@ -29,7 +31,7 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        border.color: b.solid || (b.quiet && !mouse.containsMouse && !b.activeFocus) ? "transparent" : (!b.shellStyle ? (
+        border.color: b.danger || b.solid || (b.quiet && !mouse.containsMouse && !b.activeFocus) ? "transparent" : (!b.shellStyle ? (
                                                                                                                             mouse.containsMouse
                                                                                                                             ? Theme.glassMuted :
                                                                                                                               Theme.glassLine) :
@@ -37,7 +39,7 @@ Item {
                                                                                                                          ? Theme.inkMuted :
                                                                                                                            Theme.shellLine))
         border.width: 1.5
-        color: b.solid ? (!b.shellStyle ? (mouse.containsMouse ? "#ffffff" : Theme.glassText) : (mouse.containsMouse
+        color: b.danger ? (mouse.containsMouse ? "#ff6e66" : Theme.ledRed) : b.solid ? (!b.shellStyle ? (mouse.containsMouse ? "#ffffff" : Theme.glassText) : (mouse.containsMouse
                                                                                                  ? "#2a2d33" : Theme.ink)) : (
                              !b.shellStyle ? (mouse.containsMouse ? Theme.glassRaised : "transparent") : (mouse.containsMouse
                                                                                                           ? Theme.shellDeep :
@@ -72,7 +74,7 @@ Item {
             id: label
 
             anchors.verticalCenter: parent.verticalCenter
-            color: b.solid ? (!b.shellStyle ? Theme.glass : Theme.shell) : b.quiet && !mouse.containsMouse ? (!b.shellStyle
+            color: b.danger ? Theme.glassText : b.solid ? (!b.shellStyle ? Theme.glass : Theme.shell) : b.quiet && !mouse.containsMouse ? (!b.shellStyle
                                                                                                               ? Theme.glassMuted :
                                                                                                                 Theme.inkMuted) :
                                                                                                              (!b.shellStyle

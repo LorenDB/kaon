@@ -312,7 +312,7 @@ Item {
                     pop.close();
                     Nav.confirm("Delete " + release.name + "?",
                                 "This removes the downloaded files. You can download it again any time.", "Delete", ()
-                                => mod.deleteRelease(release));
+                                => mod.deleteRelease(release), true);
                 }
             }
         }

@@ -71,7 +71,7 @@ ApplicationWindow {
         Nav.confirm("Remove " + g.name + " from Kaon?", "The game's files stay where they are.", "Remove", () => {
             Nav.goLibrary();
             CustomGames.deleteGame(g);
-        });
+        }, true);
     }
 
     function rescan() {
