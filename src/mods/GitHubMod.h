@@ -1,5 +1,7 @@
 #pragma once
 
+#include <QByteArray>
+
 #include "Mod.h"
 
 class GitHubMod : public Mod
@@ -8,6 +10,9 @@ class GitHubMod : public Mod
 
 public:
     void refreshReleases() final;
+    // The config file from the release installed for this game, read from the cached zip. Empty, with error set, when
+    // that copy isn't on disk.
+    QByteArray readShippedConfig(const Game *game, QString *error);
 
 public slots:
     void downloadRelease(ModRelease *release) final;
@@ -24,6 +29,8 @@ protected:
     };
     QString path(const Paths p) const;
     QString pathForRelease(ModRelease *release, const ModRelease::Asset &asset) const;
+    // Path of the editable config inside a release zip, such as "vrperfkit.yml". Empty when this mod has none.
+    virtual QString shippedConfigMember() const { return {}; }
 
     virtual QUrl githubUrl() const = 0;
     virtual bool isThisFileTheActualModDownload(const QString &file) const = 0;

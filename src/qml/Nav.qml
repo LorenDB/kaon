@@ -12,6 +12,8 @@ QtObject {
     property string addGameFrom: "library"
     // Pages that are a step into another page, and so have a way back
     readonly property bool canGoBack: view === "game" || view === "addGame" || view === "modConfig"
+    // A hotkey field is recording a key combination, so shortcuts must leave the keys alone.
+    property bool capturingKeys: false
     // Set while a navigation is allowed to drop unsaved mod settings, such as the game disappearing.
     property bool discardConfig: false
     property Game game: null

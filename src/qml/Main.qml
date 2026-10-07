@@ -497,6 +497,7 @@ ApplicationWindow {
     }
 
     Shortcut {
+        enabled: !Nav.capturingKeys
         sequences: [StandardKey.Find]
 
         onActivated: {
@@ -506,7 +507,7 @@ ApplicationWindow {
     }
 
     Shortcut {
-        enabled: Nav.canGoBack && !root.popupOpen
+        enabled: Nav.canGoBack && !root.popupOpen && !Nav.capturingKeys
         sequences: ["Esc", StandardKey.Back]
 
         onActivated: Nav.back()
@@ -514,28 +515,28 @@ ApplicationWindow {
 
     // The arrow keys move the focus ring the way a gamepad's stick does. A text field keeps them for its cursor.
     Shortcut {
-        enabled: !root.editingText
+        enabled: !root.editingText && !Nav.capturingKeys
         sequence: "Up"
 
         onActivated: pads.move(0, -1)
     }
 
     Shortcut {
-        enabled: !root.editingText
+        enabled: !root.editingText && !Nav.capturingKeys
         sequence: "Down"
 
         onActivated: pads.move(0, 1)
     }
 
     Shortcut {
-        enabled: !root.editingText
+        enabled: !root.editingText && !Nav.capturingKeys
         sequence: "Left"
 
         onActivated: pads.move(-1, 0)
     }
 
     Shortcut {
-        enabled: !root.editingText
+        enabled: !root.editingText && !Nav.capturingKeys
         sequence: "Right"
 
         onActivated: pads.move(1, 0)
@@ -543,28 +544,28 @@ ApplicationWindow {
 
     // The keys that scroll a page everywhere else. A text field keeps them for moving its cursor.
     Shortcut {
-        enabled: !root.editingText && !root.popupOpen
+        enabled: !root.editingText && !root.popupOpen && !Nav.capturingKeys
         sequence: "PgDown"
 
         onActivated: pads.scrollPage(1)
     }
 
     Shortcut {
-        enabled: !root.editingText && !root.popupOpen
+        enabled: !root.editingText && !root.popupOpen && !Nav.capturingKeys
         sequence: "PgUp"
 
         onActivated: pads.scrollPage(-1)
     }
 
     Shortcut {
-        enabled: !root.editingText && !root.popupOpen
+        enabled: !root.editingText && !root.popupOpen && !Nav.capturingKeys
         sequence: "Home"
 
         onActivated: pads.scrollToEnd(-1)
     }
 
     Shortcut {
-        enabled: !root.editingText && !root.popupOpen
+        enabled: !root.editingText && !root.popupOpen && !Nav.capturingKeys
         sequence: "End"
 
         onActivated: pads.scrollToEnd(1)

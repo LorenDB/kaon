@@ -1,10 +1,12 @@
 #include "ModConfig.h"
 
+#include <QDebug>
 #include <QFile>
 #include <QFileInfo>
 #include <QSaveFile>
 
 #include "Game.h"
+#include "GitHubMod.h"
 
 namespace
 {
@@ -54,6 +56,71 @@ namespace
                        std::move(label),
                        std::move(detail),
                        "choice"_L1,
+                       {std::move(alias)},
+                       std::move(missing),
+                       std::move(ids),
+                       std::move(labels));
+    }
+
+    // Names vrperfkit's hotkey parser accepts, besides a single letter or digit.
+    void perfKitKeyNames(QStringList *ids, QStringList *labels)
+    {
+        const auto add = [ids, labels](const QString &id, const QString &label) {
+            *ids << id;
+            *labels << label;
+        };
+        add("ctrl"_L1, "Ctrl"_L1);
+        add("shift"_L1, "Shift"_L1);
+        add("alt"_L1, "Alt"_L1);
+        add("lctrl"_L1, "Left Ctrl"_L1);
+        add("rctrl"_L1, "Right Ctrl"_L1);
+        add("lshift"_L1, "Left Shift"_L1);
+        add("rshift"_L1, "Right Shift"_L1);
+        add("lalt"_L1, "Left Alt"_L1);
+        add("ralt"_L1, "Right Alt"_L1);
+        for (int i = 1; i <= 12; ++i)
+            add(u"f"_s + QString::number(i), u"F"_s + QString::number(i));
+        add("esc"_L1, "Esc"_L1);
+        add("tab"_L1, "Tab"_L1);
+        add("space"_L1, "Space"_L1);
+        add("enter"_L1, "Enter"_L1);
+        add("return"_L1, "Return"_L1);
+        add("backspace"_L1, "Backspace"_L1);
+        add("pause"_L1, "Pause"_L1);
+        add("pgup"_L1, "Page Up"_L1);
+        add("pgdown"_L1, "Page Down"_L1);
+        add("home"_L1, "Home"_L1);
+        add("end"_L1, "End"_L1);
+        add("left"_L1, "Left"_L1);
+        add("up"_L1, "Up"_L1);
+        add("right"_L1, "Right"_L1);
+        add("down"_L1, "Down"_L1);
+        add("insert"_L1, "Insert"_L1);
+        add("delete"_L1, "Delete"_L1);
+        add("print"_L1, "Print Screen"_L1);
+        for (char c = 'a'; c <= 'z'; ++c)
+        {
+            const auto letter = QString{QChar::fromLatin1(c)};
+            add(letter, letter.toUpper());
+        }
+        for (char c = '0'; c <= '9'; ++c)
+        {
+            const auto digit = QString{QChar::fromLatin1(c)};
+            add(digit, digit);
+        }
+        for (int i = 0; i <= 9; ++i)
+            add(u"num"_s + QString::number(i), u"Num "_s + QString::number(i));
+    }
+
+    ConfigText::Spec hotkey(QString label, QString detail, QString alias, QString missing)
+    {
+        QStringList ids;
+        QStringList labels;
+        perfKitKeyNames(&ids, &labels);
+        return setting("Hotkeys"_L1,
+                       std::move(label),
+                       std::move(detail),
+                       "keys"_L1,
                        {std::move(alias)},
                        std::move(missing),
                        std::move(ids),
@@ -212,7 +279,7 @@ namespace
 
     QList<ConfigText::Spec> perfKitSpecs()
     {
-        const auto keys = "Comma-separated keys, such as ctrl, f1. The game forgets hotkey changes when it closes."_L1;
+        const auto keys = "Click the box and press the keys together. The game forgets hotkey changes when it closes."_L1;
         return {
             boolean("Upscaling"_L1,
                     "Upscaling"_L1,
@@ -273,11 +340,13 @@ namespace
                     true),
             setting("Fixed foveated rendering"_L1,
                     "Eye order"_L1,
-                    "Leave empty to let the toolkit guess. Letters are L, R and S, for left, right and skip, in the order "
-                    "the game renders eyes."_L1,
+                    "Automatic guesses left for the first half of the draws, then right. Otherwise each draw is left, "
+                    "right, or skip, in the order the game renders them. The toolkit ignores a list of the wrong length."_L1,
                     "text"_L1,
                     {"fixedFoveated.overrideSingleEyeOrder"_L1},
-                    {}),
+                    {},
+                    {"L"_L1, "R"_L1, "S"_L1},
+                    {"Left"_L1, "Right"_L1, "Skip"_L1}),
             boolean("Debug"_L1,
                     "Debug"_L1,
                     "Draws the upscaling circle and logs how long the post-process takes."_L1,
@@ -288,43 +357,16 @@ namespace
                     "Turn these off if they collide with keys the game uses."_L1,
                     "hotkeys.enabled"_L1,
                     true),
-            setting("Hotkeys"_L1, "Toggle debug"_L1, keys, "keys"_L1, {"hotkeys.toggleDebugMode"_L1}, "ctrl, f1"_L1),
-            setting("Hotkeys"_L1, "Cycle method"_L1, keys, "keys"_L1, {"hotkeys.cycleUpscalingMethod"_L1}, "ctrl, f2"_L1),
-            setting(
-                "Hotkeys"_L1, "Increase radius"_L1, keys, "keys"_L1, {"hotkeys.increaseUpscalingRadius"_L1}, "ctrl, f3"_L1),
-            setting(
-                "Hotkeys"_L1, "Decrease radius"_L1, keys, "keys"_L1, {"hotkeys.decreaseUpscalingRadius"_L1}, "ctrl, f4"_L1),
-            setting("Hotkeys"_L1,
-                    "Increase sharpness"_L1,
-                    keys,
-                    "keys"_L1,
-                    {"hotkeys.increaseUpscalingSharpness"_L1},
-                    "ctrl, f5"_L1),
-            setting("Hotkeys"_L1,
-                    "Decrease sharpness"_L1,
-                    keys,
-                    "keys"_L1,
-                    {"hotkeys.decreaseUpscalingSharpness"_L1},
-                    "ctrl, f6"_L1),
-            setting("Hotkeys"_L1,
-                    "Toggle MIP bias"_L1,
-                    keys,
-                    "keys"_L1,
-                    {"hotkeys.toggleUpscalingApplyMipBias"_L1},
-                    "ctrl, f7"_L1),
-            setting("Hotkeys"_L1,
-                    "Capture frame"_L1,
-                    "Saves a DDS image next to the DLL."_L1,
-                    "keys"_L1,
-                    {"hotkeys.captureOutput"_L1},
-                    "ctrl, f8"_L1),
-            setting("Hotkeys"_L1, "Toggle foveation"_L1, keys, "keys"_L1, {"hotkeys.toggleFixedFoveated"_L1}, "alt, f1"_L1),
-            setting("Hotkeys"_L1,
-                    "Toggle favor horizontal"_L1,
-                    keys,
-                    "keys"_L1,
-                    {"hotkeys.toggleFFRFavorHorizontal"_L1},
-                    "alt, f2"_L1),
+            hotkey("Toggle debug"_L1, keys, "hotkeys.toggleDebugMode"_L1, "ctrl, f1"_L1),
+            hotkey("Cycle method"_L1, keys, "hotkeys.cycleUpscalingMethod"_L1, "ctrl, f2"_L1),
+            hotkey("Increase radius"_L1, keys, "hotkeys.increaseUpscalingRadius"_L1, "ctrl, f3"_L1),
+            hotkey("Decrease radius"_L1, keys, "hotkeys.decreaseUpscalingRadius"_L1, "ctrl, f4"_L1),
+            hotkey("Increase sharpness"_L1, keys, "hotkeys.increaseUpscalingSharpness"_L1, "ctrl, f5"_L1),
+            hotkey("Decrease sharpness"_L1, keys, "hotkeys.decreaseUpscalingSharpness"_L1, "ctrl, f6"_L1),
+            hotkey("Toggle MIP bias"_L1, keys, "hotkeys.toggleUpscalingApplyMipBias"_L1, "ctrl, f7"_L1),
+            hotkey("Capture frame"_L1, "Saves a DDS image next to the DLL."_L1, "hotkeys.captureOutput"_L1, "ctrl, f8"_L1),
+            hotkey("Toggle foveation"_L1, keys, "hotkeys.toggleFixedFoveated"_L1, "alt, f1"_L1),
+            hotkey("Toggle favor horizontal"_L1, keys, "hotkeys.toggleFFRFavorHorizontal"_L1, "alt, f2"_L1),
         };
     }
 
@@ -452,6 +494,7 @@ ModConfigDocument::ModConfigDocument(QString title,
                                      ConfigText::Syntax syntax,
                                      QList<ConfigText::Spec> specs,
                                      ConfigText::Document document,
+                                     QByteArray shippedBytes,
                                      QObject *parent)
     : QAbstractListModel{parent},
       m_title{std::move(title)},
@@ -459,8 +502,30 @@ ModConfigDocument::ModConfigDocument(QString title,
       m_note{std::move(note)},
       m_syntax{syntax},
       m_specs{std::move(specs)},
-      m_document{std::move(document)}
-{}
+      m_document{std::move(document)},
+      m_shippedBytes{std::move(shippedBytes)}
+{
+    applyShippedValues();
+}
+
+void ModConfigDocument::applyShippedValues()
+{
+    m_shippedValues.clear();
+    if (m_shippedBytes.isEmpty())
+        return;
+    const auto shipped = ConfigText::loadText(m_syntax, QString::fromUtf8(m_shippedBytes), m_specs);
+    QHash<QString, QString> byAlias;
+    for (const auto &field : shipped.fields)
+    {
+        if (!field.spec.aliases.isEmpty())
+            byAlias.insert(field.spec.aliases.at(0), field.value);
+    }
+    for (const auto &field : m_document.fields)
+    {
+        const auto alias = field.spec.aliases.value(0);
+        m_shippedValues << (byAlias.contains(alias) ? byAlias.value(alias) : field.spec.missing);
+    }
+}
 
 bool ModConfigDocument::dirty() const
 {
@@ -506,6 +571,8 @@ QVariant ModConfigDocument::data(const QModelIndex &index, int role) const
         }
         return choices;
     }
+    case Shipped:
+        return index.row() < m_shippedValues.size() ? QVariant{m_shippedValues.at(index.row())} : QVariant{QString{}};
     default:
         return {};
     }
@@ -518,7 +585,8 @@ QHash<int, QByteArray> ModConfigDocument::roleNames() const
             {Detail, "detail"_ba},
             {Kind, "kind"_ba},
             {Value, "value"_ba},
-            {Choices, "choices"_ba}};
+            {Choices, "choices"_ba},
+            {Shipped, "shipped"_ba}};
 }
 
 void ModConfigDocument::setField(int row, const QString &value)
@@ -531,8 +599,58 @@ void ModConfigDocument::setField(int row, const QString &value)
         m_error.clear();
         emit errorChanged();
     }
-    emit dataChanged(index(row), index(row), {Value});
+    emit dataChanged(index(row), index(row), {Value, Choices});
     emit dirtyChanged();
+}
+
+void ModConfigDocument::resetField(int row)
+{
+    if (!defaultsReady() || row < 0 || row >= m_shippedValues.size())
+        return;
+    setField(row, m_shippedValues.at(row));
+}
+
+void ModConfigDocument::discardChanges()
+{
+    auto changed = false;
+    for (auto &field : m_document.fields)
+    {
+        if (field.value == field.original)
+            continue;
+        field.value = field.original;
+        changed = true;
+    }
+    if (!changed)
+        return;
+    emit dataChanged(index(0), index(m_document.fields.size() - 1), {Value, Choices});
+    emit dirtyChanged();
+}
+
+bool ModConfigDocument::resetToDownload()
+{
+    if (m_shippedBytes.isEmpty())
+    {
+        m_error = "Kaon doesn't have the downloaded copy of these settings."_L1;
+        emit errorChanged();
+        return false;
+    }
+
+    QSaveFile out{m_path};
+    if (!out.open(QIODevice::WriteOnly) || out.write(m_shippedBytes) != m_shippedBytes.size() || !out.commit())
+    {
+        m_error = "Couldn't reset %1. Quit the game and try again."_L1.arg(QFileInfo{m_path}.fileName());
+        emit errorChanged();
+        return false;
+    }
+
+    beginResetModel();
+    m_document = ConfigText::loadText(m_syntax, QString::fromUtf8(m_shippedBytes), m_specs);
+    applyShippedValues();
+    endResetModel();
+    m_error.clear();
+    emit errorChanged();
+    emit dirtyChanged();
+    return true;
 }
 
 bool ModConfigDocument::save()
@@ -557,6 +675,7 @@ bool ModConfigDocument::save()
 
     beginResetModel();
     m_document = ConfigText::loadText(m_syntax, text, m_specs);
+    applyShippedValues();
     endResetModel();
     m_error.clear();
     emit errorChanged();
@@ -609,12 +728,22 @@ bool ModConfigs::open(Mod *mod, Game *game)
     if (!file.open(QIODevice::ReadOnly))
         return fail("Couldn't read %1."_L1.arg(QFileInfo{path}.fileName()));
 
+    QByteArray shipped;
+    if (const auto github = dynamic_cast<GitHubMod *>(mod))
+    {
+        QString shippedError;
+        shipped = github->readShippedConfig(game, &shippedError);
+        if (shipped.isEmpty())
+            qWarning() << "No downloaded defaults for" << mod->displayName() << shippedError;
+    }
+
     auto *next = new ModConfigDocument{mod->displayName(),
                                        path,
                                        schema.note,
                                        schema.syntax,
                                        schema.specs,
                                        ConfigText::loadText(schema.syntax, QString::fromUtf8(file.readAll()), schema.specs),
+                                       std::move(shipped),
                                        this};
     auto *previous = m_document;
     m_document = next;

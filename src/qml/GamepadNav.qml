@@ -37,6 +37,14 @@ Item {
         }
 
         const current = focusedControl();
+        // B cancels a key combination that is being recorded before it leaves the page.
+        if (Nav.capturingKeys) {
+            if (current && current.cancelCapture)
+                current.cancelCapture();
+            else
+                Nav.capturingKeys = false;
+            return;
+        }
         const pops = openPopups();
         if (pops.length) {
             for (let i = pops.length - 1; i >= 0; --i) {

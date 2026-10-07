@@ -39,6 +39,7 @@ public:
     }
     bool isInstalledForGame(const Game *game) const final;
     QString configFileForGame(const Game *game) const final;
+    QString shippedConfigMember() const final { return "vrperfkit.yml"_L1; }
     QMap<int, Game::LaunchOption> acceptableInstallCandidates(const Game *game) const final;
 
 public slots:

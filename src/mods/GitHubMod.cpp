@@ -10,7 +10,10 @@
 #include <QSet>
 #include <QSettings>
 #include <QStandardPaths>
+#include <QTemporaryDir>
 #include <QTimer>
+
+#include <algorithm>
 
 #include "Aptabase.h"
 #include "Archive.h"
@@ -95,6 +98,109 @@ QString GitHubMod::pathForRelease(ModRelease *release, const ModRelease::Asset &
 {
     return path(Paths::ReleaseBasePath) +
            "/%1_%2_%3.zip"_L1.arg(settingsGroup(), QString::number(release->id()), QString::number(asset.id));
+}
+
+QByteArray GitHubMod::readShippedConfig(const Game *game, QString *error)
+{
+    const auto fail = [error](const QString &message) {
+        if (error)
+            *error = message;
+        return QByteArray{};
+    };
+    const auto memberSuffix = shippedConfigMember();
+    if (!game || memberSuffix.isEmpty())
+        return fail("Kaon can't read the original settings for this mod."_L1);
+
+    const auto release = releaseInstalledForGame(game);
+    if (!release)
+        return fail("Kaon doesn't know which version of %1 is installed."_L1.arg(displayName()));
+
+    bool want64 = false;
+    bool want32 = false;
+    bool wantWindows = false;
+    bool wantLinux = false;
+    const auto candidates = acceptableInstallCandidates(game);
+    for (auto it = candidates.cbegin(); it != candidates.cend(); ++it)
+    {
+        if (it->arch == Game::Architecture::x64)
+            want64 = true;
+        if (it->arch == Game::Architecture::x86)
+            want32 = true;
+        if (it->platform == Game::Platform::Windows)
+            wantWindows = true;
+        if (it->platform == Game::Platform::Linux)
+            wantLinux = true;
+    }
+
+    struct Hit
+    {
+        ModRelease::Asset asset;
+        QString member;
+        int score = 0;
+    };
+    QList<Hit> hits;
+    auto sawZip = false;
+    for (const auto &asset : release->assets())
+    {
+        const auto archive = pathForRelease(release, asset);
+        if (!QFileInfo::exists(archive))
+            continue;
+        sawZip = true;
+        QString listError;
+        QStringList names;
+        if (!Archive::list(archive, &names, &listError))
+            continue;
+        QString member;
+        for (const auto &name : names)
+        {
+            const auto normalized = QString{name}.replace('\\'_L1, '/'_L1);
+            if (normalized == memberSuffix || normalized.endsWith('/'_L1 + memberSuffix))
+            {
+                member = name;
+                break;
+            }
+        }
+        if (member.isEmpty())
+            continue;
+
+        const auto win =
+            asset.name.contains("win"_L1, Qt::CaseInsensitive) || asset.name.startsWith("BepInEx_x"_L1, Qt::CaseInsensitive);
+        const auto linuxName =
+            asset.name.contains("linux"_L1, Qt::CaseInsensitive) || asset.name.contains("unix"_L1, Qt::CaseInsensitive);
+        auto score = 0;
+        if (wantWindows && win)
+            score += 4;
+        if (wantLinux && linuxName)
+            score += 4;
+        if (want64 && asset.name.contains("x64"_L1, Qt::CaseInsensitive))
+            score += 2;
+        if (want32 && asset.name.contains("x86"_L1, Qt::CaseInsensitive) &&
+            !asset.name.contains("x64"_L1, Qt::CaseInsensitive))
+            score += 2;
+        hits << Hit{asset, member, score};
+    }
+    if (hits.isEmpty())
+    {
+        return fail(sawZip ? "The downloaded %1 doesn't contain its settings file."_L1.arg(displayName()) :
+                             "Download this version of %1 again before resetting its settings."_L1.arg(displayName()));
+    }
+
+    const auto best = std::max_element(
+        hits.cbegin(), hits.cend(), [](const Hit &left, const Hit &right) { return left.score < right.score; });
+    QTemporaryDir dir;
+    if (!dir.isValid())
+        return fail("Couldn't create a temporary folder for the original settings."_L1);
+    QString extractError;
+    if (!Archive::extract(pathForRelease(release, best->asset), dir.path(), {best->member}, &extractError))
+        return fail(extractError);
+
+    const auto normalized = QString{best->member}.replace('\\'_L1, '/'_L1);
+    QFile file{dir.filePath(normalized)};
+    if (!file.exists())
+        file.setFileName(dir.filePath(best->member));
+    if (!file.open(QIODevice::ReadOnly))
+        return fail("Couldn't read the original settings in the download."_L1);
+    return file.readAll();
 }
 
 ModRelease::Asset GitHubMod::chooseAssetToInstall(const Game *game, const Game::LaunchOption &exe) const

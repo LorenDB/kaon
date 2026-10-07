@@ -38,6 +38,7 @@ public:
     bool hasFilesFor(const Game *game, const Game::LaunchOption &exe) const;
 
     QString configFileForGame(const Game *game) const final;
+    QString shippedConfigMember() const final { return "doorstop_config.ini"_L1; }
 
 public slots:
     void uninstallMod(Game *game) override;

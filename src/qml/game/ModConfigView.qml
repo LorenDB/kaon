@@ -70,6 +70,23 @@ Item {
                 wrapMode: Text.Wrap
             }
 
+            VButton {
+                quiet: true
+                small: true
+                text: "Reset to download"
+                visible: view.doc && view.doc.defaultsReady
+
+                onClicked: Nav.confirm("Reset these settings?", "This replaces the file with the copy from the download.",
+                                       "Reset", () => {
+                                           if (!view.doc)
+                                               return;
+                                           if (view.doc.resetToDownload())
+                                               Nav.notify("Restored the settings from the download");
+                                           else
+                                               Nav.notify(view.doc.error);
+                                       })
+            }
+
             Repeater {
                 model: view.doc
 
@@ -82,6 +99,7 @@ Item {
                     required property int index
                     required property string kind
                     required property string label
+                    required property string shipped
                     required property string value
 
                     spacing: 6
@@ -158,16 +176,43 @@ Item {
                                 onPicked: key => view.doc.setField(row.index, key)
                             }
 
+                            EyeOrder {
+                                options: row.choices
+                                value: row.value
+                                visible: row.kind === "text" && row.choices.length > 0
+                                width: parent.width
+
+                                onEdited: text => view.doc.setField(row.index, text)
+                            }
+
+                            KeyCombo {
+                                options: row.choices
+                                value: row.value
+                                visible: row.kind === "keys"
+                                width: parent.width
+
+                                onEdited: combo => view.doc.setField(row.index, combo)
+                            }
+
                             TextBox {
-                                placeholder: row.kind === "keys" ? "ctrl, f1" : ""
-                                text: row.kind === "text" || row.kind === "number" || row.kind === "keys" ? row.value : ""
-                                visible: row.kind !== "choice"
+                                text: row.kind === "number" || (row.kind === "text" && row.choices.length === 0) ? row.value :
+                                                                                                                   ""
+                                visible: row.kind === "number" || (row.kind === "text" && row.choices.length === 0)
                                 width: parent.width
 
                                 onTextChanged: if (visible && text !== row.value)
                                                    view.doc.setField(row.index, text)
                             }
                         }
+                    }
+
+                    VButton {
+                        quiet: true
+                        small: true
+                        text: "Reset"
+                        visible: view.doc.defaultsReady && row.value !== row.shipped
+
+                        onClicked: view.doc.resetField(row.index)
                     }
                 }
             }
@@ -206,7 +251,7 @@ Item {
         VText {
             anchors.left: parent.left
             anchors.leftMargin: 18
-            anchors.right: saveButton.left
+            anchors.right: revertButton.left
             anchors.rightMargin: 12
             anchors.verticalCenter: parent.verticalCenter
             color: Theme.glassMuted
@@ -214,6 +259,21 @@ Item {
             font.pixelSize: 13
             font.weight: Font.Bold
             text: "Unsaved changes"
+        }
+
+        VButton {
+            id: revertButton
+
+            anchors.right: saveButton.left
+            anchors.rightMargin: 8
+            anchors.verticalCenter: parent.verticalCenter
+            height: implicitHeight
+            quiet: true
+            small: true
+            text: "Revert"
+            width: implicitWidth
+
+            onClicked: view.doc.discardChanges()
         }
 
         VButton {
