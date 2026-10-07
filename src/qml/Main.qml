@@ -714,7 +714,11 @@ ApplicationWindow {
         readonly property bool busy: root.openStep !== undefined && root.openStep.state === "busy"
         readonly property bool canSetUp: root.inGame && GameStatus.canSetUp(root.game, GameStatus.revision)
 
+        // Rescan lives on the bottom strip only. On the library the notch is Start SteamVR, or hidden.
+        visible: Nav.view === "addGame" || root.inGame || Steam.hasSteamVR
         enabled: {
+            if (!visible)
+                return false;
             if (Nav.view === "addGame")
                 return (addPage.item as AddGameView)?.valid ?? false;
             if (!root.inGame || root.launching)
@@ -729,7 +733,7 @@ ApplicationWindow {
             if (Nav.view === "addGame")
                 return "plus";
             if (!root.inGame)
-                return Steam.hasSteamVR ? "headset" : "refresh";
+                return "headset";
             if (root.group !== "setup")
                 return "play";
             // The button does whatever the first open step needs, and shows which kind of thing that is
@@ -741,7 +745,7 @@ ApplicationWindow {
             if (Nav.view === "addGame")
                 return "Add game";
             if (!root.inGame)
-                return Steam.hasSteamVR ? "Start SteamVR" : GamesFilterModel.scanning ? "Scanning" : "Rescan";
+                return "Start SteamVR";
             if (root.launching)
                 return Launcher.phase === Launcher.Countdown ? "Open now" : "Done";
             if (root.group === "setup")
@@ -763,12 +767,9 @@ ApplicationWindow {
         onClicked: {
             if (Nav.view === "addGame")
                 (addPage.item as AddGameView)?.submit();
-            else if (!root.inGame) {
-                if (Steam.hasSteamVR)
-                    root.startSteamVr();
-                else
-                    root.rescan();
-            } else if (root.launching)
+            else if (!root.inGame)
+                root.startSteamVr();
+            else if (root.launching)
                 Launcher.phase === Launcher.Countdown ? Launcher.openModNow() : Launcher.stop();
             else if (root.group === "setup") {
                 if (canSetUp)
