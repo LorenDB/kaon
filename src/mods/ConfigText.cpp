@@ -251,6 +251,73 @@ namespace ConfigText
             return parsed;
         }
 
+        // Ini files often reuse the same key under different [Section] headers (OptiScaler Enabled, DebugView).
+        // path is Section.Key when a header is in force, so aliases can target one copy.
+        QList<Parsed> parseIni(const QStringList &lines, bool *snake, QHash<QString, int> *sectionLines)
+        {
+            QList<Parsed> parsed;
+            QString section;
+            static const QRegularExpression keyRe{R"(^(\s*)([A-Za-z0-9_]+)(\s*=\s*)(.*)$)"};
+            for (int i = 0; i < lines.size(); ++i)
+            {
+                const auto trimmed = lines.at(i).trimmed();
+                if (trimmed.startsWith('['_L1) && trimmed.endsWith(']'_L1) && trimmed.size() >= 2)
+                {
+                    section = trimmed.mid(1, trimmed.size() - 2).trimmed();
+                    if (sectionLines && !section.isEmpty())
+                        sectionLines->insert(section, i);
+                    continue;
+                }
+                const auto match = keyRe.match(lines.at(i));
+                if (!match.hasMatch())
+                    continue;
+                auto rest = match.captured(4);
+                const auto suffix = takeComment(&rest);
+                Parsed row;
+                row.index = i;
+                row.key = match.captured(2);
+                row.path = section.isEmpty() ? row.key : section + '.'_L1 + row.key;
+                row.prefix = match.captured(1);
+                row.separator = match.captured(3);
+                row.raw = rest.trimmed();
+                row.suffix = suffix;
+                parsed << row;
+                if (row.key.contains('_'_L1))
+                    *snake = true;
+            }
+            return parsed;
+        }
+
+        bool iniAliasMatches(const Spec &spec, const Parsed &row)
+        {
+            for (const auto &alias : spec.aliases)
+            {
+                if (alias.contains('.'_L1))
+                {
+                    if (alias == row.path)
+                        return true;
+                }
+                else if (alias == row.key)
+                    return true;
+            }
+            return false;
+        }
+
+        int endOfIniSection(const QStringList &lines, int sectionLine)
+        {
+            for (int i = sectionLine + 1; i < lines.size(); ++i)
+            {
+                const auto trimmed = lines.at(i).trimmed();
+                if (!trimmed.startsWith('['_L1) || !trimmed.endsWith(']'_L1))
+                    continue;
+                auto at = i;
+                while (at > sectionLine + 1 && lines.at(at - 1).trimmed().isEmpty())
+                    --at;
+                return at;
+            }
+            return static_cast<int>(lines.size());
+        }
+
         int insertAt(const QStringList &lines, int sectionLine, int sectionIndent)
         {
             for (int i = sectionLine + 1; i < lines.size(); ++i)
@@ -278,6 +345,8 @@ namespace ConfigText
         QList<Parsed> parsed;
         if (syntax == Syntax::Yaml)
             parsed = parseYaml(document.lines, &document.sectionLines, &document.sectionIndents);
+        else if (syntax == Syntax::Ini)
+            parsed = parseIni(document.lines, &document.snakeKeys, &document.sectionLines);
         else
             parsed = parseKeyed(document.lines, &document.snakeKeys);
 
@@ -291,7 +360,10 @@ namespace ConfigText
                     continue;
                 if (row.commented && spec.kind != "text"_L1)
                     continue;
-                if (spec.aliases.contains(syntax == Syntax::Yaml ? row.path : row.key))
+                const auto hit = syntax == Syntax::Yaml ? spec.aliases.contains(row.path) :
+                                 syntax == Syntax::Ini  ? iniAliasMatches(spec, row) :
+                                                          spec.aliases.contains(row.key);
+                if (hit)
                 {
                     found = &row;
                     break;
@@ -305,9 +377,14 @@ namespace ConfigText
             field.spec = spec;
             field.value = spec.missing;
             field.original = spec.missing;
-            field.parentPath = syntax == Syntax::Yaml ? parentPath(spec.aliases.value(0)) : QString{};
-            field.indent = syntax == Syntax::Yaml ? spec.aliases.value(0).count('.'_L1) * 2 : 0;
-            field.key = syntax == Syntax::Yaml ? lastComponent(spec.aliases.value(0)) : pickAlias(spec, document.snakeKeys);
+            const auto primary = spec.aliases.value(0);
+            field.parentPath = syntax == Syntax::Yaml || (syntax == Syntax::Ini && primary.contains('.'_L1)) ?
+                                   parentPath(primary) :
+                                   QString{};
+            field.indent = syntax == Syntax::Yaml ? primary.count('.'_L1) * 2 : 0;
+            field.key = syntax == Syntax::Yaml || (syntax == Syntax::Ini && primary.contains('.'_L1)) ?
+                            lastComponent(primary) :
+                            pickAlias(spec, document.snakeKeys);
 
             if (found)
             {
@@ -413,7 +490,12 @@ namespace ConfigText
                              plannedSections.value(field.parentPath);
                 }
                 else if (document.syntax == Syntax::Ini)
-                    at = endOfFirstSection();
+                {
+                    if (!field.parentPath.isEmpty() && document.sectionLines.contains(field.parentPath))
+                        at = endOfIniSection(lines, document.sectionLines.value(field.parentPath));
+                    else
+                        at = endOfFirstSection();
+                }
                 inserts.append({at, formatted});
             }
         }
@@ -523,7 +605,23 @@ namespace ConfigText
         const auto bare = "debugMode: false\n"_L1;
         auto bareDoc = loadText(Syntax::Yaml, bare, {sharpness});
         bareDoc.fields[0].value = "0.4"_L1;
-        return saveText(bareDoc, &saved, &why) && saved == "debugMode: false\nupscaling:\n  sharpness: 0.4\n"_L1;
+        if (!saveText(bareDoc, &saved, &why) || saved != "debugMode: false\nupscaling:\n  sharpness: 0.4\n"_L1)
+            return false;
+
+        // OptiScaler (and similar) reuse Enabled under several [Section] headers.
+        const auto opti = "[FrameGen]\nEnabled=auto\nFGInput=auto\n\n[CAS]\nEnabled=false\n"_L1;
+        const QList<Spec> optiSpecs{field("choice"_L1, "FrameGen.Enabled"_L1, "auto"_L1),
+                                    field("choice"_L1, "CAS.Enabled"_L1, "false"_L1),
+                                    field("choice"_L1, "FGInput"_L1, "auto"_L1)};
+        if (!roundTrip(Syntax::Ini, opti, optiSpecs, &why))
+            return false;
+        auto optiDoc = loadText(Syntax::Ini, opti, optiSpecs);
+        if (optiDoc.fields.size() != 3 || optiDoc.fields[0].value != "auto"_L1 ||
+            optiDoc.fields[1].value != "false"_L1 || optiDoc.fields[2].value != "auto"_L1)
+            return false;
+        optiDoc.fields[0].value = "true"_L1;
+        return saveText(optiDoc, &saved, &why) && saved.contains("[FrameGen]\nEnabled=true\n"_L1) &&
+               saved.contains("[CAS]\nEnabled=false\n"_L1) && !saved.contains("[CAS]\nEnabled=true"_L1);
     }
 
 } // namespace ConfigText

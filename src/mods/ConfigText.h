@@ -14,7 +14,8 @@ namespace ConfigText
     {
         // Portal's config.txt: Key=value, with an optional " # comment"
         Equals,
-        // Doorstop's ini: key = value, under [Section] headers that are left alone
+        // Doorstop / OptiScaler ini: key = value under [Section] headers. Aliases may be bare
+        // keys (first match) or Section.Key when the same name appears in more than one section.
         Ini,
         // vrperfkit.yml: nested "key: value", two spaces per level
         Yaml,
