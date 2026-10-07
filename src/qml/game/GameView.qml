@@ -121,7 +121,7 @@ Item {
         anchors.fill: parent
         boundsBehavior: Flickable.StopAtBounds
         clip: true
-        contentHeight: body.y + body.height + Theme.notchHeight + 36
+        contentHeight: body.y + body.height + Theme.notchClearance + 36
         interactive: view.shown
         opacity: 1 - lensView.shown
         visible: view.game !== null

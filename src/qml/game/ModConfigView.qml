@@ -30,7 +30,7 @@ Item {
         anchors.fill: parent
         boundsBehavior: Flickable.StopAtBounds
         clip: true
-        contentHeight: column.y + column.height + Theme.notchHeight + 84
+        contentHeight: column.y + column.height + Theme.notchClearance + 84
 
         ScrollBar.vertical: GlassScrollBar {
         }
@@ -234,7 +234,7 @@ Item {
         id: saveBar
 
         anchors.bottom: parent.bottom
-        anchors.bottomMargin: Theme.notchHeight + 12
+        anchors.bottomMargin: Theme.notchClearance + 12
         height: 60
         visible: view.doc && view.doc.dirty
         width: Math.min(560, view.width - 2 * Theme.pad)

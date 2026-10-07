@@ -262,6 +262,13 @@ ApplicationWindow {
         anchors.fill: parent
     }
 
+    // Collapse the nose cut (and content padding that follows it) when the notch button is hidden.
+    Binding {
+        target: Theme
+        property: "notchClearance"
+        value: notch.visible ? Theme.notchHeight : 0
+    }
+
     // ------------------------------------------------------------ top strip
     Item {
         height: Theme.topStrap

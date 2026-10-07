@@ -354,7 +354,7 @@ Item {
         }
         // room to scroll the last row clear of the notch
         footer: Item {
-            height: Theme.notchHeight + 30
+            height: Theme.notchClearance + 30
             width: 1
         }
 

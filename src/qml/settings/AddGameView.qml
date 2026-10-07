@@ -50,7 +50,7 @@ Item {
         anchors.fill: parent
         boundsBehavior: Flickable.StopAtBounds
         clip: true
-        contentHeight: form.y + form.height + Theme.notchHeight + 60
+        contentHeight: form.y + form.height + Theme.notchClearance + 60
 
         ScrollBar.vertical: GlassScrollBar {
         }

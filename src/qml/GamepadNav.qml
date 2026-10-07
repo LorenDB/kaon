@@ -114,7 +114,7 @@ Item {
                 const top = pos.y;
                 const bottom = top + item.height;
                 const flickBottom = parentItem.mapToItem(host.contentItem, 0, parentItem.height).y;
-                const marginBottom = flickBottom > host.height - Theme.bottomStrap ? Theme.notchHeight + 52 : 12;
+                const marginBottom = flickBottom > host.height - Theme.bottomStrap ? Theme.notchClearance + 52 : 12;
                 // A page with its way back pinned over the top says how much that covers
                 const marginTop = (parentItem.pinnedTop ?? 0) + 12;
                 let y = parentItem.contentY;
@@ -438,7 +438,7 @@ Item {
     function scrollPage(direction) {
         const flick = mainFlickable();
         if (flick)
-            scrollTo(flick, flick.contentY + direction * Math.max(120, flick.height - Theme.notchHeight - 80));
+            scrollTo(flick, flick.contentY + direction * Math.max(120, flick.height - Theme.notchClearance - 80));
     }
 
     function scrollTo(flick, y) {

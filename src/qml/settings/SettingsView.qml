@@ -32,7 +32,7 @@ Flickable {
     acceptedButtons: Qt.NoButton
     boundsBehavior: Flickable.StopAtBounds
     clip: true
-    contentHeight: Math.max(left.height, right.y + right.height) + Theme.notchHeight + 50
+    contentHeight: Math.max(left.height, right.y + right.height) + Theme.notchClearance + 50
 
     ScrollBar.vertical: GlassScrollBar {
     }

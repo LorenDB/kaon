@@ -41,6 +41,8 @@ QtObject {
     }
     readonly property int notchHalfWidth: 58
     readonly property int notchHeight: 36
+    // How much of the visor the nose cut eats. Main sets this to 0 when the notch button is hidden.
+    property int notchClearance: notchHeight
     readonly property int pad: 20
     readonly property SystemPalette palette: SystemPalette {
     }
