@@ -195,7 +195,7 @@ QString UEVRAFW::info() const
     return "DX12 only (Kaon adds -dx12). Turn on DLSS or DLAA in the game, inject as usual, then pick Alternate "
            "Frame Warping in the in-game menu and enable Ghosting Fix. Joeyhodge builds also need Bootstrap "
            "Separate View States. About 500 MB extra VRAM. Nightly covers older UE titles; joeyhodge targets UE "
-           "5.5–5.8. AMD/Intel GPUs need OptiScaler (optional tools) for a DLSS path."_L1;
+           "5.5-5.8. AMD/Intel GPUs need OptiScaler (optional tools) for a DLSS path."_L1;
 }
 
 QString UEVRAFW::launchOptions() const
@@ -486,14 +486,14 @@ void UEVRAFW::parseReleaseInfoJson()
             });
 
             parsed.push_back(new ModRelease{
-                id, releaseName + " · "_L1 + variantLabel, timestamp, false, false, downloaded, assets, this});
+                id, releaseName + " - "_L1 + variantLabel, timestamp, false, false, downloaded, assets, this});
         }
     };
 
     for (const auto &release : releases.array())
     {
-        appendVariant(release, "UEVR-nightly_AFW_"_L1, "nightly"_L1, "nightly (UE ≤5.4)"_L1);
-        appendVariant(release, "UEVR-joeyhodge_AFW_"_L1, "joeyhodge"_L1, "joeyhodge (UE 5.5–5.8)"_L1);
+        appendVariant(release, "UEVR-nightly_AFW_"_L1, "nightly"_L1, "nightly (UE <=5.4)"_L1);
+        appendVariant(release, "UEVR-joeyhodge_AFW_"_L1, "joeyhodge"_L1, "joeyhodge (UE 5.5-5.8)"_L1);
     }
 
     if (parsed.isEmpty())
