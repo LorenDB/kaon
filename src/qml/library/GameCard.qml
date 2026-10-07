@@ -182,10 +182,9 @@ Item {
     MouseArea {
         id: mouse
 
+        anchors.fill: parent
         cursorShape: Qt.PointingHandCursor
-        height: cover.height
         hoverEnabled: true
-        width: parent.width
 
         onClicked: Nav.openGame(card.game)
     }
