@@ -195,6 +195,9 @@ void Wine::enterGameSandbox(qint64 pid,
     const auto sync = syncVariables(running);
     for (auto it = sync.cbegin(); it != sync.cend(); ++it)
         arguments << it.key() + '='_L1 + it.value();
+    // Same .NET WPF locale / W^X precautions as runInWine (see above).
+    arguments << "DOTNET_SYSTEM_GLOBALIZATION_PREDEFINED_CULTURES_ONLY=0"_L1
+               << "DOTNET_EnableWriteXorExecute=0"_L1;
     arguments << sandboxWine << sandboxCommand;
     arguments += args;
 
@@ -321,6 +324,11 @@ void Wine::runInWine(const QString &prettyName,
     env.insert("WINEPREFIX"_L1, wineRoot->winePrefix());
     env.insert("STEAM_COMPAT_DATA_PATH"_L1,
                running.value("STEAM_COMPAT_DATA_PATH"_L1, compatDataPath(wineRoot->winePrefix())));
+    // .NET 6 WPF (UEVRInjector) crashes on non-English locales: XmlLanguage.GetSpecificCulture
+    // cannot resolve hardcoded xml:lang="en-US" against Wine's NLS data. Relax culture matching.
+    env.insert("DOTNET_SYSTEM_GLOBALIZATION_PREDEFINED_CULTURES_ONLY"_L1, "0"_L1);
+    // CoreCLR Write-XOR-Execute is a known crash source under Wine's exception handling.
+    env.insert("DOTNET_EnableWriteXorExecute"_L1, "0"_L1);
     qCInfo(WineLog) << (running.isEmpty() ? "Nothing is running in the prefix; using Proton's defaults:" :
                                             "Matching the Wine processes in the prefix:")
                     << sync;
