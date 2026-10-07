@@ -25,6 +25,7 @@
 #include "LaunchOptions.h"
 #include "ModsFilterModel.h"
 #include "Steam.h"
+#include "UEVRAFW.h"
 #include "UnrealVrPlugins.h"
 #include "WinePrefix.h"
 
@@ -454,6 +455,11 @@ QVariantList GameStatus::steps(Game *game, int) const
     if (const auto step = launchOptionsStep(game); !step.isEmpty())
         out << step;
 
+    // Soft guidance from the preferred mod (e.g. AFW in-game toggles Kaon can't verify itself).
+    if (const auto mod = preferredMod(game))
+        for (const auto &hint : mod->softHints(game))
+            out << hint;
+
     m_stepsCache.insert(game, out);
     return out;
 }
@@ -762,6 +768,18 @@ void GameStatus::runStep(Game *game, const QString &key, bool secondary)
             emit actionFailed(disabling ? "Couldn't disable the VR plugins"_L1 : "Couldn't restore the VR plugins"_L1,
                               "Kaon couldn't rename a folder in %1's Engine/Binaries/ThirdParty. Its log has the details: "
                               "~/.cache/LorenDB/Kaon/kaon.log"_L1.arg(game->name()));
+    }
+    else if (action == "applyAfwConfig"_L1)
+    {
+        QString error;
+        if (!UEVRAFW::instance()->applyRecommendedConfig(game, &error))
+            emit actionFailed("Couldn't write AFW config"_L1, error);
+        else
+            emit noticed("Wrote AFW rendering method, Ghosting Fix"_L1
+                         + (UEVRAFW::instance()->isJoeyhodgeRelease(UEVRAFW::instance()->currentRelease())
+                                ? ", and Bootstrap"_L1
+                                : QString{})
+                         + " into UEVR's config for this game."_L1);
     }
     else if (const auto mod = modForKey(key))
     {

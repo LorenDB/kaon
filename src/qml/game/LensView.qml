@@ -157,6 +157,16 @@ Item {
                 case Launcher.Countdown:
                     return "Get to the game's main menu while you wait.";
                 case Launcher.ModOpen:
+                    if (Launcher.mod && Launcher.mod.settingsGroup === "uevr-afw") {
+                        const lead = lens.game && lens.game.canLaunch ? ("Pick " + title + " in " + name
+                                                                       + "'s window and inject.") :
+                                                                       ("Start " + title + ", then pick it in " + name
+                                                                        + "'s window and inject.");
+                        return lead + " In the UEVR menu, set Rendering Method to Alternate Frame Warping and enable Ghosting Fix"
+                               + (Launcher.mod.currentRelease && Launcher.mod.currentRelease.name.toLowerCase().indexOf("joeyhodge") >= 0
+                                  ? " and Bootstrap Separate View States" : "")
+                               + ". Put your headset on.";
+                    }
                     return lens.game && lens.game.canLaunch ? "Pick " + title + " in " + name + "'s window and inject, then put your headset on." :
                                                               "Start " + title + ", then pick it in " + name
                                                               + "'s window and inject.";

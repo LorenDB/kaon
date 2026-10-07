@@ -2,6 +2,7 @@
 
 #include <QAbstractListModel>
 #include <QSet>
+#include <QVariant>
 #include <QSortFilterProxyModel>
 
 #include "Game.h"
@@ -115,6 +116,19 @@ public:
     virtual QString launchOptions() const { return {}; }
     // Arguments that keep the mod from loading, and so have to come out of a game's launch options
     virtual QStringList conflictingLaunchOptions() const { return {}; }
+    // Soft checklist rows Kaon can't verify (in-game toggles, VRAM). Empty for most mods.
+    virtual QVariantList softHints(const Game *game) const
+    {
+        Q_UNUSED(game)
+        return {};
+    }
+    // Handles an action from softHints(). True when this mod handled it.
+    virtual bool runHintAction(Game *game, const QString &action)
+    {
+        Q_UNUSED(game)
+        Q_UNUSED(action)
+        return false;
+    }
     virtual const QLoggingCategory &logger() const = 0;
 
     virtual bool hasRepairOption() const = 0;
