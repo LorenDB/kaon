@@ -417,14 +417,26 @@ namespace ConfigText
         {
             if (field.value == field.original)
                 continue;
-            if (field.spec.kind == "number"_L1)
+            if (field.spec.kind == "number"_L1 || field.spec.kind == "autoNumber"_L1)
             {
+                const auto trimmed = field.value.trimmed();
+                if (field.spec.kind == "autoNumber"_L1 && trimmed.compare("auto"_L1, Qt::CaseInsensitive) == 0)
+                    continue;
                 bool ok = false;
-                QLocale::c().toDouble(field.value.trimmed(), &ok);
+                const auto number = QLocale::c().toDouble(trimmed, &ok);
                 if (!ok)
                 {
                     if (error)
                         *error = "%1 has to be a number."_L1.arg(field.spec.label);
+                    return false;
+                }
+                if (field.spec.kind == "autoNumber"_L1 && field.spec.ranged &&
+                    (number < field.spec.minimum || number > field.spec.maximum))
+                {
+                    if (error)
+                        *error = "%1 has to be between %2 and %3."_L1.arg(field.spec.label)
+                                     .arg(field.spec.minimum)
+                                     .arg(field.spec.maximum);
                     return false;
                 }
             }
@@ -620,8 +632,26 @@ namespace ConfigText
             optiDoc.fields[1].value != "false"_L1 || optiDoc.fields[2].value != "auto"_L1)
             return false;
         optiDoc.fields[0].value = "true"_L1;
-        return saveText(optiDoc, &saved, &why) && saved.contains("[FrameGen]\nEnabled=true\n"_L1) &&
-               saved.contains("[CAS]\nEnabled=false\n"_L1) && !saved.contains("[CAS]\nEnabled=true"_L1);
+        if (!saveText(optiDoc, &saved, &why) || !saved.contains("[FrameGen]\nEnabled=true\n"_L1) ||
+            !saved.contains("[CAS]\nEnabled=false\n"_L1) || saved.contains("[CAS]\nEnabled=true"_L1))
+            return false;
+
+        // autoNumber keeps "auto" and rejects numbers outside the slider range.
+        auto autoSharp = field("autoNumber"_L1, "Sharpness"_L1, "auto"_L1);
+        autoSharp.ranged = true;
+        autoSharp.minimum = 0;
+        autoSharp.maximum = 1.3;
+        autoSharp.step = 0.05;
+        autoSharp.manualDefault = "0.3"_L1;
+        const auto sharpIni = "Sharpness=auto\n"_L1;
+        if (!roundTrip(Syntax::Ini, sharpIni, {autoSharp}, &why))
+            return false;
+        auto sharpDoc = loadText(Syntax::Ini, sharpIni, {autoSharp});
+        sharpDoc.fields[0].value = "0.8"_L1;
+        if (!saveText(sharpDoc, &saved, &why) || !saved.contains("Sharpness=0.8\n"_L1))
+            return false;
+        sharpDoc.fields[0].value = "9"_L1;
+        return !saveText(sharpDoc, &saved, &why);
     }
 
 } // namespace ConfigText

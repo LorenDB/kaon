@@ -70,6 +70,11 @@ private:
         Value,
         Choices,
         Shipped,
+        Ranged,
+        Minimum,
+        Maximum,
+        Step,
+        ManualDefault,
     };
 
     QString m_title;

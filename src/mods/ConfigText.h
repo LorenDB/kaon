@@ -26,7 +26,8 @@ namespace ConfigText
         QString section;
         QString label;
         QString detail;
-        // "bool", "number", "choice", "text" or "keys" (a comma-separated list written as ["a", "b"])
+        // "bool", "number", "autoNumber", "choice", "text" or "keys" (a comma-separated list written as ["a", "b"]).
+        // autoNumber is "auto" or a number; the form shows Auto plus a slider or field.
         QString kind;
         // Equals and ini: key names, camelCase and snake_case for the same setting. Yaml: one dotted path,
         // "upscaling.enabled".
@@ -37,6 +38,12 @@ namespace ConfigText
         QStringList choiceLabels;
         // Leave the setting out of the form when the file doesn't already have it
         bool onlyIfPresent = false;
+        // For autoNumber: slider bounds when ranged is true. manualDefault is what Auto off starts from.
+        bool ranged = false;
+        double minimum = 0;
+        double maximum = 0;
+        double step = 0.01;
+        QString manualDefault;
     };
 
     struct Field

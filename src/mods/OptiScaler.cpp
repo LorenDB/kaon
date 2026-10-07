@@ -102,8 +102,9 @@ OptiScaler *OptiScaler::create(QQmlEngine *, QJSEngine *)
 QString OptiScaler::info() const
 {
     return "Works on its own or with UEVR AFW when the GPU has no native DLSS. Installs as dxgi.dll next to the game "
-           "(Unreal: Binaries/Win64). Cannot be on at the same time as VR Performance Toolkit, which also uses "
-           "dxgi.dll. Overlay: Insert."_L1;
+           "(Unreal: Binaries/Win64) and sets WINEDLLOVERRIDES. Cannot be on at the same time as VR Performance "
+           "Toolkit, which also uses dxgi.dll. Overlay: Insert (Alt+Insert on some layouts); Page Up/Down for "
+           "stats. Games that need a different hook name (winmm, version, …) still need a manual rename."_L1;
 }
 
 QString OptiScaler::launchOptions() const

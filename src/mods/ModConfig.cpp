@@ -1,6 +1,7 @@
 #include "ModConfig.h"
 
 #include <QDebug>
+#include <QtMath>
 #include <QFile>
 #include <QFileInfo>
 #include <QSaveFile>
@@ -47,6 +48,33 @@ namespace
     {
         return setting(
             std::move(section), std::move(label), std::move(detail), "number"_L1, {std::move(alias)}, std::move(missing));
+    }
+
+    // "auto" or a number. When min/max are set the form shows a slider once Auto is off.
+    ConfigText::Spec autoNumber(QString section,
+                                QString label,
+                                QString detail,
+                                QString alias,
+                                QString manualDefault,
+                                double minimum = qQNaN(),
+                                double maximum = qQNaN(),
+                                double step = 0.01)
+    {
+        auto spec = setting(std::move(section),
+                            std::move(label),
+                            std::move(detail),
+                            "autoNumber"_L1,
+                            {std::move(alias)},
+                            "auto"_L1);
+        spec.manualDefault = std::move(manualDefault);
+        if (qIsFinite(minimum) && qIsFinite(maximum))
+        {
+            spec.ranged = true;
+            spec.minimum = minimum;
+            spec.maximum = maximum;
+            spec.step = step;
+        }
+        return spec;
     }
 
     ConfigText::Spec choice(
@@ -553,12 +581,11 @@ namespace
                    "auto"_L1,
                    {"auto"_L1, "None"_L1, "Nukems"_L1, "Arturs"_L1, "FFX"_L1, "Combo"_L1},
                    {"Auto"_L1, "None"_L1, "Nukems"_L1, "Arturs"_L1, "FFX"_L1, "Combo"_L1}),
-            setting("Framerate"_L1,
-                    "Framerate limit"_L1,
-                    "Caps FPS through Reflex when available. Auto or 0 leaves it uncapped."_L1,
-                    "text"_L1,
-                    {"FramerateLimit"_L1},
-                    "auto"_L1),
+            autoNumber("Framerate"_L1,
+                       "Framerate limit"_L1,
+                       "Caps FPS through Reflex when available. Auto or 0 leaves it uncapped."_L1,
+                       "FramerateLimit"_L1,
+                       "0"_L1),
             autoBool("Menu"_L1,
                      "Overlay menu"_L1,
                      "In-game ImGui menu. Insert opens it when the shortcut is left on Auto."_L1,
@@ -595,22 +622,26 @@ namespace
                      "Override sharpness"_L1,
                      "Ignores the game's DLSS sharpness and uses the value below."_L1,
                      "OverrideSharpness"_L1),
-            setting("Sharpness"_L1,
-                    "Sharpness"_L1,
-                    "0.0 to 1.3. Auto leaves OptiScaler's default (0.3)."_L1,
-                    "text"_L1,
-                    {"Sharpness"_L1},
-                    "auto"_L1),
+            autoNumber("Sharpness"_L1,
+                       "Sharpness"_L1,
+                       "0.0 to 1.3. Auto leaves OptiScaler's default (0.3)."_L1,
+                       "Sharpness"_L1,
+                       "0.3"_L1,
+                       0.0,
+                       1.3,
+                       0.05),
             autoBool("Output scaling"_L1,
                      "Output scaling"_L1,
                      "Renders below the display size, then scales up. DX12 and DX11-on-12 only."_L1,
                      "OutputScaling.Enabled"_L1),
-            setting("Output scaling"_L1,
-                    "Scale multiplier"_L1,
-                    "0.5 to 3.0. Auto is 1.5."_L1,
-                    "text"_L1,
-                    {"Multiplier"_L1},
-                    "auto"_L1),
+            autoNumber("Output scaling"_L1,
+                       "Scale multiplier"_L1,
+                       "0.5 to 3.0. Auto is 1.5."_L1,
+                       "Multiplier"_L1,
+                       "1.5"_L1,
+                       0.5,
+                       3.0,
+                       0.05),
             choice("Output scaling"_L1,
                    "Downscaler"_L1,
                    "Filter used when scaling the image back up."_L1,
@@ -630,52 +661,66 @@ namespace
                      "Force upscale ratio"_L1,
                      "Overrides the internal resolution scale the upscaler asked for."_L1,
                      "UpscaleRatioOverrideEnabled"_L1),
-            setting("Upscale ratio"_L1,
-                    "Upscale ratio"_L1,
-                    "Applied when force upscale ratio is on. Auto is 1.3."_L1,
-                    "text"_L1,
-                    {"UpscaleRatioOverrideValue"_L1},
-                    "auto"_L1),
+            autoNumber("Upscale ratio"_L1,
+                       "Upscale ratio"_L1,
+                       "Applied when force upscale ratio is on. Auto is 1.3."_L1,
+                       "UpscaleRatioOverrideValue"_L1,
+                       "1.3"_L1,
+                       0.5,
+                       5.0,
+                       0.05),
             autoBool("Quality overrides"_L1,
                      "Custom quality ratios"_L1,
                      "Replaces DLSS/FSR quality-mode scales with the values below."_L1,
                      "QualityRatioOverrideEnabled"_L1),
-            setting("Quality overrides"_L1,
-                    "DLAA ratio"_L1,
-                    "Auto is 1.0."_L1,
-                    "text"_L1,
-                    {"QualityRatioDLAA"_L1},
-                    "auto"_L1),
-            setting("Quality overrides"_L1,
-                    "Ultra Quality ratio"_L1,
-                    "Auto is 1.3."_L1,
-                    "text"_L1,
-                    {"QualityRatioUltraQuality"_L1},
-                    "auto"_L1),
-            setting("Quality overrides"_L1,
-                    "Quality ratio"_L1,
-                    "Auto is 1.5."_L1,
-                    "text"_L1,
-                    {"QualityRatioQuality"_L1},
-                    "auto"_L1),
-            setting("Quality overrides"_L1,
-                    "Balanced ratio"_L1,
-                    "Auto is 1.7."_L1,
-                    "text"_L1,
-                    {"QualityRatioBalanced"_L1},
-                    "auto"_L1),
-            setting("Quality overrides"_L1,
-                    "Performance ratio"_L1,
-                    "Auto is 2.0."_L1,
-                    "text"_L1,
-                    {"QualityRatioPerformance"_L1},
-                    "auto"_L1),
-            setting("Quality overrides"_L1,
-                    "Ultra Performance ratio"_L1,
-                    "Auto is 3.0."_L1,
-                    "text"_L1,
-                    {"QualityRatioUltraPerformance"_L1},
-                    "auto"_L1),
+            autoNumber("Quality overrides"_L1,
+                       "DLAA ratio"_L1,
+                       "Auto is 1.0."_L1,
+                       "QualityRatioDLAA"_L1,
+                       "1.0"_L1,
+                       0.5,
+                       5.0,
+                       0.05),
+            autoNumber("Quality overrides"_L1,
+                       "Ultra Quality ratio"_L1,
+                       "Auto is 1.3."_L1,
+                       "QualityRatioUltraQuality"_L1,
+                       "1.3"_L1,
+                       0.5,
+                       5.0,
+                       0.05),
+            autoNumber("Quality overrides"_L1,
+                       "Quality ratio"_L1,
+                       "Auto is 1.5."_L1,
+                       "QualityRatioQuality"_L1,
+                       "1.5"_L1,
+                       0.5,
+                       5.0,
+                       0.05),
+            autoNumber("Quality overrides"_L1,
+                       "Balanced ratio"_L1,
+                       "Auto is 1.7."_L1,
+                       "QualityRatioBalanced"_L1,
+                       "1.7"_L1,
+                       0.5,
+                       5.0,
+                       0.05),
+            autoNumber("Quality overrides"_L1,
+                       "Performance ratio"_L1,
+                       "Auto is 2.0."_L1,
+                       "QualityRatioPerformance"_L1,
+                       "2.0"_L1,
+                       0.5,
+                       5.0,
+                       0.05),
+            autoNumber("Quality overrides"_L1,
+                       "Ultra Performance ratio"_L1,
+                       "Auto is 3.0."_L1,
+                       "QualityRatioUltraPerformance"_L1,
+                       "3.0"_L1,
+                       0.5,
+                       5.0,
+                       0.05),
             autoBool("HDR"_L1, "Force HDR"_L1, "Forces an HDR color space."_L1, "ForceHDR"_L1),
             autoBool("HDR"_L1, "Use HDR10"_L1, "Uses R10G10B10A2 instead of float16."_L1, "UseHDR10"_L1),
             choice("Log"_L1,
@@ -806,6 +851,16 @@ QVariant ModConfigDocument::data(const QModelIndex &index, int role) const
     }
     case Shipped:
         return index.row() < m_shippedValues.size() ? QVariant{m_shippedValues.at(index.row())} : QVariant{QString{}};
+    case Ranged:
+        return field.spec.ranged;
+    case Minimum:
+        return field.spec.minimum;
+    case Maximum:
+        return field.spec.maximum;
+    case Step:
+        return field.spec.step;
+    case ManualDefault:
+        return field.spec.manualDefault;
     default:
         return {};
     }
@@ -819,7 +874,12 @@ QHash<int, QByteArray> ModConfigDocument::roleNames() const
             {Kind, "kind"_ba},
             {Value, "value"_ba},
             {Choices, "choices"_ba},
-            {Shipped, "shipped"_ba}};
+            {Shipped, "shipped"_ba},
+            {Ranged, "ranged"_ba},
+            {Minimum, "minimum"_ba},
+            {Maximum, "maximum"_ba},
+            {Step, "step"_ba},
+            {ManualDefault, "manualDefault"_ba}};
 }
 
 void ModConfigDocument::setField(int row, const QString &value)

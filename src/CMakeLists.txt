@@ -18,6 +18,7 @@ qt_add_qml_module(kaon
         qml/Nav.qml
         qml/Theme.qml
 
+        qml/components/AutoNumberField.qml
         qml/components/BackBar.qml
         qml/components/Chip.qml
         qml/components/ComboField.qml

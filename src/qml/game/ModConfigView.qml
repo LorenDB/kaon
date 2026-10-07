@@ -101,6 +101,11 @@ Item {
                     required property string label
                     required property string shipped
                     required property string value
+                    required property bool ranged
+                    required property real minimum
+                    required property real maximum
+                    required property real step
+                    required property string manualDefault
 
                     spacing: 6
                     width: column.width
@@ -192,6 +197,19 @@ Item {
                                 width: parent.width
 
                                 onEdited: combo => view.doc.setField(row.index, combo)
+                            }
+
+                            AutoNumberField {
+                                manualDefault: row.manualDefault
+                                maximum: row.maximum
+                                minimum: row.minimum
+                                ranged: row.ranged
+                                step: row.step
+                                value: row.value
+                                visible: row.kind === "autoNumber"
+                                width: parent.width
+
+                                onEdited: next => view.doc.setField(row.index, next)
                             }
 
                             TextBox {
