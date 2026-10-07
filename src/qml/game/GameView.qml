@@ -311,137 +311,148 @@ Item {
                     wrapMode: Text.Wrap
                 }
 
-                // A check that passed takes one quiet line. One that needs something gets a panel, its explanation, and
-                // the button that deals with it.
-                Repeater {
-                    // A game that needs no mod has no checklist, but a tool switched on for it can still ask for
-                    // launch options
-                    model: view.group === "native" || view.group === "none" ? view.steps.filter(s => s.key === "launchOptions") :
-                                                                              view.steps
+                // Like the list on the Mods page: one panel, one line per check. A check that passed stays quiet.
+                // One that needs something opens for its explanation and the button that deals with it.
+                Rectangle {
+                    border.color: Theme.glassLine
+                    border.width: 1.5
+                    color: Theme.glassPanel
+                    height: rows.height
+                    radius: 16
+                    visible: checklistRepeater.count > 0
+                    width: checks.width
 
-                    Item {
-                        id: row
+                    Column {
+                        id: rows
 
-                        required property var modelData
-                        // Also one line: a check that can only wait for an earlier one, with nothing to press. The
-                        // first one that waits is what the page is stuck on, and says so in full.
-                        readonly property bool passed: modelData.state === "ok" || (modelData.state === "wait" &&
-                                                                                    !modelData.action && modelData.key
-                                                                                    !== view.openKey)
-                        // Launch options to copy into Steam, when that is what this step asks for
-                        readonly property string paste: modelData.copyText ?? ""
+                        width: parent.width
 
-                        height: passed ? 32 : rowText.height + (paste !== "" ? pasteBox.height + 10 : 0) + 30
-                        width: checks.width
+                        Repeater {
+                            id: checklistRepeater
 
-                        Rectangle {
-                            anchors.bottomMargin: 4
-                            anchors.fill: parent
-                            anchors.topMargin: 4
-                            border.color: Theme.glassLine
-                            border.width: 1
-                            color: Theme.glassPanel
-                            radius: 14
-                            visible: !row.passed
-                        }
+                            // A game that needs no mod has no checklist, but a tool switched on for it can still ask for
+                            // launch options
+                            model: view.group === "native" || view.group === "none" ? view.steps.filter(s => s.key === "launchOptions") :
+                                                                                      view.steps
 
-                        Led {
-                            blinking: row.modelData.state === "busy"
-                            color: Theme.stepLed(row.modelData.state)
-                            size: 9
-                            x: 14
-                            y: row.passed ? 11.5 : 20
-                        }
+                            Item {
+                                id: row
 
-                        VText {
-                            id: passedTitle
+                                required property int index
+                                required property var modelData
+                                readonly property bool open: !passed
+                                // Also one line: a check that can only wait for an earlier one, with nothing to press. The
+                                // first one that waits is what the page is stuck on, and says so in full.
+                                readonly property bool passed: modelData.state === "ok" || (modelData.state === "wait" &&
+                                                                                            !modelData.action
+                                                                                            && modelData.key
+                                                                                            !== view.openKey)
+                                // Launch options to copy into Steam, when that is what this step asks for
+                                readonly property string paste: modelData.copyText ?? ""
 
-                            anchors.verticalCenter: parent.verticalCenter
-                            elide: Text.ElideRight
-                            font.pixelSize: 14
-                            font.weight: Font.Bold
-                            text: row.modelData.title
-                            visible: row.passed
-                            width: Math.min(implicitWidth, row.width - x - actions.width - 20)
-                            x: 38
-                        }
+                                height: 54 + (open ? details.height + 16 : 0)
+                                width: rows.width
 
-                        VText {
-                            anchors.left: passedTitle.right
-                            anchors.leftMargin: 10
-                            anchors.right: actions.left
-                            anchors.rightMargin: 10
-                            anchors.verticalCenter: parent.verticalCenter
-                            color: Theme.glassFaint
-                            elide: Text.ElideRight
-                            font.pixelSize: 13
-                            font.weight: Font.Normal
-                            text: row.modelData.detail
-                            visible: row.passed
-                        }
+                                Rectangle {
+                                    color: Theme.glassLine
+                                    height: 1
+                                    visible: row.index > 0
+                                    width: parent.width - 28
+                                    x: 14
+                                }
 
-                        Column {
-                            id: rowText
+                                Item {
+                                    id: line
 
-                            spacing: 2
-                            visible: !row.passed
-                            width: row.width - x - (actions.width > 0 ? actions.width + 26 : 14)
-                            x: 38
-                            y: 14
+                                    height: 54
+                                    width: parent.width
 
-                            VText {
-                                font.pixelSize: 14
-                                font.weight: Font.Bold
-                                text: row.modelData.title
-                                width: parent.width
-                                wrapMode: Text.Wrap
-                            }
+                                    Led {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        blinking: row.modelData.state === "busy"
+                                        color: Theme.stepLed(row.modelData.state)
+                                        size: 9
+                                        x: 18
+                                    }
 
-                            VText {
-                                color: Theme.glassMuted
-                                font.pixelSize: 13
-                                font.weight: Font.Normal
-                                lineHeight: 1.25
-                                text: row.modelData.detail
-                                width: parent.width
-                                wrapMode: Text.Wrap
-                            }
-                        }
+                                    VText {
+                                        id: rowTitle
 
-                        LaunchOptions {
-                            id: pasteBox
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        elide: Text.ElideRight
+                                        font.pixelSize: 15
+                                        font.weight: Font.ExtraBold
+                                        text: row.modelData.title
+                                        width: Math.min(implicitWidth, actions.x - x - 12)
+                                        x: 40
+                                    }
 
-                            options: row.paste
-                            showLabel: false
-                            width: row.width - x - 14
-                            x: 38
-                            y: rowText.y + rowText.height + 10
-                        }
+                                    VText {
+                                        anchors.left: rowTitle.right
+                                        anchors.leftMargin: 14
+                                        anchors.right: actions.left
+                                        anchors.rightMargin: 14
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        color: Theme.glassMuted
+                                        elide: Text.ElideRight
+                                        font.pixelSize: 13
+                                        font.weight: Font.Normal
+                                        text: row.modelData.detail
+                                        visible: row.passed
+                                    }
 
-                        Row {
-                            id: actions
+                                    Row {
+                                        id: actions
 
-                            anchors.right: parent.right
-                            anchors.rightMargin: row.passed ? 0 : 12
-                            spacing: 6
-                            y: row.passed ? 0 : 14
+                                        anchors.right: parent.right
+                                        anchors.rightMargin: 12
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        spacing: 6
 
-                            VButton {
-                                quiet: row.passed
-                                small: true
-                                text: row.modelData.secondaryLabel ?? ""
-                                visible: !!row.modelData.secondaryAction
+                                        VButton {
+                                            quiet: row.passed
+                                            small: true
+                                            text: row.modelData.secondaryLabel ?? ""
+                                            visible: !!row.modelData.secondaryAction
 
-                                onClicked: GameStatus.runStep(view.game, row.modelData.key, true)
-                            }
+                                            onClicked: GameStatus.runStep(view.game, row.modelData.key, true)
+                                        }
 
-                            VButton {
-                                small: true
-                                solid: row.modelData.state === "todo"
-                                text: row.modelData.actionLabel ?? ""
-                                visible: !!row.modelData.action
+                                        VButton {
+                                            small: true
+                                            solid: row.modelData.state === "todo"
+                                            text: row.modelData.actionLabel ?? ""
+                                            visible: !!row.modelData.action
 
-                                onClicked: GameStatus.runStep(view.game, row.modelData.key, false)
+                                            onClicked: GameStatus.runStep(view.game, row.modelData.key, false)
+                                        }
+                                    }
+                                }
+
+                                Column {
+                                    id: details
+
+                                    spacing: 10
+                                    visible: row.open
+                                    width: parent.width - x - 18
+                                    x: 40
+                                    y: 50
+
+                                    VText {
+                                        color: Theme.glassMuted
+                                        font.pixelSize: 13
+                                        font.weight: Font.Normal
+                                        lineHeight: 1.3
+                                        text: row.modelData.detail
+                                        width: parent.width
+                                        wrapMode: Text.Wrap
+                                    }
+
+                                    LaunchOptions {
+                                        options: row.paste
+                                        showLabel: false
+                                    }
+                                }
                             }
                         }
                     }
