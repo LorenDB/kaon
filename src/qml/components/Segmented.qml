@@ -38,6 +38,12 @@ Row {
                                                                                                                             "#14171c") :
                                                                                                                       "transparent"
                 radius: height / 2
+
+                Behavior on color {
+                    ColorAnimation {
+                        duration: Theme.durationFast
+                    }
+                }
             }
 
             Rectangle {

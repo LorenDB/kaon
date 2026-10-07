@@ -490,8 +490,8 @@ Item {
     NumberAnimation {
         id: glide
 
-        duration: 160
-        easing.type: Easing.OutCubic
+        duration: Theme.durationFast
+        easing.type: Theme.easeOut
         property: "contentY"
 
         // A list only guesses its length until its rows exist. Where the guess was long, this settles on the real end.

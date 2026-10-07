@@ -22,8 +22,11 @@ ApplicationWindow {
     readonly property bool inGame: Nav.view === "game" && game !== null
     property bool keepAdd: false
     property bool keepGame: false
+    property bool keepModConfig: false
     property bool keepMods: false
     property bool keepSettings: false
+    // Drives notch flatten + button fade. 1 = nose cut + button, 0 = flat visor.
+    property real notchReveal: 1
     readonly property bool launching: inGame && Launcher.game === game && Launcher.phase !== Launcher.Idle
     // Too little room on the bottom strip for the game's buttons; they move into its menu
     readonly property bool narrow: width < 820
@@ -88,6 +91,8 @@ ApplicationWindow {
             keepSettings = true;
         else if (Nav.view === "addGame")
             keepAdd = true;
+        else if (Nav.view === "modConfig")
+            keepModConfig = true;
     }
 
     function startSteamVr() {
@@ -102,6 +107,12 @@ ApplicationWindow {
     title: "Kaon"
     visible: true
     width: 950
+
+    Behavior on color {
+        ColorAnimation {
+            duration: Theme.durationMed
+        }
+    }
 
     Component.onCompleted: retainPage()
     // Tab can land on something that is scrolled out of sight
@@ -154,64 +165,82 @@ ApplicationWindow {
 
             anchors.fill: parent
 
-            Loader {
-                id: libraryPage
+            PageLayer {
+                active: Nav.view === "library"
 
-                anchors.fill: parent
-                focus: visible
-                sourceComponent: libraryC
-                visible: Nav.view === "library"
+                Loader {
+                    id: libraryPage
+
+                    anchors.fill: parent
+                    focus: parent.active
+                    sourceComponent: libraryC
+                }
             }
 
-            Loader {
-                id: gamePage
+            PageLayer {
+                active: root.inGame
 
-                active: Nav.view === "game" || root.keepGame
-                anchors.fill: parent
-                focus: visible
-                sourceComponent: gameC
-                visible: root.inGame
+                Loader {
+                    id: gamePage
+
+                    active: Nav.view === "game" || root.keepGame
+                    anchors.fill: parent
+                    focus: parent.active
+                    sourceComponent: gameC
+                }
             }
 
-            Loader {
-                id: modsPage
+            PageLayer {
+                active: Nav.view === "mods"
 
-                active: Nav.view === "mods" || root.keepMods
-                anchors.fill: parent
-                focus: visible
-                sourceComponent: modsC
-                visible: Nav.view === "mods"
+                Loader {
+                    id: modsPage
+
+                    active: Nav.view === "mods" || root.keepMods
+                    anchors.fill: parent
+                    focus: parent.active
+                    sourceComponent: modsC
+                }
             }
 
-            Loader {
-                id: settingsPage
+            PageLayer {
+                active: Nav.view === "settings"
 
-                active: Nav.view === "settings" || root.keepSettings
-                anchors.fill: parent
-                focus: visible
-                sourceComponent: settingsC
-                visible: Nav.view === "settings"
+                Loader {
+                    id: settingsPage
+
+                    active: Nav.view === "settings" || root.keepSettings
+                    anchors.fill: parent
+                    focus: parent.active
+                    sourceComponent: settingsC
+                }
             }
 
-            Loader {
-                id: addPage
+            PageLayer {
+                active: Nav.view === "addGame"
 
-                active: Nav.view === "addGame" || root.keepAdd
-                anchors.fill: parent
-                focus: visible
-                sourceComponent: addGameC
-                visible: Nav.view === "addGame"
+                Loader {
+                    id: addPage
+
+                    active: Nav.view === "addGame" || root.keepAdd
+                    anchors.fill: parent
+                    focus: parent.active
+                    sourceComponent: addGameC
+                }
             }
 
-            Loader {
-                id: modConfigPage
-
-                // Created only while it's open. Left loaded, it sat under the game page and picked up that page's scroll.
+            PageLayer {
+                // Kept after the first open so leaving can fade out. Disabled while hidden, so it cannot steal scroll.
                 active: Nav.view === "modConfig"
-                anchors.fill: parent
-                focus: visible
-                sourceComponent: modConfigC
-                visible: Nav.view === "modConfig"
+
+                Loader {
+                    id: modConfigPage
+
+                    active: Nav.view === "modConfig" || root.keepModConfig
+                    anchors.fill: parent
+                    focus: parent.active
+                    sourceComponent: modConfigC
+                }
             }
         }
     }
@@ -263,10 +292,25 @@ ApplicationWindow {
     }
 
     // Collapse the nose cut (and content padding that follows it) when the notch button is hidden.
+    readonly property bool notchWanted: Nav.view === "addGame" || root.inGame || Steam.hasSteamVR
+
+    Binding {
+        target: root
+        property: "notchReveal"
+        value: root.notchWanted ? 1 : 0
+    }
+
+    Behavior on notchReveal {
+        NumberAnimation {
+            duration: Theme.durationMed
+            easing.type: Theme.easeInOut
+        }
+    }
+
     Binding {
         target: Theme
         property: "notchClearance"
-        value: notch.visible ? Theme.notchHeight : 0
+        value: Theme.notchHeight * root.notchReveal
     }
 
     // ------------------------------------------------------------ top strip
@@ -350,6 +394,12 @@ ApplicationWindow {
                         anchors.fill: parent
                         color: tab.active ? Theme.ink : tabMouse.containsMouse ? Theme.shellDeep : "transparent"
                         radius: height / 2
+
+                        Behavior on color {
+                            ColorAnimation {
+                                duration: Theme.durationFast
+                            }
+                        }
                     }
 
                     Rectangle {
@@ -394,8 +444,16 @@ ApplicationWindow {
             color: Theme.shellDeep
             height: 34
             radius: 17
-            visible: Nav.view === "library"
+            opacity: Nav.view === "library" ? 1 : 0
+            visible: opacity > 0.01
             width: Math.min(300, root.width * 0.28)
+
+            Behavior on opacity {
+                NumberAnimation {
+                    duration: Theme.durationFast
+                    easing.type: Theme.easeOut
+                }
+            }
 
             Icon {
                 anchors.left: parent.left
@@ -590,7 +648,15 @@ ApplicationWindow {
             anchors.leftMargin: Theme.side + 14
             anchors.verticalCenter: parent.verticalCenter
             spacing: 10
-            visible: root.statusText !== ""
+            opacity: root.statusText !== "" ? 1 : 0
+            visible: opacity > 0.01
+
+            Behavior on opacity {
+                NumberAnimation {
+                    duration: Theme.durationFast
+                    easing.type: Theme.easeOut
+                }
+            }
 
             Led {
                 anchors.verticalCenter: parent.verticalCenter
@@ -722,9 +788,11 @@ ApplicationWindow {
         readonly property bool canSetUp: root.inGame && GameStatus.canSetUp(root.game, GameStatus.revision)
 
         // Rescan lives on the bottom strip only. On the library the notch is Start SteamVR, or hidden.
-        visible: Nav.view === "addGame" || root.inGame || Steam.hasSteamVR
+        opacity: root.notchReveal
+        scale: 0.82 + 0.18 * root.notchReveal
+        visible: root.notchReveal > 0.01
         enabled: {
-            if (!visible)
+            if (!root.notchWanted)
                 return false;
             if (Nav.view === "addGame")
                 return (addPage.item as AddGameView)?.valid ?? false;
@@ -763,7 +831,6 @@ ApplicationWindow {
             return root.group === "none" ? "Play" : "Play in VR";
         }
         led: !root.inGame ? Theme.ledOff : root.launching ? Theme.ledGreen : Theme.led(root.group)
-        opacity: enabled ? 1 : 0.5
         phase: root.launching ? (Launcher.phase === Launcher.Countdown ? "waiting" : "running") : busy ? "starting" : ""
         progress: root.launching && Launcher.phase === Launcher.Countdown && Launcher.total > 0 ? Launcher.remaining
                                                                                                   / Launcher.total : 1

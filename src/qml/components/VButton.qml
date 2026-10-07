@@ -25,6 +25,19 @@ Item {
                                                                                                                         0)) + (small
                                                                                                                                ? 26 : 32)
     opacity: enabled ? 1 : 0.4
+    scale: mouse.pressed ? 0.97 : 1
+
+    Behavior on opacity {
+        NumberAnimation {
+            duration: Theme.durationFast
+        }
+    }
+    Behavior on scale {
+        NumberAnimation {
+            duration: Theme.durationPress
+            easing.type: Theme.easeOut
+        }
+    }
 
     Keys.onReturnPressed: b.clicked()
     Keys.onSpacePressed: b.clicked()

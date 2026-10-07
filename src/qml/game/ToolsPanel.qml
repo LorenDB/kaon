@@ -48,9 +48,17 @@ Column {
         Icon {
             anchors.verticalCenter: parent.verticalCenter
             color: Theme.glassFaint
-            name: saved.toolsOpen ? "down" : "forward"
+            name: "forward"
+            rotation: saved.toolsOpen ? 90 : 0
             size: 14
             stroke: 2.2
+
+            Behavior on rotation {
+                NumberAnimation {
+                    duration: Theme.durationFast
+                    easing.type: Theme.easeOut
+                }
+            }
         }
 
         VText {
@@ -100,70 +108,100 @@ Column {
         }
     }
 
-    Repeater {
-        model: saved.toolsOpen ? panel.tools : []
+    Item {
+        id: body
 
-        Item {
-            id: row
+        clip: true
+        enabled: saved.toolsOpen
+        height: saved.toolsOpen ? toolsCol.height : 0
+        opacity: saved.toolsOpen ? 1 : 0
+        width: parent.width
 
-            required property var modelData
-            // What the tool is doing here when there is something to say, and otherwise what it is for
-            readonly property string note: modelData.detail !== "" ? modelData.detail : modelData.mod.description
-
-            height: Math.max(labels.height, toggle.height) + 12
-            width: panel.width
-
-            Column {
-                id: labels
-
-                anchors.left: parent.left
-                anchors.right: toggle.left
-                anchors.rightMargin: 14
-                anchors.verticalCenter: parent.verticalCenter
-                spacing: 1
-
-                Row {
-                    width: parent.width
-
-                    VText {
-                        elide: Text.ElideRight
-                        font.pixelSize: 14
-                        font.weight: Font.Bold
-                        text: row.modelData.mod.name
-                        width: Math.min(implicitWidth, parent.width - runtime.implicitWidth)
-                    }
-
-                    VText {
-                        id: runtime
-
-                        color: Theme.glassMuted
-                        font.pixelSize: 14
-                        font.weight: Font.Normal
-                        text: row.modelData.mod.vrRuntime !== "" ? " · " + row.modelData.mod.vrRuntime : ""
-                        visible: text !== ""
-                    }
-                }
-
-                VText {
-                    color: row.modelData.detail !== "" ? Theme.glassMuted : Theme.glassFaint
-                    font.pixelSize: 12
-                    lineHeight: 1.2
-                    text: row.note
-                    visible: text !== ""
-                    width: parent.width
-                    wrapMode: Text.Wrap
-                }
+        Behavior on height {
+            NumberAnimation {
+                duration: Theme.durationMed
+                easing.type: Theme.easeInOut
             }
+        }
+        Behavior on opacity {
+            NumberAnimation {
+                duration: Theme.durationFast
+                easing.type: Theme.easeOut
+            }
+        }
 
-            ToggleSwitch {
-                id: toggle
+        Column {
+            id: toolsCol
 
-                anchors.right: parent.right
-                anchors.verticalCenter: parent.verticalCenter
-                checked: row.modelData.on
-                enabled: row.modelData.enabled
+            spacing: 4
+            width: parent.width
 
-                onToggled: GameStatus.toggleTool(panel.game, row.modelData.mod)
+            Repeater {
+                model: panel.tools
+
+                Item {
+                    id: row
+
+                    required property var modelData
+                    // What the tool is doing here when there is something to say, and otherwise what it is for
+                    readonly property string note: modelData.detail !== "" ? modelData.detail : modelData.mod.description
+
+                    height: Math.max(labels.height, toggle.height) + 12
+                    width: toolsCol.width
+
+                    Column {
+                        id: labels
+
+                        anchors.left: parent.left
+                        anchors.right: toggle.left
+                        anchors.rightMargin: 14
+                        anchors.verticalCenter: parent.verticalCenter
+                        spacing: 1
+
+                        Row {
+                            width: parent.width
+
+                            VText {
+                                elide: Text.ElideRight
+                                font.pixelSize: 14
+                                font.weight: Font.Bold
+                                text: row.modelData.mod.name
+                                width: Math.min(implicitWidth, parent.width - runtime.implicitWidth)
+                            }
+
+                            VText {
+                                id: runtime
+
+                                color: Theme.glassMuted
+                                font.pixelSize: 14
+                                font.weight: Font.Normal
+                                text: row.modelData.mod.vrRuntime !== "" ? " · " + row.modelData.mod.vrRuntime : ""
+                                visible: text !== ""
+                            }
+                        }
+
+                        VText {
+                            color: row.modelData.detail !== "" ? Theme.glassMuted : Theme.glassFaint
+                            font.pixelSize: 12
+                            lineHeight: 1.2
+                            text: row.note
+                            visible: text !== ""
+                            width: parent.width
+                            wrapMode: Text.Wrap
+                        }
+                    }
+
+                    ToggleSwitch {
+                        id: toggle
+
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        checked: row.modelData.on
+                        enabled: row.modelData.enabled
+
+                        onToggled: GameStatus.toggleTool(panel.game, row.modelData.mod)
+                    }
+                }
             }
         }
     }

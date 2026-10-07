@@ -233,12 +233,34 @@ Item {
     Item {
         id: saveBar
 
+        readonly property bool dirty: view.doc && view.doc.dirty
+
         anchors.bottom: parent.bottom
         anchors.bottomMargin: Theme.notchClearance + 12
+        enabled: dirty
         height: 60
-        visible: view.doc && view.doc.dirty
+        opacity: dirty ? 1 : 0
+        visible: opacity > 0.01
         width: Math.min(560, view.width - 2 * Theme.pad)
         x: Theme.pad
+
+        Behavior on opacity {
+            NumberAnimation {
+                duration: Theme.durationMed
+                easing.type: Theme.easeOut
+            }
+        }
+
+        transform: Translate {
+            y: saveBar.dirty ? 0 : 12
+
+            Behavior on y {
+                NumberAnimation {
+                    duration: Theme.durationMed
+                    easing.type: Theme.easeOut
+                }
+            }
+        }
 
         Rectangle {
             anchors.fill: parent

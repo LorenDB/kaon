@@ -22,7 +22,8 @@ ScrollBar {
 
         Behavior on implicitWidth {
             NumberAnimation {
-                duration: 120
+                duration: Theme.durationPress
+                easing.type: Theme.easeOut
             }
         }
     }

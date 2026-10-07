@@ -25,6 +25,15 @@ Item {
     Keys.onReturnPressed: nb.clicked()
     Keys.onSpacePressed: nb.clicked()
 
+    // Dim when the action is unavailable without fighting Main's reveal opacity.
+    property real lit: enabled ? 1 : 0.5
+
+    Behavior on lit {
+        NumberAnimation {
+            duration: Theme.durationFast
+        }
+    }
+
     Rectangle {
         anchors.fill: parent
         anchors.margins: -5
@@ -36,13 +45,30 @@ Item {
     }
 
     Rectangle {
-        anchors.fill: parent
+        anchors.centerIn: parent
         color: mouse.pressed ? "#1d2027" : mouse.containsMouse ? "#14161b" : Theme.glass
+        height: parent.height
+        opacity: nb.lit
         radius: width / 2
+        scale: mouse.pressed ? 0.94 : 1
+        width: parent.width
+
+        Behavior on scale {
+            NumberAnimation {
+                duration: Theme.durationPress
+                easing.type: Theme.easeOut
+            }
+        }
+        Behavior on color {
+            ColorAnimation {
+                duration: Theme.durationPress
+            }
+        }
     }
 
     Shape {
         anchors.fill: parent
+        opacity: nb.lit
         preferredRendererType: Shape.CurveRenderer
 
         RotationAnimation on rotation {
@@ -88,6 +114,7 @@ Item {
         anchors.centerIn: parent
         anchors.horizontalCenterOffset: nb.icon === "play" ? 2 : 0
         color: Theme.glassText
+        opacity: nb.lit
         name: nb.phase === "running" ? "check" : nb.icon
         size: nb.icon === "play" ? 22 : 20
         stroke: 2.2
@@ -101,6 +128,7 @@ Item {
                         })
         font.pixelSize: 19
         font.weight: Font.ExtraBold
+        opacity: nb.lit
         text: nb.seconds
         visible: nb.phase === "waiting"
     }
@@ -110,6 +138,7 @@ Item {
         color: Theme.ink
         font.pixelSize: 11
         font.weight: Font.Bold
+        opacity: nb.lit
         text: nb.label
         y: parent.height + 3
     }

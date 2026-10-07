@@ -19,20 +19,20 @@ Item {
 
     Behavior on px {
         NumberAnimation {
-            duration: 420
-            easing.type: Easing.OutCubic
+            duration: Theme.durationParallax
+            easing.type: Theme.easeOut
         }
     }
     Behavior on py {
         NumberAnimation {
-            duration: 420
-            easing.type: Easing.OutCubic
+            duration: Theme.durationParallax
+            easing.type: Theme.easeOut
         }
     }
     Behavior on shown {
         NumberAnimation {
-            duration: 900
-            easing.type: Easing.InOutCubic
+            duration: Theme.durationTheater
+            easing.type: Theme.easeInOut
         }
     }
 

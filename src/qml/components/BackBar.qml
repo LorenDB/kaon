@@ -26,7 +26,7 @@ Item {
 
         Behavior on opacity {
             NumberAnimation {
-                duration: 140
+                duration: Theme.durationFast
             }
         }
 
@@ -76,7 +76,7 @@ Item {
 
         Behavior on opacity {
             NumberAnimation {
-                duration: 140
+                duration: Theme.durationFast
             }
         }
 

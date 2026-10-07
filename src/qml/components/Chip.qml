@@ -29,6 +29,17 @@ Item {
         border.width: 1.5
         color: chip.checked ? Theme.glassRaised : "transparent"
         radius: height / 2
+
+        Behavior on color {
+            ColorAnimation {
+                duration: Theme.durationFast
+            }
+        }
+        Behavior on border.color {
+            ColorAnimation {
+                duration: Theme.durationFast
+            }
+        }
     }
 
     Rectangle {

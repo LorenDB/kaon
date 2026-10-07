@@ -17,6 +17,16 @@ QtObject {
     readonly property int bottomStrap: 60
     readonly property int button: 58
     readonly property bool dark: appearance === "dark" || (appearance === "system" && systemDark)
+    // Shared motion language. Short, InOut/OutCubic — clarifies state, doesn't bounce.
+    readonly property int durationFast: 160
+    readonly property int durationMed: 240
+    readonly property int durationParallax: 400
+    readonly property int durationPress: 90
+    readonly property int durationSlow: 360
+    readonly property int durationTheater: 880
+    readonly property int easeIn: Easing.InCubic
+    readonly property int easeInOut: Easing.InOutCubic
+    readonly property int easeOut: Easing.OutCubic
     readonly property FontLoader extraBold: FontLoader {
         source: "fonts/Nunito-ExtraBold.ttf"
     }
@@ -41,8 +51,8 @@ QtObject {
     }
     readonly property int notchHalfWidth: 58
     readonly property int notchHeight: 36
-    // How much of the visor the nose cut eats. Main sets this to 0 when the notch button is hidden.
-    property int notchClearance: notchHeight
+    // How much of the visor the nose cut eats. Main animates this toward 0 when the notch button is hidden.
+    property real notchClearance: notchHeight
     readonly property int pad: 20
     readonly property SystemPalette palette: SystemPalette {
     }

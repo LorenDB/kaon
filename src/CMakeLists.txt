@@ -30,6 +30,7 @@ qt_add_qml_module(kaon
         qml/components/LaunchOptions.qml
         qml/components/Led.qml
         qml/components/NotchButton.qml
+        qml/components/PageLayer.qml
         qml/components/RoundedImage.qml
         qml/components/Segmented.qml
         qml/components/TextBox.qml

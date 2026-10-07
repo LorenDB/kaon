@@ -53,8 +53,8 @@ Item {
 
         Behavior on scale {
             NumberAnimation {
-                duration: 160
-                easing.type: Easing.OutCubic
+                duration: Theme.durationFast
+                easing.type: Theme.easeOut
             }
         }
 

@@ -389,11 +389,19 @@ Item {
             return "Every group with games is switched off";
         }
 
+        opacity: list.count === 0 ? 1 : 0
         spacing: 8
-        visible: list.count === 0
+        visible: opacity > 0.01
         width: view.inner
         x: Theme.pad
         y: top.height + 6
+
+        Behavior on opacity {
+            NumberAnimation {
+                duration: Theme.durationMed
+                easing.type: Theme.easeOut
+            }
+        }
 
         Row {
             id: titleRow

@@ -24,6 +24,12 @@ Shape {
 
     preferredRendererType: Shape.CurveRenderer
 
+    Behavior on color {
+        ColorAnimation {
+            duration: Theme.durationMed
+        }
+    }
+
     ShapePath {
         fillColor: frame.color
         fillRule: ShapePath.OddEvenFill

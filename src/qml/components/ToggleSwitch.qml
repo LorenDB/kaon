@@ -28,7 +28,7 @@ Item {
 
         Behavior on color {
             ColorAnimation {
-                duration: 140
+                duration: Theme.durationFast
             }
         }
 
@@ -42,8 +42,8 @@ Item {
 
             Behavior on x {
                 NumberAnimation {
-                    duration: 140
-                    easing.type: Easing.OutCubic
+                    duration: Theme.durationFast
+                    easing.type: Theme.easeOut
                 }
             }
         }

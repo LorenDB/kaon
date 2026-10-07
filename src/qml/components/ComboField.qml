@@ -104,6 +104,43 @@ Item {
         width: Math.max(box.width, 168)
         y: box.height + 6
 
+    enter: Transition {
+        ParallelAnimation {
+            NumberAnimation {
+                property: "opacity"
+                from: 0
+                to: 1
+                duration: Theme.durationFast
+                easing.type: Theme.easeOut
+            }
+            NumberAnimation {
+                property: "scale"
+                from: 0.96
+                to: 1
+                duration: Theme.durationMed
+                easing.type: Theme.easeOut
+            }
+        }
+    }
+    exit: Transition {
+        ParallelAnimation {
+            NumberAnimation {
+                property: "opacity"
+                from: 1
+                to: 0
+                duration: Theme.durationFast
+                easing.type: Theme.easeIn
+            }
+            NumberAnimation {
+                property: "scale"
+                from: 1
+                to: 0.98
+                duration: Theme.durationFast
+                easing.type: Theme.easeIn
+            }
+        }
+    }
+
         background: Rectangle {
             border.color: Theme.glassLine
             border.width: 1.5
