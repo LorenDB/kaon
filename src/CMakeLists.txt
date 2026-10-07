@@ -136,11 +136,6 @@ qt_add_qml_module(kaon
         stores/Store.h
 
     RESOURCES
-        qml/fonts/Nunito-Bold.ttf
-        qml/fonts/Nunito-ExtraBold.ttf
-        qml/fonts/Nunito-Medium.ttf
-        qml/fonts/Nunito-Regular.ttf
-        qml/fonts/OFL.txt
         qml/icons/kaon.svg
 )
 

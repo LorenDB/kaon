@@ -11,9 +11,6 @@ QtObject {
 
     // "system", "light" or "dark"
     property alias appearance: appearanceSettings.shell
-    readonly property FontLoader bold: FontLoader {
-        source: "fonts/Nunito-Bold.ttf"
-    }
     readonly property int bottomStrap: 60
     readonly property int button: 58
     readonly property bool dark: appearance === "dark" || (appearance === "system" && systemDark)
@@ -27,10 +24,9 @@ QtObject {
     readonly property int easeIn: Easing.InCubic
     readonly property int easeInOut: Easing.InOutCubic
     readonly property int easeOut: Easing.OutCubic
-    readonly property FontLoader extraBold: FontLoader {
-        source: "fonts/Nunito-ExtraBold.ttf"
-    }
-    readonly property string font: regular.name
+    // System Noto Sans: baseline ellipsis (U+2026), so Text.ElideRight sits on the line.
+    // Falls back through Qt's font matching if Noto is not installed.
+    readonly property string font: "Noto Sans"
     readonly property color glass: "#050608"
     readonly property color glassFaint: "#666d7a"
     readonly property color glassHover: "#16191f"
@@ -46,9 +42,6 @@ QtObject {
     readonly property color ledGreen: "#32d77f"
     readonly property color ledOff: "#525866"
     readonly property color ledRed: "#ff5a52"
-    readonly property FontLoader medium: FontLoader {
-        source: "fonts/Nunito-Medium.ttf"
-    }
     readonly property int notchHalfWidth: 58
     readonly property int notchHeight: 36
     // How much of the visor the nose cut eats. Main animates this toward 0 when the notch button is hidden.
@@ -57,9 +50,6 @@ QtObject {
     readonly property SystemPalette palette: SystemPalette {
     }
     readonly property int radius: 22
-    readonly property FontLoader regular: FontLoader {
-        source: "fonts/Nunito-Regular.ttf"
-    }
     // Qt.ColorScheme: 0 unknown, 1 light, 2 dark. Fall back to the palette when the platform doesn't say.
     readonly property int scheme: Application.styleHints.colorScheme
     readonly property Settings settings: Settings {

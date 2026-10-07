@@ -2,7 +2,7 @@ import QtQuick
 
 import dev.lorendb.kaon
 
-// Rounded M+ reads like the legends printed on hardware buttons.
+// App body text. Family comes from Theme (system Noto Sans).
 Text {
     color: Theme.glassText
     font.family: Theme.font
