@@ -177,6 +177,12 @@ Item {
                 view.regroup();
         }
 
+        function onSortTypeChanged() {
+            // Proxy invalidate should already emit gamesChanged; rebuild here so sort never looks stuck.
+            view.rowsKey = "";
+            view.regroup();
+        }
+
         target: GamesFilterModel
     }
 

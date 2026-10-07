@@ -31,9 +31,6 @@ GamesFilterModel::GamesFilterModel(QObject *parent)
     m_storeFilter.setFlag(Game::Store::Heroic);
     m_storeFilter.setFlag(Game::Store::Custom);
 
-    setDynamicSortFilter(true);
-    sort(0);
-
     QSettings settings;
     settings.beginGroup("GamesFilterModel"_L1);
     m_sortType = settings.value("sortType"_L1, SortType::LastPlayed).value<SortType>();
@@ -49,6 +46,10 @@ GamesFilterModel::GamesFilterModel(QObject *parent)
         m_storeFilter = Game::Stores::fromInt(settings.value("storeFilter"_L1).toInt());
     if (settings.contains("featureFilterType"_L1))
         m_featureFilterType = static_cast<FilterType>(settings.value("featureFilterType"_L1).toInt());
+
+    // Sort after loading the persisted sort type. Sorting before that would leave Alphabetical stuck on Recent.
+    setDynamicSortFilter(true);
+    sort(0);
 
     connect(this, &QAbstractItemModel::rowsInserted, this, &GamesFilterModel::gamesChanged);
     connect(this, &QAbstractItemModel::rowsRemoved, this, &GamesFilterModel::gamesChanged);
@@ -102,10 +103,10 @@ void GamesFilterModel::setSortType(SortType sortType)
 {
     if (m_sortType == sortType)
         return;
-    beginFilterChange();
     m_sortType = sortType;
     emit sortTypeChanged(m_sortType);
-    endFilterChange();
+    // begin/endFilterChange only refilters. Changing how lessThan orders rows needs a full invalidate.
+    invalidate();
     saveFilters();
 }
 

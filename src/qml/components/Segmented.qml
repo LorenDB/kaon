@@ -6,11 +6,11 @@ import dev.lorendb.kaon
 Row {
     id: seg
 
-    property string current
+    property var current
     property var options: [] // [{ id, label }]
     property bool shellStyle: false
 
-    signal picked(string key)
+    signal picked(var key)
 
     spacing: 2
 
