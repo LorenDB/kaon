@@ -9,6 +9,15 @@ Item {
 
     readonly property ModConfigDocument doc: ModConfigs.document
 
+    function saveConfig() {
+        if (!view.doc)
+            return;
+        if (view.doc.save())
+            Nav.notify("Saved " + view.doc.title + " settings");
+        else
+            Nav.notify(view.doc.error);
+    }
+
     // The page is created when it opens. Land at the top after focus has had a chance to shove the scroll.
     Component.onCompleted: Qt.callLater(() => flick.contentY = 0)
 
@@ -21,7 +30,7 @@ Item {
         anchors.fill: parent
         boundsBehavior: Flickable.StopAtBounds
         clip: true
-        contentHeight: column.y + column.height + Theme.notchHeight + 36
+        contentHeight: column.y + column.height + Theme.notchHeight + 84
 
         ScrollBar.vertical: GlassScrollBar {
         }
@@ -162,19 +171,6 @@ Item {
                     }
                 }
             }
-
-            VButton {
-                enabled: view.doc && view.doc.dirty
-                solid: true
-                text: "Save"
-
-                onClicked: {
-                    if (view.doc.save())
-                        Nav.notify("Saved " + view.doc.title + " settings");
-                    else
-                        Nav.notify(view.doc.error);
-                }
-            }
         }
     }
 
@@ -185,5 +181,53 @@ Item {
         width: view.width
 
         onBack: Nav.back()
+    }
+
+    // Pinned above the notch while the form scrolls under it, so Save is at hand
+    // at any scroll level while there is something to save.
+    Item {
+        id: saveBar
+
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: Theme.notchHeight + 12
+        height: 60
+        visible: view.doc && view.doc.dirty
+        width: Math.min(560, view.width - 2 * Theme.pad)
+        x: Theme.pad
+
+        Rectangle {
+            anchors.fill: parent
+            border.color: Theme.glassLine
+            border.width: 1
+            color: Theme.glassPanel
+            radius: 16
+        }
+
+        VText {
+            anchors.left: parent.left
+            anchors.leftMargin: 18
+            anchors.right: saveButton.left
+            anchors.rightMargin: 12
+            anchors.verticalCenter: parent.verticalCenter
+            color: Theme.glassMuted
+            elide: Text.ElideRight
+            font.pixelSize: 13
+            font.weight: Font.Bold
+            text: "Unsaved changes"
+        }
+
+        VButton {
+            id: saveButton
+
+            anchors.right: parent.right
+            anchors.rightMargin: 10
+            anchors.verticalCenter: parent.verticalCenter
+            height: implicitHeight
+            solid: true
+            text: "Save"
+            width: implicitWidth
+
+            onClicked: view.saveConfig()
+        }
     }
 }
