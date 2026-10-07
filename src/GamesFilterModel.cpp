@@ -17,8 +17,7 @@ GamesFilterModel::GamesFilterModel(QObject *parent)
     QSettings settings;
     settings.beginGroup("GamesFilterModel"_L1);
     m_sortType = settings.value("sortType"_L1, SortType::LastPlayed).value<SortType>();
-    if (settings.contains("search"_L1))
-        m_search = settings.value("search"_L1).toString();
+    // Search is session-only. Persisting it made the library look empty on reopen with no clue why.
     if (settings.contains("engineFilter"_L1))
         m_engineFilter = Game::Engines::fromInt(settings.value("engineFilter"_L1).toInt());
     if (settings.contains("typeFilter"_L1))
@@ -289,7 +288,7 @@ void GamesFilterModel::saveFilters() const
 {
     QSettings settings;
     settings.beginGroup("GamesFilterModel"_L1);
-    settings.setValue("search"_L1, m_search);
+    settings.remove("search"_L1);
     settings.setValue("sortType"_L1, m_sortType);
     settings.setValue("engineFilter"_L1, static_cast<int>(m_engineFilter));
     settings.setValue("typeFilter"_L1, static_cast<int>(m_typeFilter));

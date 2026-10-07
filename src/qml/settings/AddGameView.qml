@@ -36,7 +36,7 @@ Item {
             // out of sight.
             Nav.openGame(game);
         } else {
-            Nav.notify("Kaon couldn't add that game. Check that the executable exists.");
+            Nav.notify("Kaon couldn't add that game. Check that the executable exists.", "fail");
         }
     }
 

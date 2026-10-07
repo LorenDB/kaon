@@ -218,7 +218,7 @@ Item {
 
     Connections {
         function onCheckFailed() {
-            Nav.notify("Couldn't reach GitHub to check for a new version");
+            Nav.notify("Couldn't reach GitHub to check for a new version", "fail");
         }
 
         function onUpToDate() {

@@ -22,10 +22,15 @@ QtObject {
     property string gameId: ""
     property int gameStore: 0
     property string notice: ""
+    // ok | warn | fail — drives the bottom-strap status LED color
+    property string noticeKind: "ok"
     readonly property Timer noticeTimer: Timer {
         interval: 4500
 
-        onTriggered: nav.notice = ""
+        onTriggered: {
+            nav.notice = "";
+            nav.noticeKind = "ok";
+        }
     }
     readonly property Connections notices: Connections {
         function onNoticed(text) {
@@ -128,8 +133,9 @@ QtObject {
         });
     }
 
-    function notify(text) {
+    function notify(text, kind) {
         notice = text;
+        noticeKind = kind === "warn" || kind === "fail" ? kind : "ok";
         noticeTimer.restart();
     }
 
@@ -142,7 +148,7 @@ QtObject {
 
     function openModConfig(mod) {
         if (!game || !ModConfigs.open(mod, game)) {
-            notify(ModConfigs.error !== "" ? ModConfigs.error : "Couldn't open those settings");
+            notify(ModConfigs.error !== "" ? ModConfigs.error : "Couldn't open those settings", "fail");
             return;
         }
         view = "modConfig";

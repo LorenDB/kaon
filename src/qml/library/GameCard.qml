@@ -12,7 +12,6 @@ Item {
     readonly property bool hot: mouse.containsMouse || activeFocus
     required property var modelData
 
-
     activeFocusOnTab: true
     height: cardWidth * 1.5 + 50
     width: cardWidth

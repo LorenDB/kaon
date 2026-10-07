@@ -15,7 +15,7 @@ Item {
         if (view.doc.save())
             Nav.notify("Saved " + view.doc.title + " settings");
         else
-            Nav.notify(view.doc.error);
+            Nav.notify(view.doc.error, "fail");
     }
 
     // The page is created when it opens. Land at the top after focus has had a chance to shove the scroll.
@@ -83,7 +83,7 @@ Item {
                                            if (view.doc.resetToDownload())
                                                Nav.notify("Restored the settings from the download");
                                            else
-                                               Nav.notify(view.doc.error);
+                                               Nav.notify(view.doc.error, "fail");
                                        }, true)
             }
 

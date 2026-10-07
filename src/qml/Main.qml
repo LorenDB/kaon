@@ -661,9 +661,18 @@ ApplicationWindow {
             Led {
                 anchors.verticalCenter: parent.verticalCenter
                 blinking: root.downloading || (Launcher.phase === Launcher.Countdown && Launcher.game !== root.game)
-                color: root.downloading || Nav.notice !== "" || Launcher.phase !== Launcher.Idle ? Theme.ledGreen :
-                                                                                                   Theme.ledOff
-
+                color: {
+                    if (root.downloading || Launcher.phase !== Launcher.Idle)
+                        return Theme.ledGreen;
+                    if (Nav.notice !== "") {
+                        if (Nav.noticeKind === "fail")
+                            return Theme.ledRed;
+                        if (Nav.noticeKind === "warn")
+                            return Theme.ledAmber;
+                        return Theme.ledGreen;
+                    }
+                    return Theme.ledOff;
+                }
                 size: 8
             }
 

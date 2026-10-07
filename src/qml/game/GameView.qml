@@ -494,7 +494,7 @@ Item {
                                     if (r && r.downloaded)
                                         otherMod.modelData.launchMod(view.game);
                                     else
-                                        Nav.notify("Download " + otherMod.modelData.name + " on the Mods page first");
+                                        Nav.notify("Download " + otherMod.modelData.name + " on the Mods page first", "warn");
                                 }
                             }
 

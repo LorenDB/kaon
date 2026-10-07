@@ -1,4 +1,3 @@
-import QtCore
 import QtQuick
 
 import dev.lorendb.kaon
@@ -17,12 +16,20 @@ Column {
     visible: tools.length > 0
     width: parent ? parent.width : 0
 
-    Settings {
-        id: saved
+    // Open/closed is remembered per game so leaving one open doesn't open the next.
+    readonly property string gameKey: game ? (String(game.store) + "/" + game.id) : ""
+    property bool toolsOpen: false
+    property var toolsOpenByGame: ({})
 
-        property bool toolsOpen: false
+    onGameKeyChanged: toolsOpen = gameKey !== "" && toolsOpenByGame[gameKey] === true
 
-        category: "game"
+    function setToolsOpen(open) {
+        toolsOpen = open;
+        if (gameKey === "")
+            return;
+        const next = Object.assign({}, toolsOpenByGame);
+        next[gameKey] = open;
+        toolsOpenByGame = next;
     }
 
     Item {
@@ -32,8 +39,8 @@ Column {
         height: 32
         width: parent.width
 
-        Keys.onReturnPressed: saved.toolsOpen = !saved.toolsOpen
-        Keys.onSpacePressed: saved.toolsOpen = !saved.toolsOpen
+        Keys.onReturnPressed: panel.setToolsOpen(!panel.toolsOpen)
+        Keys.onSpacePressed: panel.setToolsOpen(!panel.toolsOpen)
 
         Rectangle {
             anchors.fill: parent
@@ -49,7 +56,7 @@ Column {
             anchors.verticalCenter: parent.verticalCenter
             color: Theme.glassFaint
             name: "forward"
-            rotation: saved.toolsOpen ? 90 : 0
+            rotation: panel.toolsOpen ? 90 : 0
             size: 14
             stroke: 2.2
 
@@ -75,7 +82,7 @@ Column {
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
             spacing: 7
-            visible: !saved.toolsOpen
+            visible: !panel.toolsOpen
 
             Led {
                 anchors.verticalCenter: parent.verticalCenter
@@ -104,7 +111,7 @@ Column {
             cursorShape: Qt.PointingHandCursor
             hoverEnabled: true
 
-            onClicked: saved.toolsOpen = !saved.toolsOpen
+            onClicked: panel.setToolsOpen(!panel.toolsOpen)
         }
     }
 
@@ -112,9 +119,9 @@ Column {
         id: body
 
         clip: true
-        enabled: saved.toolsOpen
-        height: saved.toolsOpen ? toolsCol.height : 0
-        opacity: saved.toolsOpen ? 1 : 0
+        enabled: panel.toolsOpen
+        height: panel.toolsOpen ? toolsCol.height : 0
+        opacity: panel.toolsOpen ? 1 : 0
         width: parent.width
 
         Behavior on height {
