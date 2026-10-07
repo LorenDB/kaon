@@ -4,6 +4,7 @@
 #include <QSet>
 #include <QVariant>
 #include <QSortFilterProxyModel>
+#include <QUrl>
 
 #include "Game.h"
 
@@ -98,6 +99,9 @@ class Mod : public QAbstractListModel
     // Which VR runtime this tool works with, e.g. "OpenVR" or "OpenXR". Empty when the mod isn't a
     // runtime-specific tool. Shown as "Name · Runtime" on the game's page so players know what each tool supports.
     Q_PROPERTY(QString vrRuntime READ vrRuntime CONSTANT FINAL)
+    // True when the mod loads per-game DLL plugins from the prefix, like UEVR does. The game's page then
+    // offers to install them.
+    Q_PROPERTY(bool supportsPlugins READ supportsPlugins CONSTANT FINAL)
     Q_PROPERTY(int launchDelay READ launchDelay WRITE setLaunchDelay NOTIFY launchDelayChanged FINAL)
     // What the list of releases holds, for the version menu
     Q_PROPERTY(bool hasNightlies READ hasNightlies NOTIFY releasesChanged FINAL)
@@ -138,6 +142,7 @@ public:
     virtual bool providesVr() const { return true; }
     virtual bool optional() const { return false; }
     virtual QString vrRuntime() const { return {}; }
+    virtual bool supportsPlugins() const { return false; }
     // For an optional tool: what to tell the player while it is on for a game, e.g. where its settings are
     virtual QString installedNote() const { return {}; }
     // True if installing the mod runs something inside the game's Wine prefix, which therefore has to exist first.
@@ -153,6 +158,30 @@ public:
     // True for mods that bring VR into an Unreal game themselves, so that the VR plugins such a game ships with get in
     // their way. See UnrealVrPlugins.
     virtual bool conflictsWithBundledVrPlugins() const { return false; }
+    // Native plugins this mod loads per game, e.g. UEVR's DLLs. Only meaningful when supportsPlugins() is true.
+    // installPlugin and removePlugin return an error in words meant for the user, or empty on success.
+    Q_INVOKABLE virtual QStringList installedPlugins(Game *game)
+    {
+        Q_UNUSED(game)
+        return {};
+    }
+    Q_INVOKABLE virtual QString installPlugin(Game *game, const QUrl &source)
+    {
+        Q_UNUSED(game)
+        Q_UNUSED(source)
+        return {};
+    }
+    Q_INVOKABLE virtual QString removePlugin(Game *game, const QString &fileName)
+    {
+        Q_UNUSED(game)
+        Q_UNUSED(fileName)
+        return {};
+    }
+    Q_INVOKABLE virtual QString pluginHoldReason(Game *game)
+    {
+        Q_UNUSED(game)
+        return {};
+    }
 
     // Seconds to wait between starting a game and launching this mod into it
     int launchDelay() const;

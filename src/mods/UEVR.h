@@ -27,6 +27,7 @@ public:
 
     bool hasRepairOption() const override { return false; }
     bool conflictsWithBundledVrPlugins() const override { return true; }
+    bool supportsPlugins() const override { return true; }
 
     Game::Engines compatibleEngines() const override { return Game::Engine::Unreal; }
     virtual QList<Mod *> dependencies() const override;
@@ -49,6 +50,14 @@ public:
 public slots:
     void downloadRelease(ModRelease *release) override;
     void deleteRelease(ModRelease *release) override;
+
+    // Native plugins for one game: DLL names in its UnrealVRMod/<exe>/plugins folders and the shared
+    // UEVR/plugins folder, installing a picked DLL into the game's folders, and taking one back out.
+    // The install and remove functions return an error in words meant for the user, or empty on success.
+    QStringList installedPlugins(Game *game) override;
+    QString installPlugin(Game *game, const QUrl &source) override;
+    QString removePlugin(Game *game, const QString &fileName) override;
+    QString pluginHoldReason(Game *game) override;
 
 protected:
     void launchModImpl(Game *game) override;

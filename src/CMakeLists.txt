@@ -117,6 +117,8 @@ qt_add_qml_module(kaon
         mods/UEVR.h
         mods/UEVRAFW.cpp
         mods/UEVRAFW.h
+        mods/UevrPlugins.cpp
+        mods/UevrPlugins.h
         mods/UnrealVrPlugins.cpp
         mods/UnrealVrPlugins.h
         mods/UUVR.cpp

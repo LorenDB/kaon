@@ -1,5 +1,7 @@
+import QtCore
 import QtQuick
 import QtQuick.Controls.Basic
+import QtQuick.Dialogs
 
 import dev.lorendb.kaon
 
@@ -714,6 +716,119 @@ Item {
                     visible: view.group === "ready" && view.cardMod.type === Mod.Launchable && !view.launching
 
                     onClicked: view.cardMod.launchMod(view.game)
+                }
+
+                // Native plugins: DLLs UEVR loads from this game's prefix
+                Column {
+                    id: pluginSection
+
+                    readonly property string pluginHold: {
+                        const revision = GameStatus.revision;
+                        if (!view.cardMod || !view.cardMod.supportsPlugins || !view.game)
+                            return "";
+                        return view.cardMod.pluginHoldReason(view.game);
+                    }
+                    readonly property var pluginList: {
+                        const revision = GameStatus.revision;
+                        if (!view.cardMod || !view.cardMod.supportsPlugins || !view.game)
+                            return [];
+                        if (view.cardMod.pluginHoldReason(view.game) !== "")
+                            return [];
+                        return view.cardMod.installedPlugins(view.game);
+                    }
+
+                    spacing: 8
+                    visible: view.cardMod && view.cardMod.supportsPlugins
+                    width: parent.width
+
+                    Rectangle {
+                        color: Theme.glassLine
+                        height: 1
+                        width: parent.width
+                    }
+
+                    VText {
+                        color: Theme.glassFaint
+                        font.pixelSize: 12
+                        font.weight: Font.Bold
+                        text: "Plugins"
+                    }
+
+                    VText {
+                        color: Theme.glassMuted
+                        font.pixelSize: 13
+                        lineHeight: 1.3
+                        text: pluginSection.pluginHold !== "" ? pluginSection.pluginHold : pluginSection.pluginList.length
+                                                                === 0 ? "No plugins installed. Pick a plugin DLL and Kaon copies it into this game's UEVR plugins folder." :
+                                                                        "DLLs UEVR loads for this game."
+                        width: parent.width
+                        wrapMode: Text.Wrap
+                    }
+
+                    Repeater {
+                        model: pluginSection.pluginList
+
+                        Item {
+                            id: pluginRow
+
+                            required property string modelData
+
+                            height: 32
+                            width: pluginSection.width
+
+                            VText {
+                                anchors.left: parent.left
+                                anchors.right: pluginRemove.left
+                                anchors.rightMargin: 8
+                                anchors.verticalCenter: parent.verticalCenter
+                                elide: Text.ElideMiddle
+                                font.pixelSize: 13
+                                text: pluginRow.modelData
+                            }
+
+                            VButton {
+                                id: pluginRemove
+
+                                anchors.right: parent.right
+                                anchors.verticalCenter: parent.verticalCenter
+                                icon: "trash"
+                                small: true
+
+                                onClicked: {
+                                    const err = view.cardMod.removePlugin(view.game, pluginRow.modelData);
+                                    if (err !== "")
+                                        Nav.notify(err);
+                                    else
+                                        Nav.notify("Removed " + pluginRow.modelData);
+                                }
+                            }
+                        }
+                    }
+
+                    VButton {
+                        enabled: pluginSection.pluginHold === ""
+                        icon: "plus"
+                        small: true
+                        text: "Install plugin"
+
+                        onClicked: pluginPicker.open()
+                    }
+
+                    FileDialog {
+                        id: pluginPicker
+
+                        currentFolder: StandardPaths.standardLocations(StandardPaths.HomeLocation)[0]
+                        nameFilters: ["Plugin DLL (*.dll)"]
+                        title: "Pick a UEVR plugin DLL"
+
+                        onAccepted: {
+                            const err = view.cardMod.installPlugin(view.game, selectedFile);
+                            if (err !== "")
+                                Nav.notify(err);
+                            else
+                                Nav.notify("Installed " + decodeURIComponent(String(selectedFile).split("/").pop()));
+                        }
+                    }
                 }
             }
         }

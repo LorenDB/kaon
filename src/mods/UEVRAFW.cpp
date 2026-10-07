@@ -16,6 +16,7 @@
 #include "Archive.h"
 #include "Dotnet.h"
 #include "DownloadManager.h"
+#include "UevrPlugins.h"
 #include "Wine.h"
 
 Q_LOGGING_CATEGORY(UEVRAFWLog, "uevr.afw")
@@ -386,6 +387,35 @@ void UEVRAFW::deleteRelease(ModRelease *release)
     QDir installDir{path(Paths::BasePath) + '/' + QString::number(release->id())};
     if (installDir.removeRecursively())
         release->setDownloaded(false);
+}
+
+QStringList UEVRAFW::installedPlugins(Game *game)
+{
+    return UevrPlugins::installedPluginNames(game);
+}
+
+QString UEVRAFW::installPlugin(Game *game, const QUrl &source)
+{
+    const auto error = UevrPlugins::installPlugin(game, source);
+    if (!error.isEmpty())
+        return error;
+    Aptabase::instance()->track("install-uevr-afw-plugin"_L1, {{"game"_L1, game ? game->name() : QString{}}});
+    emit installedInGameChanged(game);
+    return {};
+}
+
+QString UEVRAFW::removePlugin(Game *game, const QString &fileName)
+{
+    const auto error = UevrPlugins::removePlugin(game, fileName);
+    if (!error.isEmpty())
+        return error;
+    emit installedInGameChanged(game);
+    return {};
+}
+
+QString UEVRAFW::pluginHoldReason(Game *game)
+{
+    return UevrPlugins::manageHoldReason(game);
 }
 
 void UEVRAFW::launchModImpl(Game *game)

@@ -17,6 +17,7 @@
 #include "Archive.h"
 #include "Dotnet.h"
 #include "DownloadManager.h"
+#include "UevrPlugins.h"
 #include "Wine.h"
 
 Q_LOGGING_CATEGORY(UEVRLog, "uevr")
@@ -98,6 +99,35 @@ void UEVR::deleteRelease(ModRelease *release)
     QDir installDir{path(Paths::UEVRBasePath) + '/' + QString::number(release->id())};
     if (installDir.removeRecursively())
         release->setDownloaded(false);
+}
+
+QStringList UEVR::installedPlugins(Game *game)
+{
+    return UevrPlugins::installedPluginNames(game);
+}
+
+QString UEVR::installPlugin(Game *game, const QUrl &source)
+{
+    const auto error = UevrPlugins::installPlugin(game, source);
+    if (!error.isEmpty())
+        return error;
+    Aptabase::instance()->track("install-uevr-plugin"_L1, {{"game"_L1, game ? game->name() : QString{}}});
+    emit installedInGameChanged(game);
+    return {};
+}
+
+QString UEVR::removePlugin(Game *game, const QString &fileName)
+{
+    const auto error = UevrPlugins::removePlugin(game, fileName);
+    if (!error.isEmpty())
+        return error;
+    emit installedInGameChanged(game);
+    return {};
+}
+
+QString UEVR::pluginHoldReason(Game *game)
+{
+    return UevrPlugins::manageHoldReason(game);
 }
 
 void UEVR::launchModImpl(Game *game)
