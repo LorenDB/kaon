@@ -22,6 +22,8 @@ class GamesFilterModel : public QSortFilterProxyModel
     // Goes up whenever one of the filters above is switched. QML can't read the flags themselves, so a binding that
     // asks isEngineFilterSet() and friends passes this as the last argument to be run again when the answer changes.
     Q_PROPERTY(int filterRevision READ filterRevision NOTIFY filterRevisionChanged FINAL)
+    // True when engine/type/feature/store filters differ from the shipped defaults (search and sort are separate).
+    Q_PROPERTY(bool filtersActive READ filtersActive NOTIFY filterRevisionChanged FINAL)
 
     Q_PROPERTY(SortType sortType READ sortType WRITE setSortType NOTIFY sortTypeChanged FINAL)
     Q_PROPERTY(
@@ -54,6 +56,7 @@ public:
     QString search() const { return m_search; }
     bool scanning() const { return m_scanning; }
     int filterRevision() const { return m_filterRevision; }
+    bool filtersActive() const;
 
     SortType sortType() const { return m_sortType; }
     FilterType featureFilterType() const { return m_featureFilterType; }
@@ -71,6 +74,7 @@ public:
     Q_INVOKABLE void setTypeFilter(Game::AppType type, bool state);
     Q_INVOKABLE void setFeatureFilter(Game::Feature feature, bool state);
     Q_INVOKABLE void setStoreFilter(Game::Store store, bool state);
+    Q_INVOKABLE void clearFilters();
 
     // The games that pass the filters, in display order
     Q_INVOKABLE QList<Game *> games() const;
@@ -106,6 +110,7 @@ private:
 
     void updateScanning();
     void saveFilters() const;
+    void applyDefaultFilters();
 
     QConcatenateTablesProxyModel *m_models;
     QList<Store *> m_stores;

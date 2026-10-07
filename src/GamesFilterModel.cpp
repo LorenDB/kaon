@@ -12,24 +12,7 @@ GamesFilterModel::GamesFilterModel(QObject *parent)
 {
     setSourceModel(m_models);
 
-    // Every engine is shown. The library groups games by what Kaon can do for them instead of hiding engines.
-    m_engineFilter.setFlag(Game::Engine::UnknownEngine);
-    m_engineFilter.setFlag(Game::Engine::Unreal);
-    m_engineFilter.setFlag(Game::Engine::Unity);
-    m_engineFilter.setFlag(Game::Engine::Godot);
-    m_engineFilter.setFlag(Game::Engine::Source);
-
-    m_typeFilter.setFlag(Game::AppType::Game);
-    m_typeFilter.setFlag(Game::AppType::Demo);
-
-    m_featureFilter.setFlag(Game::Feature::Flatscreen);
-    m_featureFilter.setFlag(Game::Feature::VR);
-    m_featureFilter.setFlag(Game::Feature::Anticheat);
-
-    m_storeFilter.setFlag(Game::Store::Steam);
-    m_storeFilter.setFlag(Game::Store::Itch);
-    m_storeFilter.setFlag(Game::Store::Heroic);
-    m_storeFilter.setFlag(Game::Store::Custom);
+    applyDefaultFilters();
 
     QSettings settings;
     settings.beginGroup("GamesFilterModel"_L1);
@@ -117,6 +100,8 @@ void GamesFilterModel::setFeatureFilterType(FilterType type)
     beginFilterChange();
     m_featureFilterType = type;
     emit featureFilterTypeChanged(type);
+    ++m_filterRevision;
+    emit filterRevisionChanged();
     endFilterChange();
     saveFilters();
 }
@@ -225,6 +210,79 @@ void GamesFilterModel::retargetAfterReset(bool announce)
 {
     if (announce)
         Launcher::instance()->announceGame();
+}
+
+void GamesFilterModel::applyDefaultFilters()
+{
+    // Every engine is shown. The library groups games by what Kaon can do for them instead of hiding engines.
+    m_engineFilter = Game::Engines{};
+    m_engineFilter.setFlag(Game::Engine::UnknownEngine);
+    m_engineFilter.setFlag(Game::Engine::Unreal);
+    m_engineFilter.setFlag(Game::Engine::Unity);
+    m_engineFilter.setFlag(Game::Engine::Godot);
+    m_engineFilter.setFlag(Game::Engine::Source);
+
+    m_typeFilter = Game::AppTypes{};
+    m_typeFilter.setFlag(Game::AppType::Game);
+    m_typeFilter.setFlag(Game::AppType::Demo);
+
+    m_featureFilter = Game::Features{};
+    m_featureFilter.setFlag(Game::Feature::Flatscreen);
+    m_featureFilter.setFlag(Game::Feature::VR);
+    m_featureFilter.setFlag(Game::Feature::Anticheat);
+
+    m_storeFilter = Game::Stores{};
+    m_storeFilter.setFlag(Game::Store::Steam);
+    m_storeFilter.setFlag(Game::Store::Itch);
+    m_storeFilter.setFlag(Game::Store::Heroic);
+    m_storeFilter.setFlag(Game::Store::Custom);
+
+    m_featureFilterType = FilterType::HasAnyFilter;
+}
+
+bool GamesFilterModel::filtersActive() const
+{
+    Game::Engines engines;
+    engines.setFlag(Game::Engine::UnknownEngine);
+    engines.setFlag(Game::Engine::Unreal);
+    engines.setFlag(Game::Engine::Unity);
+    engines.setFlag(Game::Engine::Godot);
+    engines.setFlag(Game::Engine::Source);
+
+    Game::AppTypes types;
+    types.setFlag(Game::AppType::Game);
+    types.setFlag(Game::AppType::Demo);
+
+    Game::Features features;
+    features.setFlag(Game::Feature::Flatscreen);
+    features.setFlag(Game::Feature::VR);
+    features.setFlag(Game::Feature::Anticheat);
+
+    Game::Stores stores;
+    stores.setFlag(Game::Store::Steam);
+    stores.setFlag(Game::Store::Itch);
+    stores.setFlag(Game::Store::Heroic);
+    stores.setFlag(Game::Store::Custom);
+
+    return m_engineFilter != engines || m_typeFilter != types || m_featureFilter != features || m_storeFilter != stores
+        || m_featureFilterType != FilterType::HasAnyFilter;
+}
+
+void GamesFilterModel::clearFilters()
+{
+    if (!filtersActive())
+        return;
+    beginFilterChange();
+    applyDefaultFilters();
+    emit engineFilterChanged();
+    emit typeFilterChanged();
+    emit featureFilterChanged();
+    emit storeFilterChanged();
+    emit featureFilterTypeChanged(m_featureFilterType);
+    ++m_filterRevision;
+    emit filterRevisionChanged();
+    endFilterChange();
+    saveFilters();
 }
 
 void GamesFilterModel::saveFilters() const

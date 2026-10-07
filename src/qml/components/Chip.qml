@@ -8,6 +8,8 @@ Item {
 
     property bool checked: false
     property int count: -1
+    // Amber LED while something non-default is applied, even when the chip itself is unchecked
+    property bool attention: false
     property color led: Theme.ledOff
     property bool showLed: true
     property string text
@@ -47,9 +49,9 @@ Item {
 
         Led {
             anchors.verticalCenter: parent.verticalCenter
-            color: chip.checked ? chip.led : Theme.ledOff
+            color: chip.attention ? Theme.ledAmber : (chip.checked ? chip.led : Theme.ledOff)
             size: 7
-            visible: chip.showLed
+            visible: chip.showLed || chip.attention
         }
 
         VText {

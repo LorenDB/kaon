@@ -188,6 +188,25 @@ Popup {
                 }
             }
         }
+
+        Item {
+            height: clearFilters.visible ? clearFilters.height + 8 : 0
+            width: parent.width
+
+            VButton {
+                id: clearFilters
+
+                anchors.right: parent.right
+                anchors.top: parent.top
+                anchors.topMargin: 8
+                quiet: true
+                small: true
+                text: "Clear filters"
+                visible: GamesFilterModel.filtersActive
+
+                onClicked: GamesFilterModel.clearFilters()
+            }
+        }
     }
 
     Component.onDestruction: if (visible)

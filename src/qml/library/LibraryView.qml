@@ -256,6 +256,7 @@ Item {
                 Chip {
                     id: filtersChip
 
+                    attention: GamesFilterModel.filtersActive
                     checked: filters.opened
                     showLed: false
                     text: "Filters"
