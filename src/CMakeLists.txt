@@ -104,6 +104,8 @@ qt_add_qml_module(kaon
         mods/ModsFilterModel.h
         mods/OpenXrCas.cpp
         mods/OpenXrCas.h
+        mods/OptiScaler.cpp
+        mods/OptiScaler.h
         mods/Portal1VR.cpp
         mods/Portal1VR.h
         mods/Portal1VRInstall.cpp

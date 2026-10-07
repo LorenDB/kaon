@@ -21,6 +21,7 @@
 #include "Heroic.h"
 #include "Itch.h"
 #include "OpenXrCas.h"
+#include "OptiScaler.h"
 #include "Portal1VR.h"
 #include "Portal2VR.h"
 #include "Steam.h"
@@ -124,6 +125,7 @@ int main(int argc, char *argv[])
     GamesFilterModel::instance();
     Itch::instance();
     OpenXrCas::instance();
+    OptiScaler::instance();
     Portal1VR::instance();
     Portal2VR::instance();
     UEVR::instance();

@@ -172,6 +172,10 @@ public:
     // names below root, or the two joined with forward slashes when there is no such file.
     static QString resolveWindowsPath(const QString &root, const QString &relative);
 
+    // Folder Windows loads a dxgi.dll from for this launch option. Unreal games start through a small launcher in their
+    // top folder; the game itself is the executable under <Project>/Binaries/Win64 (or Win32).
+    QString windowsBinaryDir(const LaunchOption &exe) const;
+
     // This is used to detect if a game has fully loaded or if there were errors parsing it.
     bool isValid() const { return m_valid; }
 

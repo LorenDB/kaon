@@ -96,8 +96,12 @@ QString GitHubMod::path(const Paths p) const
 
 QString GitHubMod::pathForRelease(ModRelease *release, const ModRelease::Asset &asset) const
 {
+    // OptiScaler ships .7z; most other mods ship .zip. Keep the published extension so Archive picks the right tool.
+    auto ext = QFileInfo{asset.name}.suffix().toLower();
+    if (ext.isEmpty())
+        ext = "zip"_L1;
     return path(Paths::ReleaseBasePath) +
-           "/%1_%2_%3.zip"_L1.arg(settingsGroup(), QString::number(release->id()), QString::number(asset.id));
+           "/%1_%2_%3.%4"_L1.arg(settingsGroup(), QString::number(release->id()), QString::number(asset.id), ext);
 }
 
 QByteArray GitHubMod::readShippedConfig(const Game *game, QString *error)

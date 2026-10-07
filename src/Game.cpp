@@ -1,5 +1,6 @@
 #include "Game.h"
 
+#include <QDir>
 #include <QDirIterator>
 #include <QFileInfo>
 #include <QRegularExpression>
@@ -195,6 +196,44 @@ QStringList Game::layoutRoots() const
         }
     }
     return roots;
+}
+
+QString Game::windowsBinaryDir(const LaunchOption &exe) const
+{
+    const QFileInfo launcher{exe.executable};
+    const auto own = launcher.absolutePath();
+    if (engine() != Engine::Unreal || own.contains("/Binaries/Win"_L1, Qt::CaseInsensitive))
+        return own;
+
+    QStringList found;
+    // A game that has both builds is started from the 64-bit one
+    for (const auto platform : {"Binaries/Win64"_L1, "Binaries/Win32"_L1})
+    {
+        for (const auto &root : layoutRoots())
+        {
+            for (const auto &project : QDir{root}.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot))
+            {
+                // Engine/Binaries holds the crash reporter, not the game
+                if (project.fileName().compare("Engine"_L1, Qt::CaseInsensitive) == 0)
+                    continue;
+                const QDir binaries{resolveWindowsPath(project.absoluteFilePath(), platform)};
+                if (binaries.exists() && !binaries.entryList({"*.exe"_L1}, QDir::Files).isEmpty() &&
+                    !found.contains(binaries.absolutePath()))
+                    found << binaries.absolutePath();
+            }
+        }
+        if (!found.isEmpty())
+            break;
+    }
+
+    // The launcher is named after the project, so that settles it when a game ships more than one
+    if (found.size() > 1)
+    {
+        const auto named = found.filter('/'_L1 + launcher.completeBaseName() + "/Binaries/"_L1, Qt::CaseInsensitive);
+        if (named.size() == 1)
+            return named.constFirst();
+    }
+    return found.size() == 1 ? found.constFirst() : own;
 }
 
 void Game::detectGameEngine()
