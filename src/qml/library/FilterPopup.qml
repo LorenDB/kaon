@@ -3,7 +3,7 @@ import QtQuick.Controls.Basic
 
 import dev.lorendb.kaon
 
-// Engine, app type and store filters. Most people never open this.
+// Engine, app type, feature, and store filters. Most people never open this.
 Popup {
     id: pop
 
@@ -29,43 +29,6 @@ Popup {
     margins: 8
     padding: 16
     width: 330
-
-    enter: Transition {
-        ParallelAnimation {
-            NumberAnimation {
-                property: "opacity"
-                from: 0
-                to: 1
-                duration: Theme.durationFast
-                easing.type: Theme.easeOut
-            }
-            NumberAnimation {
-                property: "scale"
-                from: 0.96
-                to: 1
-                duration: Theme.durationMed
-                easing.type: Theme.easeOut
-            }
-        }
-    }
-    exit: Transition {
-        ParallelAnimation {
-            NumberAnimation {
-                property: "opacity"
-                from: 1
-                to: 0
-                duration: Theme.durationFast
-                easing.type: Theme.easeIn
-            }
-            NumberAnimation {
-                property: "scale"
-                from: 1
-                to: 0.98
-                duration: Theme.durationFast
-                easing.type: Theme.easeIn
-            }
-        }
-    }
 
     background: Rectangle {
         border.color: Theme.glassLine
@@ -179,6 +142,62 @@ Popup {
             color: Theme.glassMuted
             font.pixelSize: 12
             font.weight: Font.Bold
+            text: "Features"
+            topPadding: 4
+        }
+
+        Flow {
+            spacing: 6
+            width: parent.width
+
+            Repeater {
+                model: [
+                    {
+                        "value": Game.Flatscreen,
+                        "label": "Flatscreen"
+                    },
+                    {
+                        "value": Game.VR,
+                        "label": "VR"
+                    },
+                    {
+                        "value": Game.Anticheat,
+                        "label": "Anticheat"
+                    }
+                ]
+
+                Chip {
+                    required property var modelData
+
+                    checked: GamesFilterModel.isFeatureFilterSet(modelData.value, GamesFilterModel.filterRevision)
+                    showLed: false
+                    text: modelData.label
+
+                    onToggled: GamesFilterModel.setFeatureFilter(modelData.value, !checked)
+                }
+            }
+        }
+
+        Segmented {
+            current: GamesFilterModel.featureFilterType
+            options: [
+                {
+                    "id": GamesFilterModel.HasAnyFilter,
+                    "label": "Any"
+                },
+                {
+                    "id": GamesFilterModel.HasAllFilters,
+                    "label": "All"
+                }
+            ]
+
+            onPicked: key => GamesFilterModel.featureFilterType = key
+        }
+
+        VText {
+            color: Theme.glassMuted
+            font.pixelSize: 12
+            font.weight: Font.Bold
             text: "Store"
             topPadding: 4
             visible: pop.manyStores
@@ -242,6 +261,44 @@ Popup {
                 visible: GamesFilterModel.filtersActive
 
                 onClicked: GamesFilterModel.clearFilters()
+            }
+        }
+    }
+    enter: Transition {
+        ParallelAnimation {
+            NumberAnimation {
+                duration: Theme.durationFast
+                easing.type: Theme.easeOut
+                from: 0
+                property: "opacity"
+                to: 1
+            }
+
+            NumberAnimation {
+                duration: Theme.durationMed
+                easing.type: Theme.easeOut
+                from: 0.96
+                property: "scale"
+                to: 1
+            }
+        }
+    }
+    exit: Transition {
+        ParallelAnimation {
+            NumberAnimation {
+                duration: Theme.durationFast
+                easing.type: Theme.easeIn
+                from: 1
+                property: "opacity"
+                to: 0
+            }
+
+            NumberAnimation {
+                duration: Theme.durationFast
+                easing.type: Theme.easeIn
+                from: 1
+                property: "scale"
+                to: 0.98
             }
         }
     }

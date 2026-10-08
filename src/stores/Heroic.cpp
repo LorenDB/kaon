@@ -82,32 +82,51 @@ public:
         {
             m_id = json["appName"_L1].toString();
             m_installDir = toHost(json["install_path"_L1].toString());
+            // Installed GOG titles are games. Leaving this at Other hid them: the library's default
+            // filter is Game and Demo, and the primary play task is often the launcher, not "game".
+            m_type = AppType::Game;
+            m_name = json["title"_L1].toString();
 
-            if (QFile gogGameInfo{"%1/goggame-%2.info"_L1.arg(m_installDir, m_id)}; gogGameInfo.open(QIODevice::ReadOnly))
+            Platform platform = Platform::Windows;
+            if (const auto p = json["platform"].toString(); p == "osx"_L1)
+                platform = Platform::MacOS;
+            else if (p == "linux"_L1)
+                platform = Platform::Linux;
+
+            auto infoPath = "%1/goggame-%2.info"_L1.arg(m_installDir, m_id);
+            if (!QFileInfo::exists(infoPath))
+            {
+                const auto matches = QDir{m_installDir}.entryList({"goggame-*.info"_L1}, QDir::Files);
+                if (!matches.isEmpty())
+                    infoPath = m_installDir + '/'_L1 + matches.constFirst();
+            }
+
+            if (QFile gogGameInfo{infoPath}; gogGameInfo.open(QIODevice::ReadOnly))
             {
                 const auto info = QJsonDocument::fromJson(gogGameInfo.readAll()).object();
-                m_name = info["name"_L1].toString();
-
-                Platform platform;
-                if (const auto p = json["platform"].toString(); p == "windows"_L1)
-                    platform = Platform::Windows;
-                else if (p == "osx"_L1)
-                    platform = Platform::MacOS;
-                else if (p == "linux"_L1)
-                    platform = Platform::Linux;
+                if (const auto name = info["name"_L1].toString(); !name.isEmpty())
+                    m_name = name;
 
                 for (const auto &entry : info["playTasks"_L1].toArray())
                 {
+                    const auto path = entry["path"_L1].toString();
+                    if (path.isEmpty())
+                        continue;
+
                     LaunchOption lo;
-                    lo.executable = resolveWindowsPath(m_installDir, entry["path"_L1].toString());
+                    lo.executable = resolveWindowsPath(m_installDir, path);
                     lo.platform = platform;
+                    m_executables[m_executables.size()] = lo;
+                }
+            }
 
-                    if (entry["isPrimary"_L1].toBool())
-                    {
-                        if (const auto typeStr = entry["category"_L1].toString(); typeStr == "game")
-                            m_type = AppType::Game;
-                    }
-
+            if (m_executables.isEmpty())
+            {
+                if (const auto exe = json["executable"_L1].toString(); !exe.isEmpty())
+                {
+                    LaunchOption lo;
+                    lo.executable = resolveWindowsPath(m_installDir, exe);
+                    lo.platform = platform;
                     m_executables[m_executables.size()] = lo;
                 }
             }
@@ -129,6 +148,8 @@ public:
                                                           .toString()
                                                           .replace("{formatter}"_L1, ""_L1)
                                                           .replace("{ext}"_L1, "jpg"_L1);
+                if (m_name.isEmpty())
+                    m_name = storeCache["game"_L1]["title"_L1].toString();
             }
         }
         else if (store == SubStore::Amazon)

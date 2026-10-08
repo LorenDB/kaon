@@ -362,7 +362,9 @@ void Game::detectGameEngine()
         for (QDirIterator pckFinder{exe.absolutePath()}; pckFinder.hasNext();)
         {
             pckFinder.next();
-            if (pckFinder.fileName().toLower() == exe.baseName().toLower() + ".pck"_L1)
+            // completeBaseName keeps dots in the name, so lin_v1.3.x86_64 matches lin_v1.3.pck.
+            // baseName() would stop at the first dot and look for lin_v1.pck.
+            if (pckFinder.fileName().compare(exe.completeBaseName() + ".pck"_L1, Qt::CaseInsensitive) == 0)
             {
                 m_engine = Engine::Godot;
                 return;

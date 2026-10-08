@@ -839,8 +839,10 @@ public:
                         else if ((key == "openvrsupport"_L1 || key == "openxrsupport"_L1) &&
                                  !m_features.testFlag(Feature::VR))
                             m_features.setFlag(Feature::VR, parseInt(value.first, value.second));
-                        else if (key == "onlyvrsupport"_L1 && !m_features.testFlag(Feature::VR))
+                        else if (key == "onlyvrsupport"_L1)
                         {
+                            // openvrsupport earlier in this section may already have set VR. Still
+                            // clear flatscreen, or a VR-only game is labeled as if it also runs flat.
                             if (bool vrOnly = parseInt(value.first, value.second); vrOnly)
                             {
                                 m_features.setFlag(Feature::VR);

@@ -1,10 +1,10 @@
 #include "ModConfig.h"
 
 #include <QDebug>
-#include <QtMath>
 #include <QFile>
 #include <QFileInfo>
 #include <QSaveFile>
+#include <QtMath>
 
 #include "Game.h"
 #include "GitHubMod.h"
@@ -60,12 +60,8 @@ namespace
                                 double maximum = qQNaN(),
                                 double step = 0.01)
     {
-        auto spec = setting(std::move(section),
-                            std::move(label),
-                            std::move(detail),
-                            "autoNumber"_L1,
-                            {std::move(alias)},
-                            "auto"_L1);
+        auto spec =
+            setting(std::move(section), std::move(label), std::move(detail), "autoNumber"_L1, {std::move(alias)}, "auto"_L1);
         spec.manualDefault = std::move(manualDefault);
         if (qIsFinite(minimum) && qIsFinite(maximum))
         {
@@ -490,7 +486,6 @@ namespace
         };
     }
 
-
     // OptiScaler defaults many keys to "auto". Bool would drop those lines, so use choice with Auto.
     ConfigText::Spec autoBool(QString section, QString label, QString detail, QString alias)
     {
@@ -505,30 +500,29 @@ namespace
 
     QList<ConfigText::Spec> optiScalerSpecs()
     {
-        const auto dx11 = choice(
-            "Upscalers"_L1,
-            "DX11 upscaler"_L1,
-            "Native and Dx11-on-12 options. Auto picks FSR 2.2."_L1,
-            "Dx11Upscaler"_L1,
-            "auto"_L1,
-            {"auto"_L1,
-             "fsr22"_L1,
-             "fsr31"_L1,
-             "xess"_L1,
-             "xess_12"_L1,
-             "fsr21_12"_L1,
-             "fsr22_12"_L1,
-             "ffx_12"_L1,
-             "dlss"_L1},
-            {"Auto"_L1,
-             "FSR 2.2"_L1,
-             "FSR 3.1"_L1,
-             "XeSS"_L1,
-             "XeSS (Dx12)"_L1,
-             "FSR 2.1 (Dx12)"_L1,
-             "FSR 2.2 (Dx12)"_L1,
-             "FidelityFX (Dx12)"_L1,
-             "DLSS"_L1});
+        const auto dx11 = choice("Upscalers"_L1,
+                                 "DX11 upscaler"_L1,
+                                 "Native and Dx11-on-12 options. Auto picks FSR 2.2."_L1,
+                                 "Dx11Upscaler"_L1,
+                                 "auto"_L1,
+                                 {"auto"_L1,
+                                  "fsr22"_L1,
+                                  "fsr31"_L1,
+                                  "xess"_L1,
+                                  "xess_12"_L1,
+                                  "fsr21_12"_L1,
+                                  "fsr22_12"_L1,
+                                  "ffx_12"_L1,
+                                  "dlss"_L1},
+                                 {"Auto"_L1,
+                                  "FSR 2.2"_L1,
+                                  "FSR 3.1"_L1,
+                                  "XeSS"_L1,
+                                  "XeSS (Dx12)"_L1,
+                                  "FSR 2.1 (Dx12)"_L1,
+                                  "FSR 2.2 (Dx12)"_L1,
+                                  "FidelityFX (Dx12)"_L1,
+                                  "DLSS"_L1});
         const auto dx12 = choice("Upscalers"_L1,
                                  "DX12 upscaler"_L1,
                                  "Auto picks DLSS, FSR 4, or XeSS from the GPU. AFW games need a DLSS path."_L1,
@@ -536,21 +530,21 @@ namespace
                                  "auto"_L1,
                                  {"auto"_L1, "xess"_L1, "fsr21"_L1, "fsr22"_L1, "ffx"_L1, "dlss"_L1},
                                  {"Auto"_L1, "XeSS"_L1, "FSR 2.1"_L1, "FSR 2.2"_L1, "FidelityFX"_L1, "DLSS"_L1});
-        const auto vulkan = choice(
-            "Upscalers"_L1,
-            "Vulkan upscaler"_L1,
-            "Native and Vulkan-on-12 options. Auto picks FSR 2.2."_L1,
-            "VulkanUpscaler"_L1,
-            "auto"_L1,
-            {"auto"_L1, "fsr21"_L1, "fsr22"_L1, "ffx"_L1, "xess"_L1, "fsr21_12"_L1, "ffx_12"_L1, "dlss"_L1},
-            {"Auto"_L1,
-             "FSR 2.1"_L1,
-             "FSR 2.2"_L1,
-             "FidelityFX"_L1,
-             "XeSS"_L1,
-             "FSR 2.1 (Dx12)"_L1,
-             "FidelityFX (Dx12)"_L1,
-             "DLSS"_L1});
+        const auto vulkan =
+            choice("Upscalers"_L1,
+                   "Vulkan upscaler"_L1,
+                   "Native and Vulkan-on-12 options. Auto picks FSR 2.2."_L1,
+                   "VulkanUpscaler"_L1,
+                   "auto"_L1,
+                   {"auto"_L1, "fsr21"_L1, "fsr22"_L1, "ffx"_L1, "xess"_L1, "fsr21_12"_L1, "ffx_12"_L1, "dlss"_L1},
+                   {"Auto"_L1,
+                    "FSR 2.1"_L1,
+                    "FSR 2.2"_L1,
+                    "FidelityFX"_L1,
+                    "XeSS"_L1,
+                    "FSR 2.1 (Dx12)"_L1,
+                    "FidelityFX (Dx12)"_L1,
+                    "DLSS"_L1});
 
         return {
             dx11,
@@ -673,14 +667,8 @@ namespace
                      "Custom quality ratios"_L1,
                      "Replaces DLSS/FSR quality-mode scales with the values below."_L1,
                      "QualityRatioOverrideEnabled"_L1),
-            autoNumber("Quality overrides"_L1,
-                       "DLAA ratio"_L1,
-                       "Auto is 1.0."_L1,
-                       "QualityRatioDLAA"_L1,
-                       "1.0"_L1,
-                       0.5,
-                       5.0,
-                       0.05),
+            autoNumber(
+                "Quality overrides"_L1, "DLAA ratio"_L1, "Auto is 1.0."_L1, "QualityRatioDLAA"_L1, "1.0"_L1, 0.5, 5.0, 0.05),
             autoNumber("Quality overrides"_L1,
                        "Ultra Quality ratio"_L1,
                        "Auto is 1.3."_L1,
@@ -996,7 +984,9 @@ ModConfigs *ModConfigs::create(QQmlEngine *, QJSEngine *)
 bool ModConfigs::available(Mod *mod, Game *game, int revision) const
 {
     Q_UNUSED(revision)
-    return mod && game && mod->isInstalledForGame(game) && !mod->configFileForGame(game).isEmpty();
+    // A config path with no schema is what put a broken "UEVR AFW" button on every prefixed game.
+    return mod && game && mod->isInstalledForGame(game) && !mod->configFileForGame(game).isEmpty() &&
+           !schemaFor(mod).specs.isEmpty();
 }
 
 bool ModConfigs::open(Mod *mod, Game *game)

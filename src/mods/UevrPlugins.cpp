@@ -1,5 +1,7 @@
 #include "UevrPlugins.h"
 
+#include <algorithm>
+
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -62,6 +64,53 @@ namespace
         return QDir::cleanPath(usersQ.filePath("steamuser/AppData/Roaming"_L1));
     }
 
+    bool isHelperExecutable(const QString &fileName)
+    {
+        const auto lower = fileName.toLower();
+        return lower.contains("crashreport"_L1) || lower.contains("crashsender"_L1) || lower.contains("prereq"_L1);
+    }
+
+    // UEVR names its folder from the process it injects. A Steam launch option is often the
+    // small launcher (Game.exe), while the process is Game-Win64-Shipping.exe in Binaries/Win64.
+    void addUnrealGameBinaries(const Game *game, const Game::LaunchOption &launcher, QSet<QString> *stems)
+    {
+        if (!game || game->engine() != Game::Engine::Unreal)
+            return;
+        const auto dir = game->windowsBinaryDir(launcher);
+        if (dir.isEmpty() || !QFileInfo{dir}.isDir())
+            return;
+
+        QStringList gameExes;
+        for (const auto &name : QDir{dir}.entryList({"*.exe"_L1}, QDir::Files))
+        {
+            if (!isHelperExecutable(name))
+                gameExes << name;
+        }
+        const bool hasShipping = std::any_of(gameExes.cbegin(), gameExes.cend(), [](const QString &name) {
+            return name.contains("Shipping"_L1, Qt::CaseInsensitive);
+        });
+        for (const auto &name : std::as_const(gameExes))
+        {
+            if (hasShipping && !name.contains("Shipping"_L1, Qt::CaseInsensitive))
+                continue;
+            const auto stem = QFileInfo{name}.completeBaseName();
+            if (!stem.isEmpty())
+                stems->insert(stem);
+        }
+    }
+
+    // Shipping stems first, so a caller that writes one config file hits the process UEVR injects.
+    int stemRank(const QString &stem)
+    {
+        if (stem.contains("-Win64-Shipping"_L1, Qt::CaseInsensitive))
+            return 0;
+        if (stem.contains("-Shipping"_L1, Qt::CaseInsensitive))
+            return 1;
+        if (stem.contains("-Win64-"_L1, Qt::CaseInsensitive))
+            return 2;
+        return 3;
+    }
+
     QStringList dllNamesIn(const QString &dir)
     {
         if (!QFileInfo{dir}.isDir())
@@ -84,13 +133,20 @@ QStringList UevrPlugins::exeStems(const Game *game)
     {
         if (exe.platform != Game::Platform::Windows || !QFileInfo::exists(exe.executable))
             continue;
-        // stem() drops only the last extension, so Game.Shipping.exe becomes Game.Shipping like UEVR sees it
+        // completeBaseName() drops only the last extension, so Game.Shipping.exe becomes Game.Shipping,
+        // the same stem UEVR takes from the running process.
         const auto stem = QFileInfo{exe.executable}.completeBaseName();
         if (!stem.isEmpty())
             stems.insert(stem);
+        addUnrealGameBinaries(game, exe, &stems);
     }
     auto out = stems.values();
-    out.sort(Qt::CaseInsensitive);
+    std::sort(out.begin(), out.end(), [](const QString &left, const QString &right) {
+        const auto rank = stemRank(left) - stemRank(right);
+        if (rank != 0)
+            return rank < 0;
+        return left.compare(right, Qt::CaseInsensitive) < 0;
+    });
     return out;
 }
 
@@ -276,7 +332,9 @@ QString UevrPlugins::manageHoldReason(const Game *game)
     if (!game)
         return {};
     if (!game->hasValidWine())
-        return "Launch the game once so it has a Proton prefix for Kaon to install plugins in."_L1;
+        return game->store() == Game::Store::Custom ?
+                   "Set this game's Wine prefix before installing plugins."_L1 :
+                   "Launch the game once so it has a Proton prefix for Kaon to install plugins in."_L1;
     if (exeStems(game).isEmpty())
         return "UEVR plugins attach to a game's Windows build, and this game doesn't ship one Kaon can find."_L1;
     return {};

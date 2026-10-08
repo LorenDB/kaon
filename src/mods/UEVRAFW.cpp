@@ -31,28 +31,17 @@ namespace
     // Joeyhodge builds expose "Bootstrap Separate View States" as this toggle.
     const auto bootstrapKey = "VR_GhostingFixBootstrapViewStates"_L1;
 
-    QString exeBaseName(const Game *game)
-    {
-        if (!game)
-            return {};
-        for (const auto &exe : game->executables())
-        {
-            if (exe.platform != Game::Platform::Windows || !QFileInfo::exists(exe.executable))
-                continue;
-            return QFileInfo{exe.executable}.completeBaseName();
-        }
-        return {};
-    }
-
-    // UEVR writes %APPDATA%/UnrealVRMod/<exe>/config.txt. Under Proton that is usually
-    // drive_c/users/steamuser/AppData/Roaming; custom prefixes may use another Windows user.
+    // UEVR writes %APPDATA%/UnrealVRMod/<exe>/config.txt, where <exe> is the stem of the process
+    // it injects. Under Proton that is usually drive_c/users/steamuser/AppData/Roaming; custom
+    // prefixes may use another Windows user. Stems are shipping-first, so the first existing file
+    // is the one UEVR is most likely to read, and a new file is created under that same stem.
     QStringList candidateConfigPaths(const Game *game)
     {
         QStringList paths;
         if (!game || game->winePrefix().isEmpty())
             return paths;
-        const auto exe = exeBaseName(game);
-        if (exe.isEmpty())
+        const auto stems = UevrPlugins::exeStems(game);
+        if (stems.isEmpty())
             return paths;
 
         const QDir users{QDir{game->winePrefix()}.filePath("drive_c/users"_L1)};
@@ -63,10 +52,13 @@ namespace
         for (const auto &entry : users.entryList(QDir::Dirs | QDir::NoDotAndDotDot))
             if (!names.contains(entry))
                 names << entry;
+        if (names.isEmpty())
+            names << "steamuser"_L1;
 
-        for (const auto &name : names)
+        for (const auto &exe : stems)
         {
-            paths << users.filePath(name + "/AppData/Roaming/UnrealVRMod/"_L1 + exe + "/config.txt"_L1);
+            for (const auto &name : names)
+                paths << users.filePath(name + "/AppData/Roaming/UnrealVRMod/"_L1 + exe + "/config.txt"_L1);
         }
         return paths;
     }
@@ -155,8 +147,12 @@ namespace
         return true;
     }
 
-    QVariantMap hint(const QString &key, const QString &title, const QString &detail, const QString &state,
-                     const QString &action = {}, const QString &actionLabel = {})
+    QVariantMap hint(const QString &key,
+                     const QString &title,
+                     const QString &detail,
+                     const QString &state,
+                     const QString &action = {},
+                     const QString &actionLabel = {})
     {
         QVariantMap step{{"key"_L1, key}, {"title"_L1, title}, {"detail"_L1, detail}, {"state"_L1, state}};
         if (!action.isEmpty())
@@ -232,12 +228,12 @@ bool UEVRAFW::isJoeyhodgeRelease(const ModRelease *release) const
 
 QString UEVRAFW::configFileForGame(const Game *game) const
 {
+    // Empty unless the file is already there. A path for a file we might create is what made the
+    // settings button show up for a mod that has no settings schema.
     for (const auto &path : candidateConfigPaths(game))
         if (QFileInfo::exists(path))
             return QFileInfo{path}.absoluteFilePath();
-    // Prefer the steamuser path for a first write when the prefix exists
-    const auto candidates = candidateConfigPaths(game);
-    return candidates.isEmpty() ? QString{} : QFileInfo{candidates.constFirst()}.absoluteFilePath();
+    return {};
 }
 
 bool UEVRAFW::recommendedConfigApplied(const Game *game) const
@@ -267,7 +263,7 @@ bool UEVRAFW::applyRecommendedConfig(Game *game, QString *error)
         *err = "Launch the game once so it has a Proton prefix, then try again."_L1;
         return false;
     }
-    if (exeBaseName(game).isEmpty())
+    if (UevrPlugins::exeStems(game).isEmpty())
     {
         *err = "Kaon couldn't find a Windows executable for %1."_L1.arg(game->name());
         return false;
@@ -277,11 +273,17 @@ bool UEVRAFW::applyRecommendedConfig(Game *game, QString *error)
     if (isJoeyhodgeRelease(currentRelease()))
         wanted.insert(bootstrapKey, "true"_L1);
 
-    const auto path = configFileForGame(game);
+    QString path = configFileForGame(game);
     if (path.isEmpty())
     {
-        *err = "Kaon couldn't find where UEVR stores settings for this game."_L1;
-        return false;
+        const auto candidates = candidateConfigPaths(game);
+        if (candidates.isEmpty())
+        {
+            *err = "Kaon couldn't find where UEVR stores settings for this game."_L1;
+            return false;
+        }
+        // No config yet. The first candidate is the shipping exe under steamuser.
+        path = QFileInfo{candidates.constFirst()}.absoluteFilePath();
     }
     if (!writeConfigValues(path, wanted, err))
         return false;
@@ -311,26 +313,20 @@ QVariantList UEVRAFW::softHints(const Game *game) const
 
     const bool applied = recommendedConfigApplied(game);
     const bool joey = isJoeyhodgeRelease(currentRelease());
-    QString detail =
-        "After inject, open the UEVR menu (Insert): set Rendering Method to Alternate Frame Warping and enable "
-        "Ghosting Fix"_L1;
+    QString detail = "After inject, open the UEVR menu (Insert): set Rendering Method to Alternate Frame Warping and enable "
+                     "Ghosting Fix"_L1;
     if (joey)
         detail += ", plus Bootstrap Separate View States"_L1;
     detail += ". Also turn on DLSS or DLAA in the game's graphics settings before injecting."_L1;
     if (applied)
         out << hint("afwSetup"_L1,
                     "AFW in-game setup"_L1,
-                    "Recommended config is set (AFW + Ghosting Fix"_L1 +
-                        (joey ? " + Bootstrap"_L1 : QString{}) +
+                    "Recommended config is set (AFW + Ghosting Fix"_L1 + (joey ? " + Bootstrap"_L1 : QString{}) +
                         "). Still enable DLSS/DLAA in the game itself."_L1,
                     "ok"_L1);
     else
-        out << hint("afwSetup"_L1,
-                    "AFW in-game setup"_L1,
-                    detail,
-                    "warn"_L1,
-                    "applyAfwConfig"_L1,
-                    "Write recommended config"_L1);
+        out << hint(
+            "afwSetup"_L1, "AFW in-game setup"_L1, detail, "warn"_L1, "applyAfwConfig"_L1, "Write recommended config"_L1);
 
     out << hint("afwVram"_L1,
                 "AFW VRAM"_L1,
@@ -482,7 +478,9 @@ void UEVRAFW::parseReleaseInfoJson()
     // build is based on praydog's UEVR nightly, and "joeyhodge" is the UE 5.5-5.8 fork. They are listed as
     // separate versions so a profile can ask for one of them. Asset ids are unique, unlike the shared release id.
     QList<ModRelease *> parsed;
-    auto appendVariant = [this, &parsed](const QJsonValue &release, const QString &prefix, const QString &variant,
+    auto appendVariant = [this, &parsed](const QJsonValue &release,
+                                         const QString &prefix,
+                                         const QString &variant,
                                          const QString &variantLabel) {
         auto releaseName = release["name"_L1].toString();
         if (releaseName.isEmpty())
@@ -502,8 +500,8 @@ void UEVRAFW::parseReleaseInfoJson()
                 continue;
 
             const auto dir = path(Paths::BasePath) + '/' + QString::number(id);
-            const auto downloaded = QFileInfo::exists(dir + "/UEVRInjector.exe"_L1) &&
-                                    QFileInfo::exists(dir + "/PDAFWPlugin.dll"_L1);
+            const auto downloaded =
+                QFileInfo::exists(dir + "/UEVRInjector.exe"_L1) && QFileInfo::exists(dir + "/PDAFWPlugin.dll"_L1);
 
             QList<ModRelease::Asset> assets;
             assets.push_back({

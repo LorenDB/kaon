@@ -16,8 +16,10 @@ class Game;
 // https://docs.uevr.io/plugins/getting_started.html#plugin-installation
 namespace UevrPlugins
 {
-    // Distinct exe stems (file name without its last extension) of the game's Windows executables
-    // that exist on disk, e.g. {"Stray"} for Stray.exe. Empty when the game has no Windows build.
+    // Distinct exe stems (file name without its last extension) UEVR may inject, shipping names
+    // first. Includes Windows launch options that exist on disk and, for Unreal, the exe in
+    // Binaries/Win64 (often Game-Win64-Shipping.exe rather than the launcher). Empty when the
+    // game has no Windows build.
     QStringList exeStems(const Game *game);
 
     // The per-game plugin folders for every Windows executable, e.g.

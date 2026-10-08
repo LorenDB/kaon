@@ -25,12 +25,6 @@ can be disabled in the settings page.
 
 Kaon unpacks zip downloads with `unzip`. If that isn't installed, it uses `bsdtar` or `python3` instead. OptiScaler ships as `.7z`, which needs `7z` or `7za` (from p7zip).
 
-## Known issues
-
-- Custom games assume you are launching them using your system's wineprefix (i.e. reads the WINEPREFIX environment 
-  variable; if not set, falls back to ~/.wine). If you are using custom wineprefixes for your games, UEVR will not
-  detect them.
-
 ## Screenshot
 
 ![Screenshot of Kaon](https://github.com/LorenDB/Kaon/blob/master/screenshot.png)

@@ -168,7 +168,8 @@ QMap<int, Game::LaunchOption> OptiScaler::acceptableInstallCandidates(const Game
     return windowsCandidates(game);
 }
 
-QList<Game::LaunchOption> OptiScaler::preferredInstallCandidates(const Game *game, const QList<Game::LaunchOption> &all) const
+QList<Game::LaunchOption> OptiScaler::preferredInstallCandidates(const Game *game,
+                                                                 const QList<Game::LaunchOption> &all) const
 {
     QList<Game::LaunchOption> distinct;
     QStringList dirs;
@@ -259,9 +260,30 @@ void OptiScaler::installModImpl(Game *game, const Game::LaunchOption &exe)
     }
 
     QStringList written;
+    // copyTree records files as it goes. A later failure has to take those back, or they sit
+    // in the game with nothing in settings for uninstall to find.
+    const auto discardWritten = [&written, &dir]() {
+        QStringList parents;
+        for (const auto &file : written)
+        {
+            QFile::remove(file);
+            const auto parent = QFileInfo{file}.absolutePath();
+            if (parent != dir && parent.startsWith(dir + '/'_L1) && !parents.contains(parent))
+                parents << parent;
+        }
+        std::sort(parents.begin(), parents.end(), [](const auto &left, const auto &right) {
+            return left.count('/'_L1) > right.count('/'_L1);
+        });
+        for (const auto &parent : std::as_const(parents))
+            if (QDir parentDir{parent}; parentDir.exists() && parentDir.isEmpty())
+                parentDir.rmdir(parent);
+        written.clear();
+    };
+
     QString error;
     if (!copyTree(extracted.path(), dir, &written, &error))
     {
+        discardWritten();
         fail(error);
         return;
     }
@@ -269,6 +291,7 @@ void OptiScaler::installModImpl(Game *game, const Game::LaunchOption &exe)
     const bool createdIni = !QFileInfo::exists(iniDest);
     if (!replaceFile(sourceDll, dllDest))
     {
+        discardWritten();
         fail("Couldn't place dxgi.dll next to %1. Quit the game and try again."_L1.arg(exeName));
         return;
     }
@@ -323,13 +346,16 @@ void OptiScaler::uninstallMod(Game *game)
         }
     }
 
-    // Drop empty folders we created under the binary dir (e.g. D3D12_Optiscaler, Licenses)
+    // Drop empty folders we created under the binary dir (e.g. D3D12_Optiscaler, Licenses).
+    // Stop at the game directory. Walking further would rmdir an empty ancestor outside it.
     QStringList dirs;
+    const auto gameDir = QDir::cleanPath(game->installDir());
     for (const auto &file : files)
     {
-        for (auto dir = QFileInfo{file}.absolutePath(); !dir.isEmpty() && !dirs.contains(dir);
-             dir = QFileInfo{dir}.absolutePath())
-            dirs << dir;
+        for (auto parent = QFileInfo{file}.absolutePath();
+             !gameDir.isEmpty() && parent.startsWith(gameDir + '/'_L1) && !dirs.contains(parent);
+             parent = QFileInfo{parent}.absolutePath())
+            dirs << parent;
     }
     std::sort(dirs.begin(), dirs.end(), [](const auto &l, const auto &r) { return l.count('/') > r.count('/'); });
     for (const auto &dir : std::as_const(dirs))

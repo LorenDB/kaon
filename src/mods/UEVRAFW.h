@@ -37,7 +37,7 @@ public:
 
     // True when this release name is the joeyhodge-based AFW build (UE 5.5–5.8).
     bool isJoeyhodgeRelease(const ModRelease *release) const;
-    // Per-game UEVR config under the Wine prefix, if the prefix exists.
+    // Per-game UEVR config under the Wine prefix, when that file already exists. Empty otherwise.
     QString configFileForGame(const Game *game) const final;
     // Writes VR_RenderingMethod=3, VR_GhostingFix, and Bootstrap on joeyhodge builds.
     bool applyRecommendedConfig(Game *game, QString *error = nullptr);
