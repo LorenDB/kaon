@@ -6,6 +6,23 @@
 #include "GameStatus.h"
 #include "Launcher.h"
 
+namespace
+{
+    // Names folded together first ("inFAMOUS" with the small games, not after "Zork"), then case-sensitive
+    // and by identity so the order is total and stable across rescans.
+    bool gameNameLess(const Game *left, const Game *right)
+    {
+        const int folded = left->name().compare(right->name(), Qt::CaseInsensitive);
+        if (folded != 0)
+            return folded < 0;
+        if (left->name() != right->name())
+            return left->name() < right->name();
+        if (left->store() != right->store())
+            return left->store() < right->store();
+        return left->id() < right->id();
+    }
+} // namespace
+
 GamesFilterModel::GamesFilterModel(QObject *parent)
     : QSortFilterProxyModel{parent},
       m_models{new QConcatenateTablesProxyModel{this}}
@@ -334,9 +351,12 @@ bool GamesFilterModel::lessThan(const QModelIndex &left, const QModelIndex &righ
     switch (m_sortType)
     {
     case SortType::Alphabetical:
-        return leftGame->name() < rightGame->name();
+        return gameNameLess(leftGame, rightGame);
     case SortType::LastPlayed:
-        return leftGame->lastPlayed() > rightGame->lastPlayed();
+        if (leftGame->lastPlayed() != rightGame->lastPlayed())
+            return leftGame->lastPlayed() > rightGame->lastPlayed();
+        // Never-played games all compare equal on date; break the tie by name so rescans keep them put.
+        return gameNameLess(leftGame, rightGame);
     default:
         Aptabase::instance()->track("invalid-sort-type-bug", {{"sortType", m_sortType}});
         return leftGame->id() < rightGame->id();
