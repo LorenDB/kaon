@@ -236,6 +236,57 @@ QString Game::windowsBinaryDir(const LaunchOption &exe) const
     return found.size() == 1 ? found.constFirst() : own;
 }
 
+const Game::InstallScan &Game::installScan() const
+{
+    // One walk over the install directory collects what detectGameEngine() and detectAnticheat() each used
+    // to gather with their own full walk. The filename comparisons are exactly equivalent to the regexes
+    // they replace: every one of those was anchored at a path separator and case-sensitive, and the
+    // relative path always starts with '/' (it is the full path with the install dir removed).
+    if (!m_installScan)
+    {
+        InstallScan scan;
+        for (QDirIterator it{m_installDir, QDirIterator::Subdirectories}; it.hasNext();)
+        {
+            const QString path = it.next();
+            const QString name = it.fileName();
+
+            if (!scan.source)
+                scan.source = name == "vphysics.dll"_L1 || name == "vphysics.so"_L1 || name == "vphysics.dylib"_L1 ||
+                              name == "bsppack.dll"_L1 || name == "bsppack.so"_L1 || name == "bsppack.dylib"_L1;
+
+            if (!scan.unityCrashHandler)
+                scan.unityCrashHandler = name == "UnityCrashHandler64.exe"_L1 || name == "UnityCrashHandler32.exe"_L1;
+
+            if (path.endsWith(".pck"_L1, Qt::CaseInsensitive))
+                scan.pcks.push_back(path);
+
+            if (!scan.anticheat)
+            {
+                // QString::remove drops every occurrence, matching what the regexes used to see
+                auto local = path;
+                local.remove(m_installDir);
+                scan.anticheat =
+                    local.contains("/AntiCheatExpert/"_L1) || local.contains("/AceAntibotClient/"_L1) ||
+                    local.contains("/FredaikisAntiCheat/"_L1) || local.endsWith("/HShield/HSInst.dll"_L1) ||
+                    local.endsWith("/Punkbuster"_L1) || local.contains("/Punkbuster/"_L1) || local.endsWith(".xem"_L1) ||
+                    name == "anybrainSDK.dll"_L1 || name == "BEService.exe"_L1 || name == "BEService_x64.exe"_L1 ||
+                    name == "BlackCall.aes"_L1 || name == "BlackCall64.aes"_L1 || name == "BlackCat64.sys"_L1 ||
+                    name == "EasyAntiCheat_Setup.exe"_L1 || name == "EasyAntiCheat_EOS_Setup.exe"_L1 ||
+                    name == "EasyAntiCheat.dll"_L1 || name == "EasyAntiCheat_x64.dll"_L1 || name == "eac_server64.dll"_L1 ||
+                    name == "EAAntiCheat.Installer.exe"_L1 || name == "equ8_conf.json"_L1 || name == "gameguard.des"_L1 ||
+                    name == "PnkBstrA.exe"_L1 || name == "pbsvc.exe"_L1 || name == "pbsv.dll"_L1 ||
+                    name == "Randgrid.sys"_L1 || name == "TP3Helper.exe"_L1;
+            }
+
+            // Everything is decided: the Godot fallback needs exactly one .pck, so a second one rules it out.
+            if (scan.source && scan.unityCrashHandler && scan.anticheat && scan.pcks.size() > 1)
+                break;
+        }
+        m_installScan = std::move(scan);
+    }
+    return *m_installScan;
+}
+
 void Game::detectGameEngine()
 {
     const auto roots = layoutRoots();
@@ -265,17 +316,12 @@ void Game::detectGameEngine()
     // =======================================
     // Source detection
     //
-    // Regex sourced from SteamDB
+    // File names sourced from SteamDB
     // https://github.com/SteamDatabase/FileDetectionRuleSets/blob/ac27c7cfc0a63dc07cc9e65157841857d82f347b/rules.ini#L191
-    static const QRegularExpression signsOfSource{R"((?:^|/)(?:vphysics|bsppack)\.(?:dylib|dll|so)$)"_L1};
-    for (QDirIterator gameDirIterator{m_installDir, QDirIterator::Subdirectories}; gameDirIterator.hasNext();)
+    if (installScan().source)
     {
-        auto localName = gameDirIterator.next().remove(m_installDir);
-        if (localName.contains(signsOfSource))
-        {
-            m_engine = Engine::Source;
-            return;
-        }
+        m_engine = Engine::Source;
+        return;
     }
 
     // =======================================
@@ -299,15 +345,10 @@ void Game::detectGameEngine()
     }
 
     // Unity fallback: if the crash handler exists, it's a dead giveaway
-    for (QDirIterator gameDirIterator{m_installDir, QDirIterator::Subdirectories}; gameDirIterator.hasNext();)
+    if (installScan().unityCrashHandler)
     {
-        gameDirIterator.next();
-        if (gameDirIterator.fileName() == "UnityCrashHandler64.exe"_L1 ||
-            gameDirIterator.fileName() == "UnityCrashHandler32.exe"_L1)
-        {
-            m_engine = Engine::Unity;
-            return;
-        }
+        m_engine = Engine::Unity;
+        return;
     }
 
     // =======================================
@@ -330,13 +371,7 @@ void Game::detectGameEngine()
     }
 
     // fall back to looking for a single data.pck file
-    QStringList pcks;
-    for (QDirIterator dirit{m_installDir, QDirIterator::Subdirectories}; dirit.hasNext();)
-    {
-        const auto file = dirit.next();
-        if (file.endsWith(".pck"_L1, Qt::CaseInsensitive))
-            pcks.push_back(file);
-    }
+    const auto &pcks = installScan().pcks;
     if (pcks.size() == 1 && pcks.first().endsWith("/data.pck"_L1, Qt::CaseInsensitive))
     {
         m_engine = Engine::Godot;
@@ -448,38 +483,7 @@ void Game::detectAnticheat()
 {
     // Rules from
     // https://github.com/SteamDatabase/FileDetectionRuleSets/blob/1e4ec6197ab40fcd3706e09166acaccc96f7e5d7/rules.ini#L238
-    static const QList<QRegularExpression> anticheats = {
-        QRegularExpression{R"((?:^|/)AntiCheatExpert/)"_L1},
-        QRegularExpression{R"((?:^|/)AceAntibotClient/)"_L1},
-        QRegularExpression{R"((?:^|/)anybrainSDK\.dll$)"_L1},
-        QRegularExpression{R"((?:^|/)BEService(?:_x64)?\.exe$)"_L1},
-        QRegularExpression{R"((?:^|/)BlackCall(?:64)?\.aes$)"_L1},
-        QRegularExpression{R"((?:^|/)BlackCat64\.sys$)"_L1},
-        QRegularExpression{R"((?:^|/)EasyAntiCheat_(?:EOS_)?Setup\.exe$)"_L1},
-        QRegularExpression{R"((?:^|/)(?:EasyAntiCheat(?:_x64)?|eac_server64)\.dll$)"_L1},
-        QRegularExpression{R"((?:^|/)EAAntiCheat\.Installer\.exe$)"_L1},
-        QRegularExpression{R"((?:^|/)equ8_conf\.json$)"_L1},
-        QRegularExpression{R"((?:^|/)FredaikisAntiCheat/)"_L1},
-        QRegularExpression{R"((?:^|/)HShield/HSInst\.dll$)"_L1},
-        QRegularExpression{R"((?:^|/)gameguard\.des$)"_L1},
-        QRegularExpression{R"((?:^|/)(?:PnkBstrA|pbsvc)\.exe$)"_L1},
-        QRegularExpression{R"((?:^|/)pbsv\.dll$)"_L1},
-        QRegularExpression{R"((?:^|/)Punkbuster(?:$|/))"_L1},
-        QRegularExpression{R"((?:^|/)Randgrid\.sys$)"_L1},
-        QRegularExpression{R"((?:^|/)TP3Helper\.exe$)"_L1},
-        QRegularExpression{R"(\.xem$)"_L1},
-    };
-
-    for (QDirIterator gameDirIterator{m_installDir, QDirIterator::Subdirectories}; gameDirIterator.hasNext();)
-    {
-        auto localName = gameDirIterator.next().remove(m_installDir);
-        for (const auto &anticheat : anticheats)
-        {
-            if (localName.contains(anticheat))
-            {
-                m_features.setFlag(Feature::Anticheat);
-                return;
-            }
-        }
-    }
+    // The file names and path fragments are checked by installScan(); this only applies its result.
+    if (installScan().anticheat)
+        m_features.setFlag(Feature::Anticheat);
 }

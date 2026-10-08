@@ -652,18 +652,32 @@ public:
         if (manifest.haveLastPlayed)
             m_lastPlayed = QDateTime::fromSecsSinceEpoch(manifest.lastPlayed);
 
+        // Steam usually keeps these at the top of the app's librarycache folder. Check for them directly,
+        // and only walk the folder for whatever is still missing: some games keep theirs in a subdirectory.
         const auto imageDir = steamRoot + "/appcache/librarycache/"_L1 + m_id;
-        QDirIterator images{imageDir, QDirIterator::Subdirectories};
-        while (images.hasNext())
+        if (QFileInfo::exists(imageDir + "/library_600x900.jpg"_L1))
+            m_cardImage = "file://"_L1 + imageDir + "/library_600x900.jpg"_L1;
+        else if (QFileInfo::exists(imageDir + "/library_capsule.jpg"_L1))
+            m_cardImage = "file://"_L1 + imageDir + "/library_capsule.jpg"_L1;
+        if (QFileInfo::exists(imageDir + "/library_hero.jpg"_L1))
+            m_heroImage = "file://"_L1 + imageDir + "/library_hero.jpg"_L1;
+        if (QFileInfo::exists(imageDir + "/logo.png"_L1))
+            m_logoImage = "file://"_L1 + imageDir + "/logo.png"_L1;
+
+        if (m_cardImage.isEmpty() || m_heroImage.isEmpty() || m_logoImage.isEmpty())
         {
-            images.next();
-            if ((images.fileName() == "library_600x900.jpg"_L1 || images.fileName() == "library_capsule.jpg"_L1) &&
-                m_cardImage.isEmpty())
-                m_cardImage = "file://"_L1 + images.filePath();
-            else if (images.fileName() == "library_hero.jpg"_L1 && m_heroImage.isEmpty())
-                m_heroImage = "file://"_L1 + images.filePath();
-            else if (images.fileName() == "logo.png"_L1 && m_logoImage.isEmpty())
-                m_logoImage = "file://"_L1 + images.filePath();
+            QDirIterator images{imageDir, QDirIterator::Subdirectories};
+            while (images.hasNext() && (m_cardImage.isEmpty() || m_heroImage.isEmpty() || m_logoImage.isEmpty()))
+            {
+                images.next();
+                if ((images.fileName() == "library_600x900.jpg"_L1 || images.fileName() == "library_capsule.jpg"_L1) &&
+                    m_cardImage.isEmpty())
+                    m_cardImage = "file://"_L1 + images.filePath();
+                else if (images.fileName() == "library_hero.jpg"_L1 && m_heroImage.isEmpty())
+                    m_heroImage = "file://"_L1 + images.filePath();
+                else if (images.fileName() == "logo.png"_L1 && m_logoImage.isEmpty())
+                    m_logoImage = "file://"_L1 + images.filePath();
+            }
         }
 
         findPrefix(steamDrive, libraries);

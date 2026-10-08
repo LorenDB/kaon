@@ -128,6 +128,8 @@ void AppInfoVDF::refresh()
 
     m_loadedSize = m_data.size();
     m_loadedMtime = fi.lastModified();
+    m_gameIndex.clear();
+    m_gameIndexValid = false;
     if (hadCopy)
         qCInfo(VDFLog) << "Reloaded appinfo" << m_appInfoPath << "version" << m_fileVersion;
 }
@@ -447,11 +449,22 @@ AppInfoVDF::AppInfo *AppInfoVDF::game(int steamId)
 
     for (auto *library : g_libraries)
     {
-        g_parsing = library;
-        vdf_version = library->m_fileVersion;
-        for (auto *info = library->root; info && info->appid != LAST_STEAM_APP; info = info->getNextApp())
-            if (info->appid == static_cast<AppId_t>(steamId))
-                return info;
+        // The file holds every app Steam knows about, so a linear walk per installed game made scans
+        // quadratic. Index each library once and look the id up instead.
+        if (!library->m_gameIndexValid)
+        {
+            library->m_gameIndex.clear();
+            for (auto *info = library->root; info && info->appid != LAST_STEAM_APP; info = info->getNextApp())
+                if (!library->m_gameIndex.contains(info->appid))
+                    library->m_gameIndex.insert(info->appid, info);
+            library->m_gameIndexValid = true;
+        }
+        if (auto *info = library->m_gameIndex.value(static_cast<AppId_t>(steamId), nullptr))
+        {
+            g_parsing = library;
+            vdf_version = library->m_fileVersion;
+            return info;
+        }
     }
     return nullptr;
 }

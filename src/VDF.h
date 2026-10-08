@@ -31,6 +31,7 @@
 
 #include <QByteArray>
 #include <QDateTime>
+#include <QHash>
 #include <QList>
 #include <QRecursiveMutex>
 #include <QString>
@@ -148,5 +149,9 @@ private:
     uint32_t m_fileVersion = 0x27;
     qint64 m_loadedSize = -1;
     QDateTime m_loadedMtime;
+    // game() used to walk every app in the file for every installed game. Index app ids to their entries
+    // once instead; cleared whenever new bytes are adopted.
+    QHash<AppId_t, AppInfo *> m_gameIndex;
+    bool m_gameIndexValid = false;
 };
 #pragma pack(pop)

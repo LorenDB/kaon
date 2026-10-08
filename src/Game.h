@@ -2,7 +2,10 @@
 
 #include <QObject>
 #include <QQmlEngine>
+#include <QStringList>
 #include <QVersionNumber>
+
+#include <optional>
 
 class Game : public QObject
 {
@@ -232,6 +235,21 @@ protected:
 private:
     Engine m_engine = Engine::UnknownEngine;
     QVersionNumber m_engineVersion;
+
+    // Signals gathered from a single walk over the install directory. detectGameEngine() used to walk the
+    // tree up to three times (Source signs, Unity crash handler, Godot .pck files) and detectAnticheat()
+    // walked it a fourth time, matching nineteen regexes against every file. One pass with cheap string
+    // comparisons replaces all of that; the result is cached because both detectors need it.
+    struct InstallScan
+    {
+        bool source = false;
+        bool unityCrashHandler = false;
+        // Full paths ending in .pck, for the Godot single-data.pck fallback
+        QStringList pcks;
+        bool anticheat = false;
+    };
+    const InstallScan &installScan() const;
+    mutable std::optional<InstallScan> m_installScan;
 };
 Q_DECLARE_METATYPE(Game)
 
