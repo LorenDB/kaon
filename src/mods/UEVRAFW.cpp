@@ -334,7 +334,7 @@ QVariantList UEVRAFW::softHints(const Game *game) const
 
     out << hint("afwVram"_L1,
                 "AFW VRAM"_L1,
-                "Alternate Frame Warping uses about 500 MB of extra VRAM. If the game hitchs to single-digit FPS, "
+                "Alternate Frame Warping uses about 500 MB of extra VRAM. If the game hitches to single-digit FPS, "
                 "lower resolution or disable AFW."_L1,
                 "warn"_L1);
     return out;
