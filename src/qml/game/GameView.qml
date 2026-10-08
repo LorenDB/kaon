@@ -313,6 +313,65 @@ Item {
                     wrapMode: Text.Wrap
                 }
 
+                // P2:CE (Steam 440000) has experimental VR that Steam doesn't advertise: it runs with -vr.
+                Column {
+                    bottomPadding: 12
+                    visible: view.game !== null && view.game.id === "440000" && view.game.store === Game.Steam
+                    width: parent.width
+
+                    Rectangle {
+                        border.color: Theme.glassLine
+                        border.width: 1.5
+                        color: Theme.glassPanel
+                        height: p2ceCol.height + 24
+                        radius: 16
+                        width: parent.width
+
+                        Column {
+                            id: p2ceCol
+
+                            spacing: 10
+                            width: parent.width - 28
+                            x: 14
+                            y: 12
+
+                            Item {
+                                height: 20
+                                width: parent.width
+
+                                Led {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    color: Theme.ledAmber
+                                    size: 9
+                                }
+
+                                VText {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    font.pixelSize: 15
+                                    font.weight: Font.ExtraBold
+                                    text: "Experimental VR support"
+                                    x: 22
+                                }
+                            }
+
+                            VText {
+                                color: Theme.glassMuted
+                                font.pixelSize: 13
+                                font.weight: Font.Normal
+                                lineHeight: 1.3
+                                text: "P2:CE has experimental VR support; try that before modding. Launch the game with the -vr command line option to use it."
+                                width: parent.width
+                                wrapMode: Text.Wrap
+                            }
+
+                            LaunchOptions {
+                                options: "-vr"
+                                showLabel: false
+                            }
+                        }
+                    }
+                }
+
                 // Like the list on the Mods page: one panel, one line per check. A check that passed stays quiet.
                 // One that needs something opens for its explanation and the button that deals with it.
                 Rectangle {
