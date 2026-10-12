@@ -4,7 +4,6 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QJsonArray>
-#include <QJsonDocument>
 #include <QLoggingCategory>
 #include <QSaveFile>
 #include <QSet>
@@ -18,6 +17,7 @@
 #include "Aptabase.h"
 #include "Archive.h"
 #include "DownloadManager.h"
+#include "GitHub.h"
 
 void GitHubMod::downloadRelease(ModRelease *release)
 {
@@ -245,11 +245,9 @@ void GitHubMod::refreshReleases()
 
 void GitHubMod::parseReleaseInfoJson()
 {
-    QFile cachedReleases{path(Paths::CachedReleasesJSON)};
-    if (!cachedReleases.open(QFile::ReadOnly))
+    const auto releases = GitHub::readCachedList(path(Paths::CachedReleasesJSON));
+    if (!releases.isArray())
         return;
-
-    const auto releases = QJsonDocument::fromJson(cachedReleases.readAll());
     const int currentId = currentRelease() ? currentRelease()->id() : m_lastCurrentReleaseId;
 
     QList<ModRelease *> parsed;

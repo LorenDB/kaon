@@ -229,6 +229,84 @@ Flickable {
                 verticalAlignment: Text.AlignVCenter
             }
         }
+
+        Heading {
+            text: "GitHub"
+            topPadding: 22
+        }
+
+        VText {
+            bottomPadding: 10
+            color: Theme.glassMuted
+            font.pixelSize: 13
+            text: "GitHub only answers a few questions an hour unless Kaon has a token. One that can read public repositories is enough, and it stays in Kaon's settings on this computer."
+            width: view.colW
+            wrapMode: Text.Wrap
+        }
+
+        TextBox {
+            id: ghToken
+
+            conceal: true
+            placeholder: "ghp_… or github_pat_…"
+            width: view.colW
+
+            Component.onCompleted: text = GitHub.token
+
+            Connections {
+                function onEditingFinished() {
+                    GitHub.token = ghToken.text.trim();
+                    ghToken.text = GitHub.token;
+                }
+
+                target: ghToken.input
+            }
+        }
+
+        VText {
+            color: Theme.ledRed
+            font.pixelSize: 13
+            text: "That doesn't look like a token. It should be one word, with no spaces."
+            topPadding: 8
+            visible: GitHub.token !== "" && !GitHub.tokenUsable
+            width: view.colW
+            wrapMode: Text.Wrap
+        }
+
+        VText {
+            color: Theme.ledAmber
+            font.pixelSize: 13
+            text: GitHub.tokenRejected ? "GitHub rejected this token. Check it, or clear it to keep asking as a guest." :
+                                         GitHub.rateLimitDetail
+            topPadding: 8
+            visible: GitHub.tokenRejected || GitHub.rateLimited
+            width: view.colW
+            wrapMode: Text.Wrap
+        }
+
+        Flow {
+            spacing: 8
+            topPadding: 12
+            width: parent.width
+
+            VButton {
+                small: true
+                text: "Create a token"
+
+                onClicked: Qt.openUrlExternally("https://github.com/settings/tokens")
+            }
+
+            VButton {
+                enabled: ghToken.text !== ""
+                small: true
+                text: "Clear"
+
+                onClicked: {
+                    ghToken.text = "";
+                    GitHub.token = "";
+                }
+            }
+        }
     }
 
     component Heading: VText {

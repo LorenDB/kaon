@@ -6,6 +6,8 @@ import dev.lorendb.kaon
 Rectangle {
     id: box
 
+    // A token or other secret. Characters stay visible while the field is being edited.
+    property bool conceal: false
     property alias input: input
     property string placeholder
     property alias text: input.text
@@ -28,8 +30,10 @@ Rectangle {
         anchors.verticalCenter: parent.verticalCenter
         clip: true
         color: Theme.glassText
+        echoMode: box.conceal ? TextInput.PasswordEchoOnEdit : TextInput.Normal
         font.family: Theme.font
         font.pixelSize: 14
+        inputMethodHints: box.conceal ? Qt.ImhSensitiveData | Qt.ImhNoPredictiveText : Qt.ImhNone
         selectByMouse: true
         selectedTextColor: Theme.glass
         selectionColor: Theme.glassMuted

@@ -10,6 +10,7 @@
 #include "Aptabase.h"
 #include "GameExecutablePickerModel.h"
 #include "GamesFilterModel.h"
+#include "GitHub.h"
 #include "ModsFilterModel.h"
 
 ModRelease::ModRelease(int id,
@@ -101,6 +102,10 @@ Mod::Mod(QObject *parent)
                 setCurrentRelease(id);
         }
     });
+
+    // A new token has its own budget, and the hourly limit eventually resets. Either is a reason to ask again.
+    connect(GitHub::instance(), &GitHub::tokenChanged, this, &Mod::refreshReleases);
+    connect(GitHub::instance(), &GitHub::rateLimitLifted, this, &Mod::refreshReleases);
 }
 
 int Mod::launchDelay() const

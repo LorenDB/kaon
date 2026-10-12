@@ -32,8 +32,8 @@ public:
 
     // Keeps a copy of what a URL returns in cacheFile, for lists that are read again on every start. The saved ETag is
     // sent along, and a server that answers "not modified" leaves the file as it is. GitHub doesn't count those answers
-    // against its hourly limit. changed says whether the file was rewritten. Failures are logged, never shown: there
-    // is usually an older copy to carry on with.
+    // against its hourly limit. changed says whether the file was rewritten. A failure, including GitHub's hourly
+    // limit, leaves the file as it is and does not stop Kaon.
     void refreshCached(
         const QNetworkRequest &request,
         const QString &prettyName,
@@ -58,6 +58,7 @@ private:
     ~DownloadManager() = default;
 
     void downloadNextInQueue();
+    void finishCurrent();
     void setProgress(qreal progress);
 
     struct Download

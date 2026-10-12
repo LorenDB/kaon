@@ -1,14 +1,13 @@
 #include "UpdateChecker.h"
 
 #include <QCoreApplication>
-#include <QFile>
 #include <QJsonArray>
-#include <QJsonDocument>
 #include <QSettings>
 #include <QStandardPaths>
 #include <QVersionNumber>
 
 #include "DownloadManager.h"
+#include "GitHub.h"
 
 UpdateChecker::UpdateChecker(QObject *parent)
     : QObject{parent}
@@ -20,6 +19,9 @@ UpdateChecker::UpdateChecker(QObject *parent)
 
     if (m_enabled)
         checkUpdates();
+
+    connect(GitHub::instance(), &GitHub::tokenChanged, this, [this] { checkUpdates(false); });
+    connect(GitHub::instance(), &GitHub::rateLimitLifted, this, [this] { checkUpdates(false); });
 }
 
 UpdateChecker *UpdateChecker::instance()
@@ -55,6 +57,9 @@ void UpdateChecker::setIgnore(const QString &ignore)
 
 void UpdateChecker::checkUpdates(bool announce)
 {
+    if (!announce && !m_enabled)
+        return;
+
     const QString cache = QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + "/kaon_releases.json"_L1;
     QNetworkRequest request{{"https://api.github.com/repos/LorenDB/kaon/releases"_L1}};
     request.setRawHeader("X-GitHub-Api-Version"_ba, "2022-11-28"_ba);
@@ -64,10 +69,14 @@ void UpdateChecker::checkUpdates(bool announce)
         "Kaon release info"_L1,
         cache,
         [this, cache, announce](bool) {
-            QFile saved{cache};
-            if (!saved.open(QIODevice::ReadOnly))
+            const auto saved = GitHub::readCachedList(cache);
+            if (!saved.isArray())
+            {
+                if (announce)
+                    emit checkFailed();
                 return;
-            const auto releases = QJsonDocument::fromJson(saved.readAll()).array();
+            }
+            const auto releases = saved.array();
             const auto currentVersion = QVersionNumber::fromString(qApp->applicationVersion());
             for (const auto &release : releases)
             {

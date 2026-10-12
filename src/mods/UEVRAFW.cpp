@@ -4,7 +4,6 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QJsonArray>
-#include <QJsonDocument>
 #include <QLoggingCategory>
 #include <QRegularExpression>
 #include <QSaveFile>
@@ -16,6 +15,7 @@
 #include "Archive.h"
 #include "Dotnet.h"
 #include "DownloadManager.h"
+#include "GitHub.h"
 #include "UevrPlugins.h"
 #include "Wine.h"
 
@@ -461,16 +461,9 @@ void UEVRAFW::refreshReleases()
 
 void UEVRAFW::parseReleaseInfoJson()
 {
-    QFile cachedReleases{path(Paths::CachedReleasesJSON)};
-    if (!cachedReleases.open(QFile::ReadOnly))
-        return;
-
-    const auto releases = QJsonDocument::fromJson(cachedReleases.readAll());
+    const auto releases = GitHub::readCachedList(path(Paths::CachedReleasesJSON));
     if (!releases.isArray())
-    {
-        qCWarning(UEVRAFWLog) << "Cached UEVR AFW release information is invalid";
         return;
-    }
 
     const int currentId = currentRelease() ? currentRelease()->id() : m_lastCurrentReleaseId;
 

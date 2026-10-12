@@ -6,7 +6,52 @@ import dev.lorendb.kaon
 // Every popup Kaon shows: confirmations, failures, updates, and picking an executable.
 // Fill the window. These popups are parented here, and a zero-size parent collapses them.
 Item {
+    id: root
+
+    property bool toldRateLimit: false
+    property bool toldTokenRejected: false
+
+    function showRateLimit() {
+        if (toldRateLimit)
+            return;
+        toldRateLimit = true;
+        rateLimitDialog.text = GitHub.rateLimitDetail;
+        rateLimitDialog.open();
+    }
+
+    function showTokenRejected() {
+        if (toldTokenRejected)
+            return;
+        toldTokenRejected = true;
+        tokenDialog.open();
+    }
+
     anchors.fill: parent
+
+    Component.onCompleted: {
+        if (GitHub.rateLimited)
+            showRateLimit();
+        if (GitHub.tokenRejected)
+            showTokenRejected();
+    }
+
+    Connections {
+        function onRateLimitedChanged(limited: bool) {
+            if (limited)
+                root.showRateLimit();
+            else
+                root.toldRateLimit = false;
+        }
+
+        function onTokenRejectedChanged(rejected: bool) {
+            if (rejected)
+                root.showTokenRejected();
+            else
+                root.toldTokenRejected = false;
+        }
+
+        target: GitHub
+    }
 
     GlassDialog {
         id: confirmDialog
@@ -54,6 +99,57 @@ Item {
                 text: "OK"
 
                 onClicked: messageDialog.close()
+            }
+        ]
+    }
+
+    GlassDialog {
+        id: rateLimitDialog
+
+        title: "GitHub's request limit was reached"
+
+        buttons: [
+            VButton {
+                small: true
+                text: "Not now"
+
+                onClicked: rateLimitDialog.close()
+            },
+            VButton {
+                small: true
+                solid: true
+                text: "Open settings"
+
+                onClicked: {
+                    rateLimitDialog.close();
+                    Nav.view = "settings";
+                }
+            }
+        ]
+    }
+
+    GlassDialog {
+        id: tokenDialog
+
+        text: "GitHub rejected the token in Settings, so Kaon is asking as a guest. Check the token, or clear it."
+        title: "GitHub rejected the token"
+
+        buttons: [
+            VButton {
+                small: true
+                text: "Not now"
+
+                onClicked: tokenDialog.close()
+            },
+            VButton {
+                small: true
+                solid: true
+                text: "Open settings"
+
+                onClicked: {
+                    tokenDialog.close();
+                    Nav.view = "settings";
+                }
             }
         ]
     }
@@ -218,7 +314,12 @@ Item {
 
     Connections {
         function onCheckFailed() {
-            Nav.notify("Couldn't reach GitHub to check for a new version", "fail");
+            if (GitHub.rateLimited)
+                root.showRateLimit();
+            else if (GitHub.tokenRejected)
+                root.showTokenRejected();
+            else
+                Nav.notify("Couldn't reach GitHub to check for a new version", "fail");
         }
 
         function onUpToDate() {

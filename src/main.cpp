@@ -18,6 +18,7 @@
 #include "Dotnet.h"
 #include "Gamepad.h"
 #include "GamesFilterModel.h"
+#include "GitHub.h"
 #include "Heroic.h"
 #include "Itch.h"
 #include "OpenXrCas.h"
@@ -123,6 +124,7 @@ int main(int argc, char *argv[])
     Dotnet::instance();
     Gamepad::instance();
     GamesFilterModel::instance();
+    GitHub::instance();
     Itch::instance();
     OpenXrCas::instance();
     OptiScaler::instance();

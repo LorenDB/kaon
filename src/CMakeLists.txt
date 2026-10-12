@@ -72,6 +72,8 @@ qt_add_qml_module(kaon
         GamesFilterModel.h
         GameStatus.cpp
         GameStatus.h
+        GitHub.cpp
+        GitHub.h
         Launcher.cpp
         Launcher.h
         LaunchOptions.cpp

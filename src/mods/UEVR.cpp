@@ -4,7 +4,6 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QJsonArray>
-#include <QJsonDocument>
 #include <QLoggingCategory>
 #include <QRegularExpression>
 #include <QSettings>
@@ -17,6 +16,7 @@
 #include "Archive.h"
 #include "Dotnet.h"
 #include "DownloadManager.h"
+#include "GitHub.h"
 #include "UevrPlugins.h"
 #include "Wine.h"
 
@@ -200,12 +200,8 @@ void UEVR::refreshReleases()
 
 void UEVR::parseReleaseInfoJson()
 {
-    const auto read = [](const QString &path) {
-        QFile cached{path};
-        return cached.open(QFile::ReadOnly) ? QJsonDocument::fromJson(cached.readAll()).array() : QJsonArray{};
-    };
-    const auto releases = read(path(Paths::CachedReleasesJSON));
-    const auto nightlies = read(path(Paths::CachedNightliesJSON));
+    const auto releases = GitHub::readCachedList(path(Paths::CachedReleasesJSON)).array();
+    const auto nightlies = GitHub::readCachedList(path(Paths::CachedNightliesJSON)).array();
 
     const int currentId = currentRelease() ? currentRelease()->id() : m_lastCurrentReleaseId;
 
