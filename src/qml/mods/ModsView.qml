@@ -239,16 +239,22 @@ Flickable {
                                     VText {
                                         id: modName
 
+                                        ToolTip.delay: 500
+                                        ToolTip.text: row.modelData.name
+                                        ToolTip.visible: truncated && lineMouse.containsMouse
                                         anchors.verticalCenter: parent.verticalCenter
                                         elide: Text.ElideRight
                                         font.pixelSize: 15
                                         font.weight: Font.ExtraBold
                                         text: row.modelData.name
-                                        width: Math.min(implicitWidth, versions.x - x - 12)
+                                        width: Math.max(0, Math.min(implicitWidth, versions.x - x - 12))
                                         x: 40
                                     }
 
                                     VText {
+                                        ToolTip.delay: 500
+                                        ToolTip.text: row.modelData.description
+                                        ToolTip.visible: truncated && lineMouse.containsMouse
                                         anchors.left: modName.right
                                         anchors.leftMargin: 14
                                         anchors.right: versions.left

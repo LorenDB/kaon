@@ -439,16 +439,26 @@ Item {
                                     VText {
                                         id: rowTitle
 
+                                        ToolTip.delay: 500
+                                        ToolTip.text: row.modelData.title
+                                        ToolTip.visible: truncated && titleHover.hovered
                                         anchors.verticalCenter: parent.verticalCenter
                                         elide: Text.ElideRight
                                         font.pixelSize: 15
                                         font.weight: Font.ExtraBold
                                         text: row.modelData.title
-                                        width: Math.min(implicitWidth, actions.x - x - 12)
+                                        width: Math.max(0, Math.min(implicitWidth, actions.x - x - 12))
                                         x: 40
+
+                                        HoverHandler {
+                                            id: titleHover
+                                        }
                                     }
 
                                     VText {
+                                        ToolTip.delay: 500
+                                        ToolTip.text: row.modelData.detail
+                                        ToolTip.visible: truncated && detailHover.hovered
                                         anchors.left: rowTitle.right
                                         anchors.leftMargin: 14
                                         anchors.right: actions.left
@@ -460,6 +470,10 @@ Item {
                                         font.weight: Font.Normal
                                         text: row.modelData.detail
                                         visible: row.passed
+
+                                        HoverHandler {
+                                            id: detailHover
+                                        }
                                     }
 
                                     Row {
@@ -675,6 +689,9 @@ Item {
                     width: parent.width
 
                     VText {
+                        ToolTip.delay: 500
+                        ToolTip.text: view.cardMod.name
+                        ToolTip.visible: truncated && cardTitleHover.hovered
                         anchors.left: parent.left
                         anchors.right: versions.left
                         anchors.rightMargin: 10
@@ -683,6 +700,10 @@ Item {
                         font.pixelSize: 16
                         font.weight: Font.ExtraBold
                         text: view.cardMod.name
+
+                        HoverHandler {
+                            id: cardTitleHover
+                        }
                     }
 
                     VersionMenu {

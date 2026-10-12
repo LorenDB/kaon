@@ -220,7 +220,7 @@ public:
     Q_INVOKABLE ModRelease *releaseInstalledForGame(const Game *game);
     // What to call a release where the mod isn't named next to it. "UEVR 1.05" stays as it is; a bare "0.4.0" becomes
     // "UUVR 0.4.0".
-    QString releaseTitle(const ModRelease *release) const;
+    Q_INVOKABLE QString releaseTitle(const ModRelease *release) const;
     // The other way round, for right beside the mod's name: "UEVR 1.05" becomes "1.05"
     Q_INVOKABLE QString releaseLabel(const ModRelease *release) const;
 
@@ -306,6 +306,11 @@ class ModReleaseFilter : public QSortFilterProxyModel
     Q_PROPERTY(Mod *mod READ mod WRITE setMod NOTIFY modChanged FINAL)
     Q_PROPERTY(bool showNightlies READ showNightlies WRITE setShowNightlies NOTIFY showNightliesChanged FINAL)
     Q_PROPERTY(bool showPrereleases READ showPrereleases WRITE setShowPrereleases NOTIFY showPrereleasesChanged FINAL)
+    // Substring the version menu's search field matches against release names. Empty shows everything.
+    Q_PROPERTY(QString filterText READ filterText WRITE setFilterText NOTIFY filterTextChanged FINAL)
+    // Releases the mod knows, before this filter hides nightlies, prereleases, or search misses. Bindings must use
+    // this and not rowCount(): a function call in a binding never runs again, so the list would stay empty.
+    Q_PROPERTY(int totalCount READ totalCount NOTIFY totalCountChanged FINAL)
 
 public:
     explicit ModReleaseFilter(QObject *parent = nullptr);
@@ -313,16 +318,21 @@ public:
     Mod *mod() const { return m_mod; }
     bool showNightlies() const { return m_showNightlies; }
     bool showPrereleases() const { return m_showPrereleases; }
+    QString filterText() const { return m_filterText; }
+    int totalCount() const;
     Q_INVOKABLE int indexFromRelease(ModRelease *release) const;
 
     void setMod(Mod *mod);
     void setShowNightlies(bool state);
     void setShowPrereleases(bool state);
+    void setFilterText(const QString &text);
 
 signals:
     void modChanged(Mod *mod);
     void showNightliesChanged(bool state);
     void showPrereleasesChanged(bool state);
+    void filterTextChanged(const QString &text);
+    void totalCountChanged();
 
 protected:
     bool filterAcceptsRow(int row, const QModelIndex &parent) const override;
@@ -332,4 +342,5 @@ private:
     Mod *m_mod{nullptr};
     bool m_showNightlies{false};
     bool m_showPrereleases{false};
+    QString m_filterText;
 };

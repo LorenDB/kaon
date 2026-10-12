@@ -17,6 +17,9 @@ Item {
     property int popupEpoch: 0
     readonly property ModRelease shown: locked ? GameStatus.installedRelease(mod, game, GameStatus.revision) ?? current :
                                                  current
+    // Long lists get a search field so a version can be found without scrolling through all of them.
+    // totalCount notifies; a rowCount() call in a binding would run once and go stale.
+    readonly property bool showSearch: releases.totalCount > 6
 
     function hideNightlies() {
         releases.showNightlies = false;
@@ -33,8 +36,10 @@ Item {
     }
 
     ToolTip.delay: 500
-    ToolTip.text: "Uninstall it from this game to change the version"
-    ToolTip.visible: picker.locked && mouse.containsMouse
+    ToolTip.text: picker.locked ? "Uninstall it from this game to change the version" : label.truncated && picker.shown
+                                                                                          ? picker.mod.releaseTitle(
+                                                                                                picker.shown) : ""
+    ToolTip.visible: (picker.locked || (label.truncated && picker.shown !== null)) && mouse.containsMouse
     activeFocusOnTab: !locked
     implicitHeight: 32
     implicitWidth: Math.min(260, label.implicitWidth + 46)
@@ -164,6 +169,128 @@ Item {
         contentItem: Column {
             spacing: 2
 
+            Item {
+                id: searchRow
+
+                height: 34
+                visible: picker.showSearch
+                width: 324
+
+                Rectangle {
+                    anchors.fill: parent
+                    border.color: searchInput.activeFocus ? Theme.glassMuted : Theme.glassLine
+                    border.width: 1.5
+                    color: "transparent"
+                    radius: 12
+                }
+
+                Icon {
+                    anchors.left: parent.left
+                    anchors.leftMargin: 12
+                    anchors.verticalCenter: parent.verticalCenter
+                    color: Theme.glassFaint
+                    name: "search"
+                    size: 15
+                    stroke: 2
+                }
+
+                TextInput {
+                    id: searchInput
+
+                    activeFocusOnTab: true
+                    anchors.left: parent.left
+                    anchors.leftMargin: 34
+                    anchors.right: clearSearch.visible ? clearSearch.left : parent.right
+                    anchors.rightMargin: 4
+                    anchors.verticalCenter: parent.verticalCenter
+                    clip: true
+                    color: Theme.glassText
+                    font.family: Theme.font
+                    font.pixelSize: 13
+                    selectByMouse: true
+                    selectedTextColor: Theme.glass
+                    selectionColor: Theme.glassMuted
+
+                    Keys.onEscapePressed: {
+                        if (text !== "") {
+                            text = "";
+                            releases.filterText = "";
+                        } else {
+                            pop.close();
+                        }
+                    }
+                    onTextEdited: releases.filterText = text
+
+                    VText {
+                        color: Theme.glassFaint
+                        font.pixelSize: 13
+                        text: "Search versions"
+                        visible: parent.text === ""
+                    }
+                }
+
+                Item {
+                    id: clearSearch
+
+                    activeFocusOnTab: visible
+                    anchors.right: parent.right
+                    anchors.rightMargin: 6
+                    anchors.verticalCenter: parent.verticalCenter
+                    height: 24
+                    visible: searchInput.text !== ""
+                    width: 24
+
+                    Keys.onReturnPressed: {
+                        searchInput.text = "";
+                        releases.filterText = "";
+                    }
+                    Keys.onSpacePressed: {
+                        searchInput.text = "";
+                        releases.filterText = "";
+                    }
+
+                    Rectangle {
+                        anchors.fill: parent
+                        border.color: clearSearch.activeFocus ? Theme.ledBlue : "transparent"
+                        border.width: 2
+                        color: clearMouse.containsMouse ? Theme.glassHover : "transparent"
+                        radius: 12
+                    }
+
+                    Icon {
+                        anchors.centerIn: parent
+                        color: Theme.glassFaint
+                        name: "x"
+                        size: 13
+                        stroke: 2.2
+                    }
+
+                    MouseArea {
+                        id: clearMouse
+
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        hoverEnabled: true
+
+                        onClicked: {
+                            searchInput.text = "";
+                            releases.filterText = "";
+                        }
+                    }
+                }
+            }
+
+            VText {
+                color: Theme.glassFaint
+                elide: Text.ElideRight
+                font.pixelSize: 11
+                text: releases.filterText !== "" ? releaseList.count + " of " + releases.totalCount
+                                                  + " versions" : releaseList.count + (releaseList.count === 1
+                                                                                        ? " version" : " versions")
+                visible: picker.showSearch && releases.totalCount > 0
+                width: 324
+            }
+
             ListView {
                 id: releaseList
 
@@ -184,6 +311,8 @@ Item {
                     required property var model
                     readonly property ModRelease release: picker.mod.releaseFromId(model.id)
                     readonly property bool selected: picker.current !== null && picker.current.id === model.id
+                    // Whatever the name leaves over on the right: the Get button, else the status, else nothing
+                    readonly property var trail: getButton.visible ? getButton : statusText.visible ? statusText : null
 
                     activeFocusOnTab: true
                     height: 46
@@ -192,10 +321,14 @@ Item {
                     Keys.onReturnPressed: picker.mod.setCurrentRelease(row.model.id)
                     Keys.onSpacePressed: picker.mod.setCurrentRelease(row.model.id)
 
+                    ToolTip.delay: 500
+                    ToolTip.text: row.model.name
+                    ToolTip.visible: rowMouse.containsMouse && nameText.truncated
+
                     Rectangle {
                         anchors.fill: parent
                         color: row.selected || row.activeFocus ? Theme.glassRaised : rowMouse.containsMouse ? Theme.glassHover :
-                                                                                                              "transparent"
+                                                                                                               "transparent"
                         radius: 12
                     }
 
@@ -218,13 +351,19 @@ Item {
                         x: 14
                     }
 
+                    // Long names take whatever the status text and the Get button leave over, and the
+                    // full name is one hover away
                     Column {
+                        anchors.left: parent.left
+                        anchors.leftMargin: 32
+                        anchors.right: row.trail ? row.trail.left : parent.right
+                        anchors.rightMargin: row.trail ? 8 : 14
                         anchors.verticalCenter: parent.verticalCenter
                         spacing: 1
-                        width: 190
-                        x: 32
 
                         VText {
+                            id: nameText
+
                             elide: Text.ElideRight
                             font.pixelSize: 13
                             font.weight: row.selected ? Font.ExtraBold : Font.Medium
@@ -234,8 +373,10 @@ Item {
 
                         VText {
                             color: Theme.glassFaint
+                            elide: Text.ElideRight
                             font.pixelSize: 11
                             text: row.kind + row.model.timestamp.toLocaleDateString(Qt.locale(), Locale.ShortFormat)
+                            width: parent.width
                         }
                     }
 
@@ -250,6 +391,8 @@ Item {
                     }
 
                     VText {
+                        id: statusText
+
                         anchors.right: parent.right
                         anchors.rightMargin: 14
                         anchors.verticalCenter: parent.verticalCenter
@@ -260,6 +403,8 @@ Item {
                     }
 
                     VButton {
+                        id: getButton
+
                         anchors.right: parent.right
                         anchors.rightMargin: 6
                         anchors.verticalCenter: parent.verticalCenter
@@ -271,6 +416,21 @@ Item {
                         onClicked: GameStatus.download(picker.mod, row.release)
                     }
                 }
+            }
+
+            VText {
+                color: Theme.glassMuted
+                font.pixelSize: 13
+                text: {
+                    if (releases.totalCount === 0)
+                        return "Looking for releases. Check your connection if this doesn't change.";
+                    if (releases.filterText !== "")
+                        return 'No versions match "' + releases.filterText + '".';
+                    return "No versions to show with these options.";
+                }
+                visible: releaseList.count === 0
+                width: 324
+                wrapMode: Text.Wrap
             }
 
             Rectangle {
@@ -337,9 +497,12 @@ Item {
             VButton {
                 id: deleteButton
 
+                ToolTip.delay: 500
+                ToolTip.text: picker.current ? picker.mod.releaseTitle(picker.current) : ""
+                ToolTip.visible: hovered && picker.current !== null
                 icon: "trash"
                 small: true
-                text: "Delete " + (picker.current ? picker.current.name : "")
+                text: "Delete this version"
                 visible: picker.current !== null && picker.current.downloaded
                 width: Math.min(implicitWidth, 324)
 
@@ -347,7 +510,7 @@ Item {
                     const mod = picker.mod;
                     const release = picker.current;
                     pop.close();
-                    Nav.confirm("Delete " + release.name + "?",
+                    Nav.confirm("Delete " + mod.releaseTitle(release) + "?",
                                 "This removes the downloaded files. You can download it again any time.", "Delete", ()
                                 => mod.deleteRelease(release), true);
                 }
@@ -356,6 +519,11 @@ Item {
 
         Component.onDestruction: if (visible)
                                      Nav.popupShown(false)
+        onClosed: {
+            // A search typed here must not hide releases the next time the menu opens
+            releases.filterText = "";
+            searchInput.text = "";
+        }
         onOpened: Qt.callLater(() => {
             const first = releaseList.itemAtIndex(0);
             if (first)

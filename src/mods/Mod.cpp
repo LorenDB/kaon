@@ -197,6 +197,8 @@ ModRelease *Mod::releaseInstalledForGame(const Game *game)
 
 QString Mod::releaseTitle(const ModRelease *release) const
 {
+    if (!release)
+        return {};
     const auto name = release->name();
     return name.contains(displayName(), Qt::CaseInsensitive) ? name : displayName() + ' ' + name;
 }
@@ -342,16 +344,29 @@ int ModReleaseFilter::indexFromRelease(ModRelease *release) const
 
 void ModReleaseFilter::setMod(Mod *mod)
 {
+    if (m_mod)
+        disconnect(m_mod, &QAbstractItemModel::modelReset, this, &ModReleaseFilter::totalCountChanged);
     m_mod = mod;
     setSourceModel(mod);
     emit modChanged(mod);
+    emit totalCountChanged();
     if (!m_mod)
         return;
+
+    // Every release list is rebuilt with beginResetModel, so the unfiltered count keeps itself live for QML
+    connect(m_mod, &QAbstractItemModel::modelReset, this, &ModReleaseFilter::totalCountChanged);
 
     QSettings settings;
     settings.beginGroup(m_mod->settingsGroup());
     setShowNightlies(settings.value("showNightlies"_L1, false).toBool());
     setShowPrereleases(settings.value("showPrereleases"_L1, false).toBool());
+    // A search typed for one mod must not hide another mod's releases when the menu is reused
+    setFilterText({});
+}
+
+int ModReleaseFilter::totalCount() const
+{
+    return m_mod ? m_mod->rowCount() : 0;
 }
 
 void ModReleaseFilter::setShowNightlies(bool state)
@@ -386,6 +401,18 @@ void ModReleaseFilter::setShowPrereleases(bool state)
     }
 }
 
+void ModReleaseFilter::setFilterText(const QString &text)
+{
+    const auto trimmed = text.trimmed();
+    if (trimmed == m_filterText)
+        return;
+    beginFilterChange();
+    m_filterText = trimmed;
+    endFilterChange();
+
+    emit filterTextChanged(m_filterText);
+}
+
 bool ModReleaseFilter::filterAcceptsRow(int row, const QModelIndex &parent) const
 {
     if (!m_mod)
@@ -399,6 +426,8 @@ bool ModReleaseFilter::filterAcceptsRow(int row, const QModelIndex &parent) cons
     if (!m_showNightlies && release->nightly())
         return false;
     if (!m_showPrereleases && release->prerelease())
+        return false;
+    if (!m_filterText.isEmpty() && !release->name().contains(m_filterText, Qt::CaseInsensitive))
         return false;
 
     return QSortFilterProxyModel::filterAcceptsRow(row, parent);

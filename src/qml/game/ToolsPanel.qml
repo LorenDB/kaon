@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls.Basic
 
 import dev.lorendb.kaon
 
@@ -169,11 +170,18 @@ Column {
                             width: parent.width
 
                             VText {
+                                ToolTip.delay: 500
+                                ToolTip.text: row.modelData.mod.name
+                                ToolTip.visible: truncated && toolNameHover.hovered
                                 elide: Text.ElideRight
                                 font.pixelSize: 14
                                 font.weight: Font.Bold
                                 text: row.modelData.mod.name
-                                width: Math.min(implicitWidth, parent.width - runtime.implicitWidth)
+                                width: Math.max(0, Math.min(implicitWidth, parent.width - runtime.implicitWidth))
+
+                                HoverHandler {
+                                    id: toolNameHover
+                                }
                             }
 
                             VText {
