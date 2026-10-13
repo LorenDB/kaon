@@ -307,6 +307,64 @@ Flickable {
                 }
             }
         }
+
+        Item {
+            height: 18
+            width: 1
+        }
+
+        Heading {
+            text: "Headset view"
+        }
+
+        SwitchRow {
+            checked: VrOverlay.enabled
+            detail: "Adds a Kaon tab to the SteamVR dashboard and mirrors this window into it, so installs and mod settings can be changed without taking the headset off. Start SteamVR yourself first; Kaon attaches on its own once it is running. The VR laser pointer clicks and scrolls. A larger desktop window looks sharper in VR. Text fields still need the desktop keyboard for now."
+            text: "Show Kaon inside VR"
+
+            onToggled: VrOverlay.enabled = !VrOverlay.enabled
+        }
+
+        VText {
+            color: Theme.glassMuted
+            font.pixelSize: 13
+            text: VrOverlay.status
+            visible: VrOverlay.enabled
+            width: view.colW
+            wrapMode: Text.Wrap
+        }
+
+        Flow {
+            spacing: 12
+            topPadding: 14
+            visible: VrOverlay.enabled
+            width: parent.width
+
+            VButton {
+                small: true
+                text: "Open the dashboard tab"
+                visible: VrOverlay.active
+
+                onClicked: VrOverlay.showDashboard()
+            }
+
+            VButton {
+                small: true
+                text: "Retry the connection"
+                visible: !VrOverlay.active
+
+                onClicked: VrOverlay.refresh()
+            }
+        }
+
+        SwitchRow {
+            checked: VrOverlay.autoLaunch
+            detail: "SteamVR starts Kaon by itself, so the tab is there when the dashboard opens."
+            text: "Start Kaon with SteamVR"
+            visible: VrOverlay.available
+
+            onToggled: VrOverlay.autoLaunch = !VrOverlay.autoLaunch
+        }
     }
 
     component Heading: VText {

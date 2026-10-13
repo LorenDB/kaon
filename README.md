@@ -19,6 +19,9 @@ can be disabled in the settings page.
 - For mods that need launch options, Kaon reads what a Steam game already has and gives you one line to paste
   that keeps it
 - Works on the Steam Frame! (Only UEVR has been confirmed working so far)
+- Adds a Kaon tab to the SteamVR dashboard (Settings > Headset view), so installs and mod settings can be
+  changed without taking the headset off. The VR laser pointer clicks and scrolls, and clicking a text field
+  brings up the SteamVR keyboard.
 - Flatpak Steam and Flatpak Heroic are supported, and a native install of the same launcher is listed separately. The Flatpak launcher has to already be running, and user namespaces have to be enabled so Kaon can enter the game sandbox. Snap stores and the Flatpak itch app are still unsupported.
 
 ## Requirements

@@ -82,6 +82,8 @@ qt_add_qml_module(kaon
         UpdateChecker.h
         VDF.cpp
         VDF.h
+        VrOverlay.cpp
+        VrOverlay.h
         Wine.cpp
         Wine.h
         WinePrefix.cpp
@@ -163,6 +165,7 @@ target_link_libraries(kaon
         Qt6::Widgets
         Qt6::Sql
         ValveFileVDF
+        openvr_api
 )
 
 include(GNUInstallDirs)

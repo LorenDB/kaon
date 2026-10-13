@@ -30,6 +30,7 @@
 #include "UEVRAFW.h"
 #include "UUVR.h"
 #include "UpdateChecker.h"
+#include "VrOverlay.h"
 #include "VrPerfKit.h"
 #include "Wine.h"
 
@@ -135,6 +136,7 @@ int main(int argc, char *argv[])
     UUVR::instance();
     UUVRLegacy::instance();
     UpdateChecker::instance();
+    VrOverlay::instance();
     VrPerfKit::instance();
     Wine::instance();
 
