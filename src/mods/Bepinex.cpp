@@ -1,9 +1,11 @@
 #include "Bepinex.h"
 
+#include <QDir>
 #include <QFileInfo>
 #include <QLoggingCategory>
 #include <QRegularExpression>
 #include <QSettings>
+#include <QVersionNumber>
 
 #include "LaunchOptions.h"
 #include "Steam.h"
@@ -128,6 +130,7 @@ void Bepinex::installModImpl(Game *game, const Game::LaunchOption &exe)
     else if (windows)
     {
         ensureDoorstopSearchPath(game, exe);
+        ensureLegacyEntrypoint(game, exe);
 
         QSettings settings;
         settings.beginGroup(settingsGroup());
@@ -221,6 +224,150 @@ void Bepinex::ensureDoorstopSearchPath(const Game *game, const Game::LaunchOptio
     }
 
     qCWarning(BepinexLog) << "doorstop_config.ini has no DLL search path override to set";
+}
+
+void Bepinex::ensureLegacyEntrypoint(const Game *game, const Game::LaunchOption &exe) const
+{
+    if (!game || exe.platform != Game::Platform::Windows)
+        return;
+
+    // Same cutoff Rai Pal uses when it copies BepInEx-legacy.cfg instead of the normal one. Yooka-Laylee is Unity
+    // 5.4, and it crashed until this was set: https://github.com/Raicuparta/uuvr/issues/46#issuecomment-3414505945
+    const auto version = game->engineVersion();
+    if (version.isNull() || version >= QVersionNumber{5, 5})
+        return;
+    if (!hasFilesFor(game, exe))
+        return;
+
+    const auto path = modInstallDirForGame(game, exe) + "/BepInEx/config/BepInEx.cfg"_L1;
+    if (!QDir{}.mkpath(QFileInfo{path}.absolutePath()))
+    {
+        qCWarning(BepinexLog) << "Could not create the BepInEx config folder to set the legacy entry point";
+        return;
+    }
+
+    QFile config{path};
+    if (!config.open(QIODevice::ReadWrite))
+    {
+        qCWarning(BepinexLog) << "Could not open BepInEx.cfg to set the legacy entry point";
+        return;
+    }
+
+    const auto original = config.readAll();
+    const bool crlf = original.contains("\r\n");
+    auto text = QString::fromUtf8(original);
+    if (text.endsWith("\r\n"_L1))
+        text.chop(2);
+    else if (text.endsWith('\n'))
+        text.chop(1);
+    auto lines = text.isEmpty() ? QStringList{} : text.split('\n');
+    for (auto &line : lines)
+    {
+        if (line.endsWith('\r'))
+            line.chop(1);
+    }
+
+    static const QRegularExpression sectionRe{R"(^\s*\[([^\]]*)\]\s*$)"_L1};
+    static const QRegularExpression keyRe{R"(^\s*([A-Za-z0-9_.]+)\s*=\s*(.*?)\s*$)"_L1};
+    const auto valueOf = [](const QString &line) {
+        const auto match = keyRe.match(line.trimmed());
+        return match.hasMatch() ? match.captured(2) : QString{};
+    };
+    const auto setValue = [](QString &line, const QString &value) {
+        const auto eq = line.indexOf('=');
+        line = line.left(eq + 1) + ' '_L1 + value;
+    };
+
+    int sectionAt = -1;
+    int sectionEnd = lines.size();
+    int typeLine = -1;
+    int assemblyLine = -1;
+    int methodLine = -1;
+    bool inSection = false;
+    for (int i = 0; i < lines.size(); ++i)
+    {
+        const auto trimmed = lines.at(i).trimmed();
+        if (trimmed.isEmpty() || trimmed.startsWith('#') || trimmed.startsWith(';'))
+            continue;
+        if (const auto section = sectionRe.match(trimmed); section.hasMatch())
+        {
+            if (inSection)
+            {
+                sectionEnd = i;
+                break;
+            }
+            if (section.captured(1).compare("Preloader.Entrypoint"_L1, Qt::CaseInsensitive) == 0)
+            {
+                inSection = true;
+                sectionAt = i;
+            }
+            continue;
+        }
+        if (!inSection)
+            continue;
+        const auto key = keyRe.match(trimmed);
+        if (!key.hasMatch())
+            continue;
+        const auto name = key.captured(1);
+        if (name.compare("Type"_L1, Qt::CaseInsensitive) == 0)
+            typeLine = i;
+        else if (name.compare("Assembly"_L1, Qt::CaseInsensitive) == 0)
+            assemblyLine = i;
+        else if (name.compare("Method"_L1, Qt::CaseInsensitive) == 0)
+            methodLine = i;
+    }
+
+    bool changed = false;
+    if (sectionAt < 0)
+    {
+        if (!lines.isEmpty() && !lines.constLast().isEmpty())
+            lines << QString{};
+        lines << "[Preloader.Entrypoint]"_L1 << "Assembly = UnityEngine.dll"_L1 << "Type = MonoBehaviour"_L1
+              << "Method = .cctor"_L1;
+        changed = true;
+    }
+    else
+    {
+        QStringList missing;
+        if (assemblyLine < 0)
+            missing << "Assembly = UnityEngine.dll"_L1;
+        else if (valueOf(lines.at(assemblyLine)).compare("UnityEngine.CoreModule.dll"_L1, Qt::CaseInsensitive) == 0)
+        {
+            // That assembly does not exist before Unity 2017, so a cfg copied from a newer game cannot load
+            setValue(lines[assemblyLine], "UnityEngine.dll"_L1);
+            changed = true;
+        }
+        if (typeLine < 0)
+            missing << "Type = MonoBehaviour"_L1;
+        else
+        {
+            const auto type = valueOf(lines.at(typeLine));
+            // Application is BepInEx's default, and it is the value that crashes these games. Anything else
+            // (MonoBehaviour already, or Camera) was chosen on purpose.
+            if (type.isEmpty() || type.compare("Application"_L1, Qt::CaseInsensitive) == 0)
+            {
+                setValue(lines[typeLine], "MonoBehaviour"_L1);
+                changed = true;
+            }
+        }
+        if (methodLine < 0)
+            missing << "Method = .cctor"_L1;
+        if (!missing.isEmpty())
+        {
+            for (int i = missing.size() - 1; i >= 0; --i)
+                lines.insert(sectionEnd, missing.at(i));
+            changed = true;
+        }
+    }
+
+    if (!changed)
+        return;
+
+    const auto nl = crlf ? "\r\n"_L1 : "\n"_L1;
+    config.seek(0);
+    config.resize(0);
+    config.write((lines.join(nl) + nl).toUtf8());
+    qCInfo(BepinexLog) << "Set BepInEx entry point to MonoBehaviour for Unity" << version;
 }
 
 QMap<int, Game::LaunchOption> Bepinex::acceptableInstallCandidates(const Game *game) const

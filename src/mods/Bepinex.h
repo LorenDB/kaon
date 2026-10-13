@@ -34,6 +34,10 @@ public:
     // preloader. Pointing Mono at BepInEx\core first fixes loading without touching game files.
     void ensureDoorstopSearchPath(const Game *game, const Game::LaunchOption &exe) const;
 
+    // Unity older than 5.5 crashes if BepInEx hooks its default entry point. Rai Pal ships a different BepInEx.cfg
+    // for those games; this writes the same entry point.
+    void ensureLegacyEntrypoint(const Game *game, const Game::LaunchOption &exe) const;
+
     // Whether BepInEx itself is next to this executable, whatever else it still needs
     bool hasFilesFor(const Game *game, const Game::LaunchOption &exe) const;
 

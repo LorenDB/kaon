@@ -78,9 +78,13 @@ void UuvrBuild::installModImpl(Game *game, const Game::LaunchOption &exe)
         return;
 
     // UUVR is useless without a working BepInEx. If BepInEx was installed outside Kaon (so Bepinex::installModImpl
-    // never ran its own fixups), make sure the doorstop config still works for games with a bundled MonoMod.
+    // never ran its own fixups), make sure the doorstop config still works for games with a bundled MonoMod, and that
+    // Unity older than 5.5 gets the entry point those games need.
     if (exe.platform == Game::Platform::Windows)
+    {
         Bepinex::instance()->ensureDoorstopSearchPath(game, exe);
+        Bepinex::instance()->ensureLegacyEntrypoint(game, exe);
+    }
 
     Mod::installModImpl(game, exe);
 }
