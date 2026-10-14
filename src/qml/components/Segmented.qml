@@ -3,7 +3,8 @@ import QtQuick
 import dev.lorendb.kaon
 
 // Stereo's segmented control: the chosen option sits on a raised pill.
-Row {
+// Flow so long choice lists (Downscaler, DX11 upscaler, and the like) wrap in a narrow form.
+Flow {
     id: seg
 
     property var current
@@ -21,11 +22,13 @@ Row {
             id: opt
 
             readonly property bool active: seg.current === modelData.id
+            readonly property real naturalWidth: optText.implicitWidth + 26
             required property var modelData
 
             activeFocusOnTab: true
             height: 32
-            width: optText.implicitWidth + 26
+            // Cap to the Flow width so a long label cannot force the row past the form.
+            width: seg.width > 0 ? Math.min(naturalWidth, seg.width) : naturalWidth
 
             Keys.onReturnPressed: seg.picked(modelData.id)
             Keys.onSpacePressed: seg.picked(modelData.id)
@@ -62,9 +65,11 @@ Row {
                 anchors.centerIn: parent
                 color: opt.active ? (seg.shellStyle ? Theme.ink : Theme.glassText) : (seg.shellStyle ? Theme.inkMuted :
                                                                                                        Theme.glassMuted)
+                elide: Text.ElideRight
                 font.pixelSize: 13
                 font.weight: Font.Bold
                 text: opt.modelData.label
+                width: Math.min(implicitWidth, parent.width - 16)
             }
 
             MouseArea {

@@ -177,6 +177,7 @@ Item {
                                 current: row.value
                                 options: row.choices
                                 visible: row.kind === "choice"
+                                width: parent.width
 
                                 onPicked: key => view.doc.setField(row.index, key)
                             }
