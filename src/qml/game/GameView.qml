@@ -847,22 +847,33 @@ Item {
                         color: Theme.glassMuted
                         font.pixelSize: 13
                         lineHeight: 1.3
-                        text: profileSection.profileHold !== "" ? profileSection.profileHold : profileSection.profileName
-                                                                  === "" ? "No profile installed. Pick a profile ZIP shared for this game and Kaon copies its settings into this game's UEVR folder." :
-                                                                           "Profile installed ("
-                                                                           + profileSection.profileName
-                                                                           + "). Importing another profile replaces it."
+                        text: {
+                            if (profileSection.profileHold !== "")
+                                return profileSection.profileHold;
+                            if (profileSection.profileName === "")
+                                return "No profile installed. Pick a profile ZIP to import it for this game.";
+                            return "Profile installed (" + profileSection.profileName + "). Importing another replaces it.";
+                        }
                         width: parent.width
                         wrapMode: Text.Wrap
                     }
 
                     Row {
                         spacing: 8
-                        visible: profileSection.profileName !== ""
+
+                        VButton {
+                            enabled: profileSection.profileHold === ""
+                            icon: "plus"
+                            small: true
+                            text: "Import profile"
+
+                            onClicked: profilePicker.open()
+                        }
 
                         VButton {
                             small: true
-                            text: "Remove profile"
+                            text: "Remove"
+                            visible: profileSection.profileName !== ""
 
                             onClicked: {
                                 const err = view.cardMod.removeProfile(view.game);
@@ -872,15 +883,6 @@ Item {
                                     Nav.notify("Removed profile for " + view.game.name);
                             }
                         }
-                    }
-
-                    VButton {
-                        enabled: profileSection.profileHold === ""
-                        icon: "plus"
-                        small: true
-                        text: "Import profile"
-
-                        onClicked: profilePicker.open()
                     }
 
                     FileDialog {
@@ -943,9 +945,13 @@ Item {
                         color: Theme.glassMuted
                         font.pixelSize: 13
                         lineHeight: 1.3
-                        text: pluginSection.pluginHold !== "" ? pluginSection.pluginHold : pluginSection.pluginList.length
-                                                                === 0 ? "No plugins installed. Pick a plugin DLL and Kaon copies it into this game's UEVR plugins folder." :
-                                                                        "DLLs UEVR loads for this game."
+                        text: {
+                            if (pluginSection.pluginHold !== "")
+                                return pluginSection.pluginHold;
+                            if (pluginSection.pluginList.length === 0)
+                                return "No plugins installed. Pick a plugin DLL to install it.";
+                            return "DLLs UEVR loads for this game.";
+                        }
                         width: parent.width
                         wrapMode: Text.Wrap
                     }

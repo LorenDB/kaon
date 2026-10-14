@@ -154,7 +154,7 @@ Column {
                     // What the tool is doing here when there is something to say, and otherwise what it is for
                     readonly property string note: modelData.detail !== "" ? modelData.detail : modelData.mod.description
 
-                    height: Math.max(labels.height, toggle.height) + 12
+                    height: Math.max(labels.height, toggle.height) + 8
                     width: toolsCol.width
 
                     Column {
