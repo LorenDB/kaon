@@ -16,6 +16,10 @@ class Game;
 // https://docs.uevr.io/plugins/getting_started.html#plugin-installation
 namespace UevrPlugins
 {
+    // The Roaming folder UEVR resolves %APPDATA% to in this prefix. With create=true the folder is made
+    // first. Empty when the game has no prefix or no users folder; error says why in words for the user.
+    QString roamingDir(const Game *game, bool create, QString *error = nullptr);
+
     // Distinct exe stems (file name without its last extension) UEVR may inject, shipping names
     // first. Includes Windows launch options that exist on disk and, for Unreal, the exe in
     // Binaries/Win64 (often Game-Win64-Shipping.exe rather than the launcher). Empty when the

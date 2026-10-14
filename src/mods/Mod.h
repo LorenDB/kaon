@@ -102,6 +102,9 @@ class Mod : public QAbstractListModel
     // True when the mod loads per-game DLL plugins from the prefix, like UEVR does. The game's page then
     // offers to install them.
     Q_PROPERTY(bool supportsPlugins READ supportsPlugins CONSTANT FINAL)
+    // True when per-game settings profiles can be imported for the mod, like UEVR's profile zips. The game's
+    // page then offers to import them.
+    Q_PROPERTY(bool supportsProfiles READ supportsProfiles CONSTANT FINAL)
     Q_PROPERTY(int launchDelay READ launchDelay WRITE setLaunchDelay NOTIFY launchDelayChanged FINAL)
     // What the list of releases holds, for the version menu
     Q_PROPERTY(bool hasNightlies READ hasNightlies NOTIFY releasesChanged FINAL)
@@ -143,6 +146,7 @@ public:
     virtual bool optional() const { return false; }
     virtual QString vrRuntime() const { return {}; }
     virtual bool supportsPlugins() const { return false; }
+    virtual bool supportsProfiles() const { return false; }
     // For an optional tool: what to tell the player while it is on for a game, e.g. where its settings are
     virtual QString installedNote() const { return {}; }
     // True if installing the mod runs something inside the game's Wine prefix, which therefore has to exist first.
@@ -182,8 +186,39 @@ public:
         Q_UNUSED(game)
         return {};
     }
+    // Per-game settings profiles (e.g. UEVR's profile zips). Only meaningful when supportsProfiles() is true.
+    // Name of the profile in use for a game (e.g. "Stray"), or empty when none is installed.
+    Q_INVOKABLE virtual QString profileName(Game *game)
+    {
+        Q_UNUSED(game)
+        return {};
+    }
+    // True when the file is a zip holding a DLL. Such profiles run code, so the UI confirms trust first.
+    Q_INVOKABLE virtual bool profileHasDll(const QUrl &source)
+    {
+        Q_UNUSED(source)
+        return false;
+    }
+    // The import and remove functions return an error in words meant for the user, or empty on success.
+    Q_INVOKABLE virtual QString importProfile(Game *game, const QUrl &source)
+    {
+        Q_UNUSED(game)
+        Q_UNUSED(source)
+        return {};
+    }
+    Q_INVOKABLE virtual QString removeProfile(Game *game)
+    {
+        Q_UNUSED(game)
+        return {};
+    }
+    Q_INVOKABLE virtual QString profileHoldReason(Game *game)
+    {
+        Q_UNUSED(game)
+        return {};
+    }
 
-    // Seconds to wait between starting a game and launching this mod into it
+    // Seconds to wait after the game's binary is seen before this mod opens for manual injection.
+    // Unused with auto-attach on: --attach waits for the game by itself.
     int launchDelay() const;
     void setLaunchDelay(int seconds);
 
@@ -246,6 +281,9 @@ public slots:
     virtual void deleteRelease(ModRelease *release) = 0;
 
     void launchMod(Game *game);
+    // Launches the mod once the game is ready: with auto-inject arguments (UEVR's --attach) when auto-attach
+    // is on, a plain open otherwise. Manual launchMod() stays argument-free for opening the mod's window.
+    void autoLaunch(Game *game);
     void installMod(Game *game);
     virtual void uninstallMod(Game *game);
 
@@ -272,6 +310,8 @@ protected:
     virtual void installModImpl(Game *game, const Game::LaunchOption &exe);
     // Override this to implement the actual launch. Only called with a game and a current release.
     virtual void launchModImpl(Game *game) {}
+    // Override this to implement the automatic launch. Defaults to the manual launch.
+    virtual void autoLaunchImpl(Game *game) { launchModImpl(game); }
 
     // Call this when an install can't go on. Logs the message and shows it to the user.
     void fail(const QString &message);

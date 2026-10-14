@@ -124,6 +124,35 @@ namespace
     }
 } // namespace
 
+QString UevrPlugins::roamingDir(const Game *game, bool create, QString *error)
+{
+    if (!game || game->winePrefix().isEmpty())
+    {
+        if (error)
+            *error = "This game has no Wine prefix."_L1;
+        return {};
+    }
+    if (const auto found = findRoaming(usersDir(game)); !found.isEmpty())
+        return found;
+    if (!create)
+        return {};
+    const auto fresh = freshRoaming(usersDir(game));
+    if (fresh.isEmpty())
+    {
+        if (error)
+            *error = "Kaon couldn't find the users folder in this game's Proton prefix."_L1;
+        return {};
+    }
+    if (!QDir{}.mkpath(fresh))
+    {
+        qCWarning(UevrPluginsLog) << "Could not create" << fresh;
+        if (error)
+            *error = "Kaon couldn't write this game's Proton prefix."_L1;
+        return {};
+    }
+    return fresh;
+}
+
 QStringList UevrPlugins::exeStems(const Game *game)
 {
     QSet<QString> stems;
@@ -166,19 +195,9 @@ QStringList UevrPlugins::pluginDirsForGame(const Game *game, bool create, QStrin
         return {};
     }
 
-    QString roaming = findRoaming(usersDir(game));
+    QString roaming = roamingDir(game, create, error);
     if (roaming.isEmpty())
-    {
-        if (!create)
-            return {};
-        roaming = freshRoaming(usersDir(game));
-    }
-    if (roaming.isEmpty())
-    {
-        if (error)
-            *error = "Kaon couldn't find the users folder in this game's Proton prefix."_L1;
         return {};
-    }
 
     QStringList dirs;
     for (const auto &stem : std::as_const(stems))
@@ -209,19 +228,9 @@ QString UevrPlugins::globalPluginDir(const Game *game, bool create, QString *err
             *error = "This game has no Wine prefix."_L1;
         return {};
     }
-    QString roaming = findRoaming(usersDir(game));
+    QString roaming = roamingDir(game, create, error);
     if (roaming.isEmpty())
-    {
-        if (!create)
-            return {};
-        roaming = freshRoaming(usersDir(game));
-    }
-    if (roaming.isEmpty())
-    {
-        if (error)
-            *error = "Kaon couldn't find the users folder in this game's Proton prefix."_L1;
         return {};
-    }
     const auto dir = QDir::cleanPath(roaming + "/UEVR/plugins"_L1);
     if (create && !QDir{}.mkpath(dir))
     {

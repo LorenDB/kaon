@@ -23,6 +23,7 @@
 #include "Heroic.h"
 #include "Itch.h"
 #include "LaunchOptions.h"
+#include "Launcher.h"
 #include "ModsFilterModel.h"
 #include "Steam.h"
 #include "UEVRAFW.h"
@@ -146,6 +147,8 @@ GameStatus::GameStatus(QObject *parent)
 
     connect(GamesFilterModel::instance(), &GamesFilterModel::gamesChanged, this, &GameStatus::invalidate);
     connect(Steam::instance(), &Steam::launchOptionsChanged, this, &GameStatus::invalidate);
+    // Flipping auto-attach shows or hides the delay stepper on the game's page
+    connect(Launcher::instance(), &Launcher::autoAttachChanged, this, &GameStatus::invalidate);
 
     // Whether a game is running decides what may be changed in its prefix, and nothing announces a game starting or
     // quitting. Looking is cheap, and only happens while Kaon is the window in use.
@@ -702,7 +705,8 @@ bool GameStatus::usesLaunchDelay(Game *game, int) const
     if (!game || !game->canLaunch())
         return false;
     const auto mod = preferredMod(game);
-    return mod && mod->type() == Mod::Type::Launchable;
+    // With auto-attach there is no countdown, so the delay has nothing to set
+    return mod && mod->type() == Mod::Type::Launchable && !Launcher::instance()->autoAttach();
 }
 
 QString GameStatus::launchOptions(const Game *game) const

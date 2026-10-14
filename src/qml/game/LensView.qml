@@ -132,9 +132,15 @@ Item {
             text: {
                 const name = Launcher.mod ? Launcher.mod.name : "";
                 const title = lens.game ? lens.game.name : "";
+                const autoInject = Launcher.autoAttach;
                 switch (Launcher.phase) {
+                case Launcher.WaitingForGame:
+                    return "Waiting for " + title + " to start";
                 case Launcher.Countdown:
-                    return name + " opens in " + Launcher.remaining + (Launcher.remaining === 1 ? " second" : " seconds");
+                    return autoInject ? name + " injects in " + Launcher.remaining + (Launcher.remaining === 1 ? " second" :
+                                                                                                                 " seconds") :
+                                        name + " opens in " + Launcher.remaining + (Launcher.remaining === 1 ? " second" :
+                                                                                                               " seconds");
                 case Launcher.ModOpen:
                     return name + " is open";
                 case Launcher.GameStarting:
@@ -153,19 +159,43 @@ Item {
             text: {
                 const name = Launcher.mod ? Launcher.mod.name : "";
                 const title = lens.game ? lens.game.name : "";
+                const autoInject = Launcher.autoAttach;
                 switch (Launcher.phase) {
+                case Launcher.WaitingForGame:
+                    if (autoInject) {
+                        return lens.game && lens.game.canLaunch ? "Kaon started " + title
+                                                                  + ". Get to the game's main menu while you wait." :
+                                                                  "Start " + title
+                                                                  + " outside Kaon. Kaon injects once it is running.";
+                    }
+                    return lens.game && lens.game.canLaunch ? "Kaon started " + title
+                                                              + ". Kaon opens the injector once it is running." : "Start "
+                                                              + title + " outside Kaon and come back to inject by hand.";
                 case Launcher.Countdown:
-                    return "Get to the game's main menu while you wait.";
+                    return autoInject ? "Get to the game's main menu. " + name + " injects by itself." :
+                                        "Get to the game's main menu while you wait.";
                 case Launcher.ModOpen:
+                    if (autoInject) {
+                        if (Launcher.mod && Launcher.mod.settingsGroup === "uevr-afw") {
+                            const lead = name + " is injecting into " + title + ".";
+                            return lead
+                                    + " In the UEVR menu, set Rendering Method to Alternate Frame Warping and enable Ghosting Fix"
+                                    + (Launcher.mod.currentRelease && Launcher.mod.currentRelease.name.toLowerCase().indexOf(
+                                           "joeyhodge") >= 0 ? " and Bootstrap Separate View States" : "")
+                                    + ". Put your headset on.";
+                        }
+                        return name + " is injecting into " + title + ". Put your headset on.";
+                    }
                     if (Launcher.mod && Launcher.mod.settingsGroup === "uevr-afw") {
                         const lead = lens.game && lens.game.canLaunch ? ("Pick " + title + " in " + name
                                                                        + "'s window and inject.") :
                                                                        ("Start " + title + ", then pick it in " + name
                                                                         + "'s window and inject.");
-                        return lead + " In the UEVR menu, set Rendering Method to Alternate Frame Warping and enable Ghosting Fix"
-                               + (Launcher.mod.currentRelease && Launcher.mod.currentRelease.name.toLowerCase().indexOf("joeyhodge") >= 0
-                                  ? " and Bootstrap Separate View States" : "")
-                               + ". Put your headset on.";
+                        return lead
+                                + " In the UEVR menu, set Rendering Method to Alternate Frame Warping and enable Ghosting Fix"
+                                + (Launcher.mod.currentRelease && Launcher.mod.currentRelease.name.toLowerCase().indexOf(
+                                       "joeyhodge") >= 0 ? " and Bootstrap Separate View States" : "")
+                                + ". Put your headset on.";
                     }
                     return lens.game && lens.game.canLaunch ? "Pick " + title + " in " + name + "'s window and inject, then put your headset on." :
                                                               "Start " + title + ", then pick it in " + name
@@ -182,7 +212,7 @@ Item {
         VButton {
             anchors.horizontalCenter: parent.horizontalCenter
             small: true
-            text: Launcher.phase === Launcher.Countdown ? "Cancel" : "Done"
+            text: Launcher.phase === Launcher.Countdown || Launcher.phase === Launcher.WaitingForGame ? "Cancel" : "Done"
 
             onClicked: Launcher.stop()
         }

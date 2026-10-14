@@ -47,8 +47,15 @@ ApplicationWindow {
         }
         if (Nav.notice !== "")
             return Nav.notice;
-        if (Launcher.phase === Launcher.Countdown && Launcher.game !== root.game)
-            return "Opening " + Launcher.mod.name + " for " + Launcher.game.name + " in " + Launcher.remaining + " s";
+        if (Launcher.game !== root.game) {
+            if (Launcher.phase === Launcher.WaitingForGame)
+                return "Waiting for " + Launcher.game.name + " to start";
+            if (Launcher.phase === Launcher.Countdown) {
+                return Launcher.autoAttach ? "Injecting " + Launcher.mod.name + " into " + Launcher.game.name + " in "
+                                             + Launcher.remaining + " s" : "Opening " + Launcher.mod.name + " for "
+                                             + Launcher.game.name + " in " + Launcher.remaining + " s";
+            }
+        }
         if (GamesFilterModel.scanning)
             return "Scanning libraries";
         if (Nav.view !== "library")
@@ -660,7 +667,8 @@ ApplicationWindow {
 
             Led {
                 anchors.verticalCenter: parent.verticalCenter
-                blinking: root.downloading || (Launcher.phase === Launcher.Countdown && Launcher.game !== root.game)
+                blinking: root.downloading || ((Launcher.phase === Launcher.Countdown
+                                               || Launcher.phase === Launcher.WaitingForGame) && Launcher.game !== root.game)
                 color: {
                     if (root.downloading || Launcher.phase !== Launcher.Idle)
                         return Theme.ledGreen;
@@ -830,8 +838,11 @@ ApplicationWindow {
                 return "Add game";
             if (!root.inGame)
                 return "Start SteamVR";
-            if (root.launching)
-                return Launcher.phase === Launcher.Countdown ? "Open now" : "Done";
+            if (root.launching) {
+                if (Launcher.phase !== Launcher.Countdown && Launcher.phase !== Launcher.WaitingForGame)
+                    return "Done";
+                return Launcher.autoAttach ? "Inject now" : "Open now";
+            }
             if (root.group === "setup")
                 return busy ? "Working" : canSetUp || root.openStep === undefined || !root.openStep.action ? "Set up" :
                                                                                                              root.openStep.actionLabel;
@@ -840,7 +851,8 @@ ApplicationWindow {
             return root.group === "none" ? "Play" : "Play in VR";
         }
         led: !root.inGame ? Theme.ledOff : root.launching ? Theme.ledGreen : Theme.led(root.group)
-        phase: root.launching ? (Launcher.phase === Launcher.Countdown ? "waiting" : "running") : busy ? "starting" : ""
+        phase: root.launching ? (Launcher.phase === Launcher.Countdown ? "waiting" : Launcher.phase
+                                                                               === Launcher.WaitingForGame ? "starting" : "running") : busy ? "starting" : ""
         progress: root.launching && Launcher.phase === Launcher.Countdown && Launcher.total > 0 ? Launcher.remaining
                                                                                                   / Launcher.total : 1
         seconds: Launcher.remaining
@@ -853,7 +865,7 @@ ApplicationWindow {
             else if (!root.inGame)
                 root.startSteamVr();
             else if (root.launching)
-                Launcher.phase === Launcher.Countdown ? Launcher.openModNow() : Launcher.stop();
+                Launcher.phase === Launcher.Countdown || Launcher.phase === Launcher.WaitingForGame ? Launcher.openModNow() : Launcher.stop();
             else if (root.group === "setup") {
                 if (canSetUp)
                     GameStatus.setUp(root.game);

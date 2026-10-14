@@ -61,7 +61,7 @@ public:
     // Whether an installable mod is in the game, and which version Kaon put there
     Q_INVOKABLE bool isInstalled(Mod *mod, Game *game, int revision = 0) const;
     Q_INVOKABLE ModRelease *installedRelease(Mod *mod, Game *game, int revision = 0) const;
-    // Whether Play in VR for this game starts with a countdown that its mod's delay sets
+    // Whether Play in VR for this game counts down to a manual injector open: a launchable mod with auto-attach off
     Q_INVOKABLE bool usesLaunchDelay(Game *game, int revision = 0) const;
 
     // What the mods in use for this game need it to be started with, as one line of launch options

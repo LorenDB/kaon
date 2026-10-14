@@ -112,7 +112,7 @@ int Mod::launchDelay() const
 {
     QSettings settings;
     settings.beginGroup(settingsGroup());
-    return settings.value("launchDelay"_L1, 30).toInt();
+    return settings.value("launchDelay"_L1, 15).toInt();
 }
 
 void Mod::setLaunchDelay(int seconds)
@@ -472,6 +472,16 @@ void Mod::launchMod(Game *game)
     Aptabase::instance()->track("launch-%1"_L1.arg(settingsGroup()),
                                 {{"version"_L1, currentRelease()->name()}, {"game"_L1, game->name()}});
     launchModImpl(game);
+}
+
+void Mod::autoLaunch(Game *game)
+{
+    if (!game || !currentRelease())
+        return;
+
+    Aptabase::instance()->track("launch-%1"_L1.arg(settingsGroup()),
+                                {{"version"_L1, currentRelease()->name()}, {"game"_L1, game->name()}, {"auto"_L1, true}});
+    autoLaunchImpl(game);
 }
 
 void Mod::installMod(Game *game)

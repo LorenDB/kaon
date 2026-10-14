@@ -735,7 +735,8 @@ Item {
                     }
                 }
 
-                // How long Play in VR waits before it opens an injector. Games differ in how long they take to load.
+                // How long Play in VR waits before it opens an injector for manual injection. Only shown
+                // with auto-inject off; games differ in how long they take to load.
                 Row {
                     spacing: 8
                     visible: GameStatus.usesLaunchDelay(view.game, GameStatus.revision)
@@ -796,6 +797,110 @@ Item {
                     visible: view.group === "ready" && view.cardMod.type === Mod.Launchable && !view.launching
 
                     onClicked: view.cardMod.launchMod(view.game)
+                }
+
+                // Settings profiles: per-game UEVR settings shared as a zip, imported into this game's prefix
+                Column {
+                    id: profileSection
+
+                    readonly property string profileHold: {
+                        const revision = GameStatus.revision;
+                        if (!view.cardMod || !view.cardMod.supportsProfiles || !view.game)
+                            return "";
+                        return view.cardMod.profileHoldReason(view.game);
+                    }
+                    readonly property string profileName: {
+                        const revision = GameStatus.revision;
+                        if (!view.cardMod || !view.cardMod.supportsProfiles || !view.game)
+                            return "";
+                        if (view.cardMod.profileHoldReason(view.game) !== "")
+                            return "";
+                        return view.cardMod.profileName(view.game);
+                    }
+
+                    function importProfile(url) {
+                        const err = view.cardMod.importProfile(view.game, url);
+                        if (err !== "")
+                            Nav.notify(err);
+                        else
+                            Nav.notify("Imported profile for " + view.game.name);
+                    }
+
+                    spacing: 8
+                    visible: view.cardMod && view.cardMod.supportsProfiles
+                    width: parent.width
+
+                    Rectangle {
+                        color: Theme.glassLine
+                        height: 1
+                        width: parent.width
+                    }
+
+                    VText {
+                        color: Theme.glassFaint
+                        font.pixelSize: 12
+                        font.weight: Font.Bold
+                        text: "Profiles"
+                    }
+
+                    VText {
+                        color: Theme.glassMuted
+                        font.pixelSize: 13
+                        lineHeight: 1.3
+                        text: profileSection.profileHold !== "" ? profileSection.profileHold : profileSection.profileName
+                                                                  === "" ? "No profile installed. Pick a profile ZIP shared for this game and Kaon copies its settings into this game's UEVR folder." :
+                                                                           "Profile installed ("
+                                                                           + profileSection.profileName
+                                                                           + "). Importing another profile replaces it."
+                        width: parent.width
+                        wrapMode: Text.Wrap
+                    }
+
+                    Row {
+                        spacing: 8
+                        visible: profileSection.profileName !== ""
+
+                        VButton {
+                            small: true
+                            text: "Remove profile"
+
+                            onClicked: {
+                                const err = view.cardMod.removeProfile(view.game);
+                                if (err !== "")
+                                    Nav.notify(err);
+                                else
+                                    Nav.notify("Removed profile for " + view.game.name);
+                            }
+                        }
+                    }
+
+                    VButton {
+                        enabled: profileSection.profileHold === ""
+                        icon: "plus"
+                        small: true
+                        text: "Import profile"
+
+                        onClicked: profilePicker.open()
+                    }
+
+                    FileDialog {
+                        id: profilePicker
+
+                        currentFolder: StandardPaths.standardLocations(StandardPaths.HomeLocation)[0]
+                        nameFilters: ["UEVR profile (*.zip)"]
+                        title: "Pick a UEVR profile ZIP"
+
+                        onAccepted: {
+                            const url = selectedFile;
+                            if (view.cardMod.profileHasDll(url)) {
+                                Nav.confirm("Trust the plugins in this profile?",
+                                            "This profile ships DLL files, which run as code inside the game. Only import profiles from sources you trust.",
+                                            "Import anyway", () => profileSection.importProfile(url), true);
+                            } else {
+                                profileSection.importProfile(url);
+                            }
+                        }
+                    }
                 }
 
                 // Native plugins: DLLs UEVR loads from this game's prefix

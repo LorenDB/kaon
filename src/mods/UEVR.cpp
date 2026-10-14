@@ -18,6 +18,7 @@
 #include "DownloadManager.h"
 #include "GitHub.h"
 #include "UevrPlugins.h"
+#include "UevrProfiles.h"
 #include "Wine.h"
 
 Q_LOGGING_CATEGORY(UEVRLog, "uevr")
@@ -130,9 +131,52 @@ QString UEVR::pluginHoldReason(Game *game)
     return UevrPlugins::manageHoldReason(game);
 }
 
+QString UEVR::profileName(Game *game)
+{
+    return UevrProfiles::installedProfileName(game);
+}
+
+bool UEVR::profileHasDll(const QUrl &source)
+{
+    const auto local = source.isLocalFile() ? source.toLocalFile() : source.toString();
+    return UevrProfiles::zipContainsDll(local);
+}
+
+QString UEVR::importProfile(Game *game, const QUrl &source)
+{
+    const auto error = UevrProfiles::importProfile(game, source);
+    if (!error.isEmpty())
+        return error;
+    Aptabase::instance()->track("import-uevr-profile"_L1, {{"game"_L1, game ? game->name() : QString{}}});
+    emit installedInGameChanged(game);
+    return {};
+}
+
+QString UEVR::removeProfile(Game *game)
+{
+    const auto error = UevrProfiles::removeProfile(game);
+    if (!error.isEmpty())
+        return error;
+    emit installedInGameChanged(game);
+    return {};
+}
+
+QString UEVR::profileHoldReason(Game *game)
+{
+    return UevrProfiles::manageHoldReason(game);
+}
+
 void UEVR::launchModImpl(Game *game)
 {
     Wine::instance()->runInWine(currentRelease()->name(), game, path(Paths::CurrentUEVRInjector), true);
+}
+
+void UEVR::autoLaunchImpl(Game *game)
+{
+    // The frontend auto-injects on --attach=<process>, waiting for it when it isn't up yet
+    const auto stems = UevrPlugins::exeStems(game);
+    const QStringList args = stems.isEmpty() ? QStringList{} : QStringList{"--attach="_L1 + stems.constFirst()};
+    Wine::instance()->runInWine(currentRelease()->name(), game, path(Paths::CurrentUEVRInjector), args, {}, {}, true);
 }
 
 QMap<int, Game::LaunchOption> UEVR::acceptableInstallCandidates(const Game *game) const

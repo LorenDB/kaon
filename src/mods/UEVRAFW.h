@@ -28,6 +28,7 @@ public:
     bool hasRepairOption() const override { return false; }
     bool conflictsWithBundledVrPlugins() const override { return true; }
     bool supportsPlugins() const override { return true; }
+    bool supportsProfiles() const override { return true; }
 
     Game::Engines compatibleEngines() const override { return Game::Engine::Unreal; }
     virtual QList<Mod *> dependencies() const override;
@@ -57,8 +58,17 @@ public slots:
     QString removePlugin(Game *game, const QString &fileName) override;
     QString pluginHoldReason(Game *game) override;
 
+    // Same settings profiles as UEVR: both read the per-game folders importProfile() writes.
+    // The import and remove functions return an error in words meant for the user, or empty on success.
+    QString profileName(Game *game) override;
+    bool profileHasDll(const QUrl &source) override;
+    QString importProfile(Game *game, const QUrl &source) override;
+    QString removeProfile(Game *game) override;
+    QString profileHoldReason(Game *game) override;
+
 protected:
     void launchModImpl(Game *game) override;
+    void autoLaunchImpl(Game *game) override;
 
 private:
     explicit UEVRAFW(QObject *parent = nullptr);

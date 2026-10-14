@@ -314,6 +314,18 @@ Flickable {
         }
 
         Heading {
+            text: "Play in VR"
+        }
+
+        SwitchRow {
+            checked: Launcher.autoAttach
+            detail: "Once the game is running, UEVR injects by itself. When off, Kaon opens the injector after the game's own delay instead, and injection stays manual."
+            text: "Auto-inject UEVR"
+
+            onToggled: Launcher.autoAttach = !Launcher.autoAttach
+        }
+
+        Heading {
             text: "Headset view"
         }
 
