@@ -134,6 +134,10 @@ public:
     // How the store knows that, as a sentence for the checklist. Empty unless a Linux build was passed over.
     QString windowsBuildReason() const { return m_windowsBuildReason; }
     bool hasAnticheat() const { return m_features.testFlag(Feature::Anticheat); }
+    // Upscaler entry points found in the game folder ("DLSS", "FSR", "XeSS"), from installScan().
+    // Used by UEVR AFW, which needs a DLSS/DLAA (or recent FSR3) option to hook. Empty means no
+    // upscaler files were found, not proof the game ships none: statically linked FSR/TSR leaves no DLL.
+    QStringList upscalerInputs() const;
     bool canLaunch() const { return m_canLaunch; }
     bool canOpenSettings() const { return m_canOpenSettings; }
 
@@ -247,6 +251,13 @@ private:
         // Full paths ending in .pck, for the Godot single-data.pck fallback
         QStringList pcks;
         bool anticheat = false;
+        // Upscaler files for the AFW check: DLSS always ships a DLL (nvngx_dlss*, sl.dlss*,
+        // sl.dll Streamline loader), XeSS ships libxess/XeSS, FSR ships fidelityfx/ffx_/amd_fsr
+        // DLLs when it isn't statically linked. Plugin folders (DLSS/NGX/Streamline, FSR/FidelityFX,
+        // XeSS) count too, for DLLs packed where the walk can't see them.
+        bool hasDlssFile = false;
+        bool hasFsrFile = false;
+        bool hasXessFile = false;
     };
     const InstallScan &installScan() const;
     mutable std::optional<InstallScan> m_installScan;

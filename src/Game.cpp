@@ -278,13 +278,58 @@ const Game::InstallScan &Game::installScan() const
                     name == "Randgrid.sys"_L1 || name == "TP3Helper.exe"_L1;
             }
 
+            if (!scan.hasDlssFile || !scan.hasFsrFile || !scan.hasXessFile)
+            {
+                // Upscaler DLL names are Windows names; compare case-insensitively. DLSS always
+                // ships one (nvngx_dlss*, sl.dlss*, or the sl.dll Streamline loader). XeSS ships
+                // libxess/XeSS. FSR ships fidelityfx/ffx_/amd_fsr DLLs unless statically linked.
+                const QString lower = name.toLower();
+                if (lower.endsWith(".dll"_L1))
+                {
+                    if (!scan.hasDlssFile)
+                        scan.hasDlssFile = lower.contains("dlss"_L1) || lower == "sl.dll"_L1;
+                    if (!scan.hasXessFile)
+                        scan.hasXessFile = lower.contains("xess"_L1);
+                    if (!scan.hasFsrFile)
+                        scan.hasFsrFile = lower.contains("fidelityfx"_L1) || lower.startsWith("ffx_"_L1) ||
+                                          lower.contains("amd_fsr"_L1) || lower.contains("fsr"_L1);
+                }
+                // Plugin folders catch DLLs packed where the walk can't see them. Directory entries
+                // only, so this costs one compare per folder, not per file.
+                if ((!scan.hasDlssFile || !scan.hasFsrFile || !scan.hasXessFile) && it.fileInfo().isDir())
+                {
+                    if (!scan.hasDlssFile)
+                        scan.hasDlssFile =
+                            lower == "dlss"_L1 || lower == "ngx"_L1 || lower == "streamline"_L1 || lower == "nvdlss"_L1;
+                    if (!scan.hasFsrFile)
+                        scan.hasFsrFile =
+                            lower.startsWith("fsr"_L1) || lower == "fidelityfx"_L1 || lower.contains("fidelityfx"_L1);
+                    if (!scan.hasXessFile)
+                        scan.hasXessFile = lower.startsWith("xess"_L1);
+                }
+            }
+
             // Everything is decided: the Godot fallback needs exactly one .pck, so a second one rules it out.
-            if (scan.source && scan.unityCrashHandler && scan.anticheat && scan.pcks.size() > 1)
+            if (scan.source && scan.unityCrashHandler && scan.anticheat && scan.pcks.size() > 1 && scan.hasDlssFile &&
+                scan.hasFsrFile && scan.hasXessFile)
                 break;
         }
         m_installScan = std::move(scan);
     }
     return *m_installScan;
+}
+
+QStringList Game::upscalerInputs() const
+{
+    const auto &scan = installScan();
+    QStringList out;
+    if (scan.hasDlssFile)
+        out << "DLSS"_L1;
+    if (scan.hasFsrFile)
+        out << "FSR"_L1;
+    if (scan.hasXessFile)
+        out << "XeSS"_L1;
+    return out;
 }
 
 void Game::detectGameEngine()

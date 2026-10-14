@@ -4,6 +4,7 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QJsonArray>
+#include <QLocale>
 #include <QLoggingCategory>
 #include <QRegularExpression>
 #include <QSaveFile>
@@ -311,6 +312,29 @@ QVariantList UEVRAFW::softHints(const Game *game) const
     QVariantList out;
     if (!game)
         return out;
+
+    // AFW hooks the game's upscaler (DLSS/DLAA, or FSR3 on recent builds). OptiScaler is only a
+    // bridge between upscalers the game already has, so a game shipping none has nothing for
+    // either to hook. Warn-only: statically linked FSR/TSR leaves no files to find.
+    if (QFileInfo{game->installDir()}.isDir())
+    {
+        const auto upscalers = game->upscalerInputs();
+        if (upscalers.isEmpty())
+            out << hint("afwUpscaler"_L1,
+                        "No upscaler found"_L1,
+                        "Kaon couldn't find DLSS, FSR, or XeSS files in this game. AFW hooks into the game's "
+                        "upscaler (DLSS/DLAA, or FSR3 on recent builds), and OptiScaler can only replace an "
+                        "upscaler the game already has. If the graphics settings have no such option, use "
+                        "stock UEVR instead."_L1,
+                        "warn"_L1);
+        else if (!upscalers.contains("DLSS"_L1))
+            out << hint("afwUpscaler"_L1,
+                        "No DLSS entry point"_L1,
+                        "Found %1 but no DLSS. AFW hooks the DLSS path (recent builds also take FSR3): pick the "
+                        "upscaler in the game's settings and try OptiScaler with DLSS output (Insert overlay) "
+                        "as the bridge. Stock UEVR remains the fallback."_L1.arg(QLocale{}.createSeparatedList(upscalers)),
+                        "warn"_L1);
+    }
 
     const bool applied = recommendedConfigApplied(game);
     const bool joey = isJoeyhodgeRelease(currentRelease());
