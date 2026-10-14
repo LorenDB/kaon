@@ -10,6 +10,8 @@
 #include "Mod.h"
 
 class GameExecutablePickerModel;
+class QFileSystemWatcher;
+class QTimer;
 
 // Works out what stands between a game and playing it in VR. The UI groups the library by this and shows the steps as a
 // checklist, each with the action that fixes it.
@@ -105,6 +107,10 @@ private:
     QList<Mod *> modsWithLaunchOptions(Game *game) const;
     // Empty when the game needs no launch options. Carries "copyText" when there is something to paste.
     QVariantMap launchOptionsStep(Game *game) const;
+    // Empty unless a hand-added game may not reach any VR runtime. Always a warning: Kaon can only
+    // tell there is a chance, not that VR is unreachable.
+    QVariantMap vrEnvironmentStep(Game *game) const;
+    void watchVrEnvironment();
     static QString downloadKey(Mod *mod, ModRelease *release);
 
     int m_revision{0};
@@ -121,4 +127,8 @@ private:
 
     // As of the last look, to tell when a game has started or quit
     QStringList m_prefixesInUse;
+    // Watches the host VR runtime registration, so installing SteamVR (or another
+    // runtime) clears the warning without a rescan
+    QFileSystemWatcher *m_vrWatcher = nullptr;
+    QTimer *m_vrRefresh = nullptr;
 };

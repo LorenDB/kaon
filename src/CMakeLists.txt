@@ -82,6 +82,8 @@ qt_add_qml_module(kaon
         UpdateChecker.h
         VDF.cpp
         VDF.h
+        VrEnvironment.cpp
+        VrEnvironment.h
         VrOverlay.cpp
         VrOverlay.h
         Wine.cpp

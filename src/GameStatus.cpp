@@ -7,6 +7,7 @@
 #include <QDir>
 #include <QElapsedTimer>
 #include <QFileInfo>
+#include <QFileSystemWatcher>
 #include <QGuiApplication>
 #include <QHash>
 #include <QLocale>
@@ -28,6 +29,7 @@
 #include "Steam.h"
 #include "UEVRAFW.h"
 #include "UnrealVrPlugins.h"
+#include "VrEnvironment.h"
 #include "WinePrefix.h"
 
 Q_LOGGING_CATEGORY(GameStatusLog, "gamestatus")
@@ -147,8 +149,10 @@ GameStatus::GameStatus(QObject *parent)
 
     connect(GamesFilterModel::instance(), &GamesFilterModel::gamesChanged, this, &GameStatus::invalidate);
     connect(Steam::instance(), &Steam::launchOptionsChanged, this, &GameStatus::invalidate);
+    connect(Steam::instance(), &Steam::hasSteamVRChanged, this, &GameStatus::invalidate);
     // Flipping auto-attach shows or hides the delay stepper on the game's page
     connect(Launcher::instance(), &Launcher::autoAttachChanged, this, &GameStatus::invalidate);
+    watchVrEnvironment();
 
     // Whether a game is running decides what may be changed in its prefix, and nothing announces a game starting or
     // quitting. Looking is cheap, and only happens while Kaon is the window in use.
@@ -330,6 +334,9 @@ QVariantList GameStatus::steps(Game *game, int) const
             out << step;
         }
     }
+
+    if (const auto step = vrEnvironmentStep(game); !step.isEmpty())
+        out << step;
 
     if (game->hasAnticheat())
         out << makeStep("anticheat"_L1,
@@ -537,6 +544,78 @@ QVariantMap GameStatus::launchOptionsStep(Game *game) const
         step["secondaryLabel"_L1] = "Steam properties"_L1;
     }
     return step;
+}
+
+QVariantMap GameStatus::vrEnvironmentStep(Game *game) const
+{
+    // Kaon starts hand-added games itself with plain `wine exe`, never with Steam's
+    // `proton run` wrapper, so Proton's VR bridge is missing even when a runtime is
+    // installed. Steam/Heroic/itch games are started by their own launcher, which owns
+    // that setup, so there is nothing Kaon-specific to warn about there.
+    if (!game || game->store() != Game::Store::Custom)
+        return {};
+    if (game->supportsVr() || game->noWindowsSupport())
+        return {};
+    if (!preferredMod(game))
+        return {};
+
+    const auto env = VrEnvironment::detect();
+    if (!env.hasAny())
+    {
+        // A warning, not a todo: installing a runtime is outside what Kaon does itself.
+        return makeStep("vrEnv"_L1,
+                        "No VR runtime found"_L1,
+                        "Kaon can't find SteamVR or any other OpenXR runtime on this computer. UEVR's OpenVR mode needs "
+                        "SteamVR installed and running; its OpenXR mode needs SteamVR set as the active runtime or another "
+                        "runtime (Monado, WiVRn, ALVR) via XR_RUNTIME_JSON. Without one the game can't see a headset and "
+                        "may "
+                        "crash when the mod injects."_L1,
+                        "warn"_L1);
+    }
+
+    const bool protonWine = VrEnvironment::isProtonWineBinary(game->wineBinary());
+    const bool protonPrefix = VrEnvironment::looksLikeProtonPrefix(game->winePrefix());
+    const auto detail =
+        "Kaon starts hand-added games with plain Wine (%1 in a %2 prefix), not Proton from Steam, so the Proton VR "
+        "bridge is missing and the game may not see SteamVR or OpenXR, then crash when the mod injects. Start "
+        "SteamVR first; if it still fails, add the executable to Steam as a non-Steam game with Proton forced and "
+        "launch it from Steam, then inject from Kaon."_L1.arg(protonWine ? "Proton's Wine"_L1 : "system Wine"_L1,
+                                                              protonPrefix ? "Proton"_L1 : "Wine"_L1);
+    auto step = makeStep("vrEnv"_L1, "May not see VR"_L1, detail, "warn"_L1);
+    step["action"_L1] = "launchSteamVR"_L1;
+    step["actionLabel"_L1] = "Start SteamVR"_L1;
+    return step;
+}
+
+void GameStatus::watchVrEnvironment()
+{
+    if (m_vrWatcher != nullptr)
+        return;
+    m_vrWatcher = new QFileSystemWatcher{this};
+    m_vrRefresh = new QTimer{this};
+    m_vrRefresh->setSingleShot(true);
+    m_vrRefresh->setInterval(500);
+    connect(m_vrRefresh, &QTimer::timeout, this, &GameStatus::invalidate);
+    const auto changed = [this] {
+        // Runtimes create their registration on first run; keep watching the
+        // parent directories so that shows up without a rescan.
+        for (const auto &path : VrEnvironment::watchedFiles())
+        {
+            if (QFileInfo::exists(path) && !m_vrWatcher->files().contains(path) &&
+                !m_vrWatcher->directories().contains(path))
+                m_vrWatcher->addPath(path);
+        }
+        if (!m_vrRefresh->isActive())
+            m_vrRefresh->start();
+    };
+    connect(m_vrWatcher, &QFileSystemWatcher::fileChanged, this, changed);
+    connect(m_vrWatcher, &QFileSystemWatcher::directoryChanged, this, changed);
+    changed();
+    // Prime the watcher without waiting for the debounce
+    if (m_vrRefresh->isActive())
+    {
+        m_vrRefresh->stop();
+    }
 }
 
 QString GameStatus::summary(Game *game, int) const
@@ -761,6 +840,8 @@ void GameStatus::runStep(Game *game, const QString &key, bool secondary)
 
     if (action == "launchOnce"_L1)
         game->launch();
+    else if (action == "launchSteamVR"_L1)
+        Steam::instance()->launchSteamVR();
     else if (action == "steamSettings"_L1)
         openSteamProperties(game);
     else if (action == "rescan"_L1)
