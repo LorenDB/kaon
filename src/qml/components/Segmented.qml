@@ -3,7 +3,8 @@ import QtQuick
 import dev.lorendb.kaon
 
 // Stereo's segmented control: the chosen option sits on a raised pill.
-Row {
+// With no width set it stays on one line; give it a width and long lists wrap.
+Flow {
     id: seg
 
     property var current
