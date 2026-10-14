@@ -785,6 +785,11 @@ void GameStatus::runStep(Game *game, const QString &key, bool secondary)
                                 : QString{})
                          + " into UEVR's config for this game."_L1);
     }
+    // Soft-hint buttons (e.g. dismissing a warning). Hint keys never match a mod, so this
+    // takes nothing from the branch below; unhandled actions simply return false.
+    else if (const auto mod = preferredMod(game); mod && mod->runHintAction(game, action))
+    {
+    }
     else if (const auto mod = modForKey(key))
     {
         if (action == "refresh"_L1)

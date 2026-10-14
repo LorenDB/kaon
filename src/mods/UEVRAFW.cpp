@@ -9,6 +9,7 @@
 #include <QRegularExpression>
 #include <QSaveFile>
 #include <QSet>
+#include <QSettings>
 #include <QStandardPaths>
 #include <QTimer>
 
@@ -251,6 +252,21 @@ bool UEVRAFW::recommendedConfigApplied(const Game *game) const
     return true;
 }
 
+bool UEVRAFW::isVramWarningDismissed() const
+{
+    QSettings settings;
+    settings.beginGroup(settingsGroup());
+    return settings.value("hideVramWarning"_L1, false).toBool();
+}
+
+void UEVRAFW::setVramWarningDismissed(bool dismissed)
+{
+    QSettings settings;
+    settings.beginGroup(settingsGroup());
+    settings.setValue("hideVramWarning"_L1, dismissed);
+    qCInfo(UEVRAFWLog) << "AFW VRAM warning dismissed:" << dismissed;
+}
+
 bool UEVRAFW::applyRecommendedConfig(Game *game, QString *error)
 {
     QString localError;
@@ -296,6 +312,11 @@ bool UEVRAFW::applyRecommendedConfig(Game *game, QString *error)
 
 bool UEVRAFW::runHintAction(Game *game, const QString &action)
 {
+    if (action == "dismissAfwVram"_L1)
+    {
+        setVramWarningDismissed(true);
+        return true;
+    }
     if (action != "applyAfwConfig"_L1)
         return false;
     QString error;
@@ -353,11 +374,14 @@ QVariantList UEVRAFW::softHints(const Game *game) const
         out << hint(
             "afwSetup"_L1, "AFW in-game setup"_L1, detail, "warn"_L1, "applyAfwConfig"_L1, "Write recommended config"_L1);
 
-    out << hint("afwVram"_L1,
-                "AFW VRAM"_L1,
-                "Alternate Frame Warping uses about 500 MB of extra VRAM. If the game hitches to single-digit FPS, "
-                "lower resolution or disable AFW."_L1,
-                "warn"_L1);
+    if (!isVramWarningDismissed())
+        out << hint("afwVram"_L1,
+                    "AFW VRAM"_L1,
+                    "Alternate Frame Warping uses about 500 MB of extra VRAM. If the game hitches to single-digit FPS, "
+                    "lower resolution or disable AFW."_L1,
+                    "warn"_L1,
+                    "dismissAfwVram"_L1,
+                    "Don't show again"_L1);
     return out;
 }
 

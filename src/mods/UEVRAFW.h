@@ -43,6 +43,10 @@ public:
     // Writes VR_RenderingMethod=3, VR_GhostingFix, and Bootstrap on joeyhodge builds.
     bool applyRecommendedConfig(Game *game, QString *error = nullptr);
     bool recommendedConfigApplied(const Game *game) const;
+    // Whether the AFW VRAM hint's "Don't show again" was pressed. Global, not per game: VRAM
+    // is a property of the machine, and the warning is identical everywhere.
+    bool isVramWarningDismissed() const;
+    void setVramWarningDismissed(bool dismissed);
 
     void refreshReleases() override;
     bool runHintAction(Game *game, const QString &action) override;
