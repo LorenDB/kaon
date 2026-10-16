@@ -67,4 +67,4 @@ jobs:
         with:
           name: AppImage-${{ matrix.arch }}
           path: Kaon-${{ matrix.arch }}.AppImage
-          retention-days: 1
+          retention-days: 90
