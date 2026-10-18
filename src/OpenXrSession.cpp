@@ -609,11 +609,15 @@ struct OpenXrLoop
         info.enabledExtensionNames = enabled.data();
 
         result = api.xrCreateInstance(&info, &instance);
+        // 1.0 headers only provide XR_CURRENT_API_VERSION. 1.1 headers also
+        // define XR_API_VERSION_1_0, which a 1.0 runtime will accept.
+#if defined(XR_API_VERSION_1_0)
         if (result == XR_ERROR_API_VERSION_UNSUPPORTED)
         {
             info.applicationInfo.apiVersion = XR_API_VERSION_1_0;
             result = api.xrCreateInstance(&info, &instance);
         }
+#endif
         if (!check(result, "xrCreateInstance"))
             return false;
         if (!loadInstance())
