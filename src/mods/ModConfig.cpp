@@ -301,6 +301,36 @@ namespace
         return specs;
     }
 
+    QList<ConfigText::Spec> l4d2Specs()
+    {
+        // Defaults match the 0.6.2 VR/config.txt. The mod parses every one of these and errors if a key is missing
+        // or not a number. Bools are the words true and false.
+        return {
+            number("Movement"_L1, "Turn speed"_L1, "How fast smooth turning is."_L1, "TurnSpeed"_L1, "0.3"_L1),
+            boolean("Movement"_L1, "Snap turning"_L1, "Turn in steps instead of smoothly."_L1, "SnapTurning"_L1, false),
+            number("Movement"_L1, "Snap angle"_L1, "Degrees per snap."_L1, "SnapTurnAngle"_L1, "45.0"_L1),
+            boolean("Movement"_L1, "Left handed"_L1, "Puts the weapons in the left hand."_L1, "LeftHanded"_L1, false),
+            number("View"_L1,
+                   "World scale"_L1,
+                   "Source units per real-world unit. 43.2 is the usual size."_L1,
+                   "VRScale"_L1,
+                   "43.2"_L1),
+            number("View"_L1, "IPD scale"_L1, "Scales the distance between the eyes."_L1, "IPDScale"_L1, "1.0"_L1),
+            boolean("Body"_L1,
+                    "Hide arms"_L1,
+                    "Hides the viewmodel arms. Melee weapons stay hidden either way."_L1,
+                    "HideArms"_L1,
+                    false),
+            number("HUD"_L1, "HUD distance"_L1, "How far away the HUD sits."_L1, "HudDistance"_L1, "1.3"_L1),
+            number("HUD"_L1, "HUD size"_L1, "How large the HUD is."_L1, "HudSize"_L1, "1.1"_L1),
+            boolean("HUD"_L1,
+                    "HUD always visible"_L1,
+                    "Shows the HUD without looking up or down."_L1,
+                    "HudAlwaysVisible"_L1,
+                    false),
+        };
+    }
+
     QList<ConfigText::Spec> perfKitSpecs()
     {
         const auto keys = "Click the box and press the keys together. The game forgets hotkey changes when it closes."_L1;
@@ -739,6 +769,8 @@ namespace
             return {ConfigText::Syntax::Equals,
                     "Portal reads this file when it starts. Portal Stories: Mel keeps the gun offsets Kaon set for it."_L1,
                     portalSpecs(false)};
+        if (group == "l4d2vr"_L1)
+            return {ConfigText::Syntax::Equals, "Left 4 Dead 2 reads this file when it starts."_L1, l4d2Specs()};
         if (group == "vrperfkit"_L1)
             return {ConfigText::Syntax::Yaml,
                     "The game reads this file when it starts. Hotkey changes inside the headset are not written here."_L1,

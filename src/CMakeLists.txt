@@ -119,6 +119,8 @@ qt_add_qml_module(kaon
         mods/Dotnet.h
         mods/GitHubMod.cpp
         mods/GitHubMod.h
+        mods/L4D2VR.cpp
+        mods/L4D2VR.h
         mods/Mod.cpp
         mods/Mod.h
         mods/ModsFilterModel.cpp

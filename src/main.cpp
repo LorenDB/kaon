@@ -21,6 +21,7 @@
 #include "GitHub.h"
 #include "Heroic.h"
 #include "Itch.h"
+#include "L4D2VR.h"
 #include "OpenXrCas.h"
 #include "OptiScaler.h"
 #include "Portal1VR.h"
@@ -128,6 +129,7 @@ int main(int argc, char *argv[])
     GamesFilterModel::instance();
     GitHub::instance();
     Itch::instance();
+    L4D2VR::instance();
     OpenXrCas::instance();
     OptiScaler::instance();
     Portal1VR::instance();

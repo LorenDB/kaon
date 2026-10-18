@@ -332,7 +332,7 @@ Item {
                     font.pixelSize: 13
                     leftPadding: 6
                     text: row.modelData.found === true ? "Hidden group, shown because it has what you searched for" :
-                                                         "Kaon has mods for Unreal Engine and Unity games, Portal and Portal 2. Engines are a best guess."
+                                                         "Kaon has mods for Unreal Engine and Unity games, Left 4 Dead 2, Portal, and Portal 2. Engines are a best guess."
                     visible: row.modelData.group === "none" || row.modelData.found === true
                     width: Math.min(implicitWidth, view.width - 2 * Theme.pad - 280)
                 }

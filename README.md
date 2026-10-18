@@ -12,7 +12,7 @@ can be disabled in the settings page.
 - Install any UEVR release, including nightly builds
 - Install PureDark's UEVR AFW (Alternate Frame Warping): Kaon adds `-dx12`, checks for `PDAFWPlugin.dll`, and can write the recommended in-game settings (AFW rendering method, Ghosting Fix, and Bootstrap on joeyhodge builds). You still enable DLSS/DLAA in the game. AFW needs DX12 and about 500 MB extra VRAM; use the nightly build for older UE titles and joeyhodge for UE 5.5–5.8
 - Install the .NET runtime in Proton to make UEVR work
-- Install Portal and Portal 2 VR mods
+- Install Left 4 Dead 2, Portal, and Portal 2 VR mods
 - Install UUVR for Unity games, along with the BepInEx setup it needs. Kaon picks the UUVR build for the game's
   Unity version and sets the game's Proton prefix up to load BepInEx, so there are no launch options to add.
 - Switch OpenXR CAS, VR Performance Toolkit, and OptiScaler on or off for each game. OptiScaler works alone or as the DLSS path for UEVR AFW on AMD/Intel; it conflicts with VR Performance Toolkit (both use dxgi.dll)
