@@ -15,10 +15,16 @@ include(FetchContent)
 FetchContent_Declare(ValveFileVDF URL https://github.com/TinyTinni/ValveFileVDF/archive/refs/tags/v1.1.1.tar.gz)
 FetchContent_MakeAvailable(ValveFileVDF)
 
+# Headset view. Both are on unless a build wants to skip the dependency.
+# OpenVR is the SteamVR dashboard tab. OpenXR is the WiVRn and Monado window.
+option(KAON_OPENVR "SteamVR dashboard overlay" ON)
+option(KAON_OPENXR "OpenXR headset view for WiVRn and Monado" ON)
+
 # OpenVR dashboard overlay (SteamVR tab). Only the small API stub is built: it
 # loads vrclient from the SteamVR install at runtime, so Kaon still starts when
 # SteamVR is not installed. The stub is fetched as individual files to avoid
 # cloning the whole SDK.
+if(KAON_OPENVR)
 set(OPENVR_VERSION v2.15.6)
 set(OPENVR_SRC_DIR ${CMAKE_BINARY_DIR}/_deps/openvr-stub-src)
 set(OPENVR_FILES
@@ -69,6 +75,7 @@ if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|ARM64")
     target_compile_definitions(openvr_api PRIVATE LINUX POSIX LINUXARM64 VR_API_PUBLIC VRCORE_NO_PLATFORM)
 else()
     target_compile_definitions(openvr_api PRIVATE LINUX POSIX LINUX64 VR_API_PUBLIC VRCORE_NO_PLATFORM)
+endif()
 endif()
 
 add_subdirectory(src)

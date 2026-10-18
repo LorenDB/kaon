@@ -1,5 +1,18 @@
 set(CMAKE_AUTOMOC ON)
 
+if(KAON_OPENXR)
+    find_package(OpenXR REQUIRED)
+endif()
+
+set(KAON_HEADSET_SOURCES)
+if(KAON_OPENXR)
+    list(APPEND KAON_HEADSET_SOURCES
+        OpenXrSession.cpp
+        OpenXrSession.h
+        WivrnLauncher.cpp
+        WivrnLauncher.h)
+endif()
+
 qt_add_executable(kaon
     main.cpp
 )
@@ -86,6 +99,7 @@ qt_add_qml_module(kaon
         VrEnvironment.h
         VrOverlay.cpp
         VrOverlay.h
+        ${KAON_HEADSET_SOURCES}
         Wine.cpp
         Wine.h
         WinePrefix.cpp
@@ -159,6 +173,13 @@ target_include_directories(kaon PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/mods>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/stores>
 )
+if(KAON_OPENXR)
+    target_include_directories(kaon PUBLIC ${OpenXR_INCLUDE_DIR})
+    target_compile_definitions(kaon PRIVATE KAON_OPENXR)
+endif()
+if(KAON_OPENVR)
+    target_compile_definitions(kaon PRIVATE KAON_OPENVR)
+endif()
 target_precompile_headers(kaon PUBLIC pch.h)
 
 target_link_libraries(kaon
@@ -169,8 +190,11 @@ target_link_libraries(kaon
         Qt6::Widgets
         Qt6::Sql
         ValveFileVDF
-        openvr_api
+        ${CMAKE_DL_LIBS}
 )
+if(KAON_OPENVR)
+    target_link_libraries(kaon PRIVATE openvr_api)
+endif()
 
 include(GNUInstallDirs)
 install(TARGETS kaon

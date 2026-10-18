@@ -10,7 +10,13 @@
 
 #include <memory>
 
-#include <openvr.h>
+#if defined(KAON_OPENVR)
+    #include <openvr.h>
+#endif
+
+#if defined(KAON_OPENXR)
+class OpenXrSession;
+#endif
 
 class QOffscreenSurface;
 class QOpenGLContext;
@@ -36,11 +42,13 @@ class QTimer;
 // disconnected client's overlays by itself, and calling into it mid-shutdown
 // crashes.
 //
-// OpenVR is used rather than OpenXR because SteamVR's OpenXR runtime does not
-// expose the experimental XR_EXTX_overlay extension, while the OpenVR overlay
-// path works with any running SteamVR scene. The OpenVR client library is
-// linked statically and loads vrclient at runtime, so Kaon still starts when
-// SteamVR is not installed; everything here stays dormant until the switch in
+// SteamVR's OpenXR runtime does not expose XR_EXTX_overlay, so a running
+// SteamVR scene uses the OpenVR dashboard tab. WiVRn and Monado do expose it:
+// the window is an OpenXR overlay session composited on top of whatever else
+// is running, or a regular session when that extension is missing. The OpenVR
+// client library is linked statically and loads vrclient at runtime, and the
+// OpenXR loader is opened only when needed, so Kaon still starts when neither
+// runtime is installed. Everything here stays dormant until the switch in
 // Settings is flipped.
 class VrOverlay : public QObject
 {
@@ -54,6 +62,8 @@ class VrOverlay : public QObject
     Q_PROPERTY(bool dashboardVisible READ dashboardVisible NOTIFY changed FINAL)
     Q_PROPERTY(QString status READ status NOTIFY changed FINAL)
     Q_PROPERTY(bool autoLaunch READ autoLaunch WRITE setAutoLaunch NOTIFY changed FINAL)
+    Q_PROPERTY(bool openVrInstalled READ openVrInstalled NOTIFY changed FINAL)
+    Q_PROPERTY(bool steamDashboard READ steamDashboard NOTIFY changed FINAL)
 
 public:
     static VrOverlay *instance();
@@ -65,6 +75,8 @@ public:
     bool dashboardVisible() const { return m_dashboardVisible; }
     QString status() const { return m_status; }
     bool autoLaunch() const { return m_autoLaunch; }
+    bool openVrInstalled() const { return m_openVrInstalled; }
+    bool steamDashboard() const { return m_backend == Backend::OpenVr && m_connected; }
 
     void setEnabled(bool enabled);
     void setAutoLaunch(bool on);
@@ -79,31 +91,59 @@ signals:
     void changed();
 
 private:
+#if defined(KAON_OPENXR)
+    friend class OpenXrSession;
+#endif
+
+    enum class Backend
+    {
+        None,
+        OpenVr,
+        OpenXr
+    };
+
     explicit VrOverlay(QObject *parent = nullptr);
     ~VrOverlay() override;
 
     void setStatus(const QString &status);
+    void refreshAvailability();
+    QString unavailableStatus() const;
     void ensureConnected();
+#if defined(KAON_OPENXR)
+    void beginOpenXr();
+    void onOpenXrConnected(bool overlaySession, quint64 generation);
+    void onOpenXrFailed(const QString &message, quint64 generation);
+    void onOpenXrLost(quint64 generation);
+    void pushOpenXrFrame(bool force);
+    void pointerMove(const QPointF &windowPos);
+    void pointerButton(const QPointF &windowPos, bool down);
+    void pointerScroll(const QPointF &windowPos, float dx, float dy);
+#endif
+    QImage captureWindow();
+#if defined(KAON_OPENVR)
     void onServerDown(int error, quint64 generation);
     void onConnected(void *system, int error, quint64 generation, qint64 elapsedMs);
     void finishConnect();
     void registerManifest();
     bool createOverlay();
     void updateMouseScale();
+#endif
     void shutdownVr();
     void onEventTick();
     void onFrameTick();
     void pushFrame(bool force = false);
+#if defined(KAON_OPENVR)
     bool uploadTexture(const QImage &image);
     bool makeGlCurrent();
     void pollOverlay(vr::VROverlayHandle_t handle, bool thumbnail);
-    bool takeOverlayLock();
     void handleMouseMove(float x, float y);
     void handleMouseButton(float x, float y, uint32_t button, bool down);
-    void handleScroll(float dx, float dy, float ageSeconds);
     void updateKeyboard(QQuickWindow *window);
     bool isOwnKeyboardEvent(const vr::VREvent_t &event) const;
     void handleKeyboardInput(const QByteArray &input);
+#endif
+    bool takeOverlayLock();
+    void handleScroll(float dx, float dy, float ageSeconds);
     void boostFrames();
     QQuickWindow *overlayWindow() const;
     static QQuickItem *focusedItem(QQuickWindow *window);
@@ -117,7 +157,13 @@ private:
     QFuture<void> m_connectFuture;
 
     bool m_available = false;
+    bool m_openVrInstalled = false;
+    bool m_openXrInstalled = false;
     bool m_enabled = false;
+    Backend m_backend = Backend::None;
+#if defined(KAON_OPENXR)
+    std::unique_ptr<OpenXrSession> m_openXr;
+#endif
     bool m_autoLaunch = false;
     bool m_connected = false;
     bool m_connecting = false;
@@ -125,8 +171,10 @@ private:
     bool m_showOnConnect = false;
     QString m_status;
 
+#if defined(KAON_OPENVR)
     vr::VROverlayHandle_t m_mainHandle = vr::k_ulOverlayHandleInvalid;
     vr::VROverlayHandle_t m_thumbHandle = vr::k_ulOverlayHandleInvalid;
+#endif
 
     // Size of the image currently uploaded to the overlay, and the factor that
     // maps overlay pixels back to desktop window points.
@@ -137,6 +185,7 @@ private:
     // Skips re-uploading a window that has not changed.
     QImage m_lastUploaded;
 
+#if defined(KAON_OPENVR)
     // The overlay's texture lives in a private GL context, independent of
     // whatever Qt Quick renders with. SteamVR copies it on every
     // SetOverlayTexture, so one texture is reused for all frames and kept
@@ -146,6 +195,7 @@ private:
     uint m_texture = 0;
     int m_textureWidth = 0;
     int m_textureHeight = 0;
+#endif
 
     // Bumped on every shutdown so a VR_Init that is still handshaking in the
     // background cannot resurrect (or tear down) the new state when it lands.
@@ -170,7 +220,9 @@ private:
     qint64 m_boostUntil = 0;
     // Wheel timestamps must keep increasing for Flickable to take them.
     quint64 m_lastWheelTimestamp = 0;
+#if defined(KAON_OPENVR)
     // SteamVR's keyboard is up for the overlay. It hides itself when the user
     // closes it; that comes back as a closed event.
     bool m_keyboardOpen = false;
+#endif
 };

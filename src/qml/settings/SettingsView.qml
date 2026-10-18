@@ -331,7 +331,7 @@ Flickable {
 
         SwitchRow {
             checked: VrOverlay.enabled
-            detail: "Adds a Kaon tab to the SteamVR dashboard and mirrors this window into it, so installs and mod settings can be changed without taking the headset off. Start SteamVR yourself first; Kaon attaches on its own once it is running. The VR laser pointer clicks and scrolls. A larger desktop window looks sharper in VR. Text fields still need the desktop keyboard for now."
+            detail: "Mirrors this window into the headset, so installs and mod settings can be changed without taking it off. SteamVR gets a dashboard tab. WiVRn and Monado float the window in front of you, on top of another app when the runtime allows an overlay session. Start the runtime yourself first; Kaon attaches on its own once it is running. The laser pointer clicks and scrolls. A larger desktop window looks sharper in VR. Text fields still need the desktop keyboard for now."
             text: "Show Kaon inside VR"
 
             onToggled: VrOverlay.enabled = !VrOverlay.enabled
@@ -355,7 +355,7 @@ Flickable {
             VButton {
                 small: true
                 text: "Open the dashboard tab"
-                visible: VrOverlay.active
+                visible: VrOverlay.steamDashboard
 
                 onClicked: VrOverlay.showDashboard()
             }
@@ -373,7 +373,7 @@ Flickable {
             checked: VrOverlay.autoLaunch
             detail: "SteamVR starts Kaon by itself, so the tab is there when the dashboard opens."
             text: "Start Kaon with SteamVR"
-            visible: VrOverlay.available
+            visible: VrOverlay.openVrInstalled
 
             onToggled: VrOverlay.autoLaunch = !VrOverlay.autoLaunch
         }

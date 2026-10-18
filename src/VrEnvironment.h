@@ -53,7 +53,11 @@ namespace VrEnvironment
     {
         // The same checks against explicit contents/paths, for unit tests.
         bool hasOpenVrRuntime(const QString &vrpathJson, const QString &vrOverride);
-        bool hasOpenXrRuntime(const QString &activeRuntimeJson, const QString &xrRuntimeJson);
+        // activeRuntimePath is the manifest file the JSON was read from. A relative
+        // library_path is resolved against that file, following symlinks.
+        bool hasOpenXrRuntime(const QString &activeRuntimeJson,
+                              const QString &xrRuntimeJson,
+                              const QString &activeRuntimePath = {});
         QString openXrRuntimeName(const QString &activeRuntimeJson);
     } // namespace Test
 } // namespace VrEnvironment

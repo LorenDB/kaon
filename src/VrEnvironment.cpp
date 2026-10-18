@@ -38,6 +38,19 @@ namespace
     {
         return !path.isEmpty() && QFileInfo{path}.isFile();
     }
+
+    // OpenXR runtime manifests store library_path relative to the manifest file.
+    // WiVRn's active_runtime.json is a symlink into the Flatpak, and the library
+    // walks up from that real file, not from ~/.config/openxr/1.
+    QString resolveRuntimeLibrary(const QString &libraryPath, const QString &manifestPath)
+    {
+        if (libraryPath.isEmpty() || QFileInfo{libraryPath}.isAbsolute() || manifestPath.isEmpty())
+            return libraryPath;
+        const QFileInfo manifest{manifestPath};
+        const QString canonical = manifest.canonicalFilePath();
+        const QString base = QFileInfo{canonical.isEmpty() ? manifest.absoluteFilePath() : canonical}.absolutePath();
+        return QDir::cleanPath(base + QLatin1Char('/') + libraryPath);
+    }
 } // namespace
 
 bool VrEnvironment::Test::hasOpenVrRuntime(const QString &vrpathJson, const QString &vrOverride)
@@ -63,7 +76,9 @@ bool VrEnvironment::Test::hasOpenVrRuntime(const QString &vrpathJson, const QStr
     return false;
 }
 
-bool VrEnvironment::Test::hasOpenXrRuntime(const QString &activeRuntimeJson, const QString &xrRuntimeJson)
+bool VrEnvironment::Test::hasOpenXrRuntime(const QString &activeRuntimeJson,
+                                           const QString &xrRuntimeJson,
+                                           const QString &activeRuntimePath)
 {
     // XR_RUNTIME_JSON bypasses the active_runtime.json lookup entirely.
     if (fileExists(xrRuntimeJson))
@@ -76,7 +91,7 @@ bool VrEnvironment::Test::hasOpenXrRuntime(const QString &activeRuntimeJson, con
         return false;
     const auto runtime = doc.object().value("runtime"_L1).toObject();
     const auto library = runtime.value("library_path"_L1).toString();
-    return fileExists(library);
+    return fileExists(resolveRuntimeLibrary(library, activeRuntimePath));
 }
 
 QString VrEnvironment::Test::openXrRuntimeName(const QString &activeRuntimeJson)
@@ -106,7 +121,7 @@ VrEnvironment::Status VrEnvironment::detect()
     const auto activeJson = readText(openXrActiveRuntimeFile());
 
     cached.hasOpenVr = Test::hasOpenVrRuntime(vrpathJson, vrOverride);
-    cached.hasOpenXr = Test::hasOpenXrRuntime(activeJson, xrRuntimeJson);
+    cached.hasOpenXr = Test::hasOpenXrRuntime(activeJson, xrRuntimeJson, openXrActiveRuntimeFile());
     // Prefer the override's manifest name when one is forced, otherwise the
     // registered runtime's own name ("SteamVR", "Monado", ...).
     if (!xrRuntimeJson.isEmpty() && fileExists(xrRuntimeJson))

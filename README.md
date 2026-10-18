@@ -19,9 +19,10 @@ can be disabled in the settings page.
 - For mods that need launch options, Kaon reads what a Steam game already has and gives you one line to paste
   that keeps it
 - Works on the Steam Frame! (Only UEVR has been confirmed working so far)
-- Adds a Kaon tab to the SteamVR dashboard (Settings > Headset view), so installs and mod settings can be
-  changed without taking the headset off. The VR laser pointer clicks and scrolls, and clicking a text field
-  brings up the SteamVR keyboard.
+- Mirrors Kaon into the headset (Settings > Headset view), so installs and mod settings can be changed
+  without taking it off. SteamVR gets a dashboard tab. WiVRn and Monado show a floating window, composited
+  on top of another app when the runtime supports an OpenXR overlay session. The laser pointer clicks and
+  scrolls. On WiVRn, Kaon also appears in the in-headset app launcher.
 - Flatpak Steam and Flatpak Heroic are supported, and a native install of the same launcher is listed separately. The Flatpak launcher has to already be running, and user namespaces have to be enabled so Kaon can enter the game sandbox. Snap stores and the Flatpak itch app are still unsupported.
 
 ## Requirements
@@ -42,7 +43,12 @@ Alternatively, bleeding-edge builds are available via CI. To get them, click on 
 ## Building from source
 
 You'll need the latest Qt installed to build Kaon. Older Qt versions may work, but I tend to use new Qt
-features as they come out, so I only officially support the most recent release of Qt.
+features as they come out, so I only officially support the most recent release of Qt. The OpenXR headers
+are also required (`libopenxr-dev` on Debian and Ubuntu, `openxr-devel` on Fedora and openSUSE). The
+OpenXR loader itself is only needed at runtime, and only for the WiVRn/Monado headset view.
+
+The headset view is on by default. `-DKAON_OPENVR=OFF` skips the SteamVR dashboard tab, and
+`-DKAON_OPENXR=OFF` skips the WiVRn/Monado window and drops the OpenXR header requirement.
 
 ``` bash
 git clone https://github.com/LorenDB/kaon.git

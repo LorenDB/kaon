@@ -1,5 +1,10 @@
 #include "VrOverlay.h"
 
+#if defined(KAON_OPENXR)
+    #include "OpenXrSession.h"
+#endif
+#include "VrEnvironment.h"
+
 #include <QCoreApplication>
 #include <QDateTime>
 #include <QDir>
@@ -78,11 +83,18 @@ VrOverlay::VrOverlay(QObject *parent)
     m_enabled = settings.value("enabled"_L1, false).toBool();
     m_autoLaunch = settings.value("autoLaunch"_L1, false).toBool();
 
-    m_available = vr::VR_IsRuntimeInstalled();
+#if defined(KAON_OPENXR)
+    m_openXr = std::make_unique<OpenXrSession>(this);
+    connect(m_openXr.get(), &OpenXrSession::connected, this, &VrOverlay::onOpenXrConnected);
+    connect(m_openXr.get(), &OpenXrSession::failed, this, &VrOverlay::onOpenXrFailed);
+    connect(m_openXr.get(), &OpenXrSession::disconnected, this, &VrOverlay::onOpenXrLost);
+#endif
+
+    refreshAvailability();
     if (!m_available)
-        m_status = "SteamVR was not found on this computer."_L1;
+        m_status = unavailableStatus();
     else if (m_enabled)
-        m_status = "Connecting to SteamVR."_L1;
+        m_status = "Connecting to the headset."_L1;
     else
         m_status = "Off."_L1;
 
@@ -132,13 +144,13 @@ void VrOverlay::setEnabled(bool enabled)
 
     if (enabled)
     {
-        m_available = vr::VR_IsRuntimeInstalled();
+        refreshAvailability();
         if (!m_available)
         {
-            setStatus("SteamVR was not found on this computer."_L1);
+            setStatus(unavailableStatus());
             return;
         }
-        setStatus("Connecting to SteamVR."_L1);
+        setStatus("Connecting to the headset."_L1);
         m_eventTimer->start();
         ensureConnected();
     }
@@ -148,7 +160,8 @@ void VrOverlay::setEnabled(bool enabled)
         m_eventTimer->stop();
         m_frameTimer->stop();
         shutdownVr();
-        setStatus(m_available ? "Off."_L1 : "SteamVR was not found on this computer."_L1);
+        refreshAvailability();
+        setStatus(m_available ? "Off."_L1 : unavailableStatus());
     }
 }
 
@@ -162,6 +175,7 @@ void VrOverlay::setAutoLaunch(bool on)
     settings.beginGroup("vr"_L1);
     settings.setValue("autoLaunch"_L1, on);
 
+#if defined(KAON_OPENVR)
     if (m_connected && vr::VRApplications() != nullptr)
     {
         const auto error = vr::VRApplications()->SetApplicationAutoLaunch(AppKey, on);
@@ -169,6 +183,7 @@ void VrOverlay::setAutoLaunch(bool on)
             qCWarning(VrOverlayLog) << "Could not set SteamVR auto-launch:"
                                     << vr::VRApplications()->GetApplicationsErrorNameFromEnum(error);
     }
+#endif
     emit changed();
 }
 
@@ -180,9 +195,13 @@ void VrOverlay::showDashboard()
         setEnabled(true);
         return;
     }
+    if (m_backend == Backend::OpenXr && m_connected)
+        return;
+#if defined(KAON_OPENVR)
     if (m_connected && vr::VROverlay() != nullptr)
         vr::VROverlay()->ShowDashboard(OverlayKey);
     else
+#endif
     {
         m_showOnConnect = true;
         ensureConnected();
@@ -191,10 +210,11 @@ void VrOverlay::showDashboard()
 
 void VrOverlay::refresh()
 {
-    m_available = vr::VR_IsRuntimeInstalled();
+    refreshAvailability();
     if (!m_available)
     {
-        setStatus("SteamVR was not found on this computer."_L1);
+        setStatus(unavailableStatus());
+        emit changed();
         return;
     }
     if (m_enabled)
@@ -205,11 +225,44 @@ void VrOverlay::refresh()
             // "Retry the connection" also re-registers the manifest, in case
             // Kaon moved and SteamVR still points at the old path.
             m_forceManifest = true;
-            setStatus("Connecting to SteamVR."_L1);
+            setStatus("Connecting to the headset."_L1);
             ensureConnected();
         }
     }
     emit changed();
+}
+
+void VrOverlay::refreshAvailability()
+{
+#if defined(KAON_OPENVR)
+    m_openVrInstalled = vr::VR_IsRuntimeInstalled();
+#else
+    m_openVrInstalled = false;
+#endif
+#if defined(KAON_OPENXR)
+    m_openXrInstalled = VrEnvironment::detect().hasOpenXr && OpenXrSession::loaderPresent();
+#else
+    m_openXrInstalled = false;
+#endif
+    m_available = m_openVrInstalled || m_openXrInstalled;
+}
+
+QString VrOverlay::unavailableStatus() const
+{
+#if !defined(KAON_OPENVR) && !defined(KAON_OPENXR)
+    return "This build of Kaon does not include the headset view."_L1;
+#endif
+#if defined(KAON_OPENXR)
+    if (!m_openVrInstalled && VrEnvironment::detect().hasOpenXr && !OpenXrSession::loaderPresent())
+        return "An OpenXR runtime is installed, but the OpenXR loader library was not found."_L1;
+#endif
+#if defined(KAON_OPENVR) && defined(KAON_OPENXR)
+    return "No SteamVR or OpenXR runtime was found on this computer."_L1;
+#elif defined(KAON_OPENVR)
+    return "SteamVR was not found on this computer."_L1;
+#else
+    return "No OpenXR runtime was found on this computer."_L1;
+#endif
 }
 
 void VrOverlay::setStatus(const QString &status)
@@ -224,6 +277,34 @@ void VrOverlay::ensureConnected()
 {
     if (m_connected || m_connecting || m_settling || !m_enabled)
         return;
+    refreshAvailability();
+
+    const auto env = VrEnvironment::detect();
+#if !defined(KAON_OPENXR)
+    Q_UNUSED(env);
+#endif
+#if defined(KAON_OPENXR)
+    const bool steamRuntime = env.activeRuntimeName.contains("Steam"_L1, Qt::CaseInsensitive);
+    // SteamVR's OpenXR runtime has no overlay extension; its dashboard tab is
+    // the OpenVR path below. Anything else (WiVRn, Monado) gets an OpenXR
+    // session, overlay when the runtime allows it.
+    if (env.hasOpenXr && OpenXrSession::loaderPresent() && (!steamRuntime || !m_openVrInstalled))
+    {
+        beginOpenXr();
+        return;
+    }
+#endif
+#if !defined(KAON_OPENVR)
+    Q_UNUSED(env);
+    setStatus(unavailableStatus());
+    return;
+#else
+    if (!m_openVrInstalled)
+    {
+        setStatus(unavailableStatus());
+        return;
+    }
+
     m_connecting = true;
     m_lastAttemptMs = QDateTime::currentMSecsSinceEpoch();
 
@@ -254,8 +335,10 @@ void VrOverlay::ensureConnected()
         QMetaObject::invokeMethod(
             this, [this, system, error, generation, elapsedMs] { onConnected(system, error, generation, elapsedMs); });
     });
+#endif
 }
 
+#if defined(KAON_OPENVR)
 void VrOverlay::onServerDown(int error, quint64 generation)
 {
     // Completion path like onConnected: only these clear the in-flight flag.
@@ -355,6 +438,7 @@ void VrOverlay::finishConnect()
     }
 
     m_connected = true;
+    m_backend = Backend::OpenVr;
     m_eventTimer->start();
     m_frameTimer->start();
     setStatus("Kaon has a tab in the SteamVR dashboard."_L1);
@@ -369,6 +453,7 @@ void VrOverlay::finishConnect()
     // last uploaded frame: the new overlay starts out blank.
     pushFrame(true);
 }
+#endif
 
 // Only one Kaon may own the dashboard tab: two instances uploading to the
 // same overlay key flicker and fight over input.
@@ -387,6 +472,7 @@ bool VrOverlay::takeOverlayLock()
     return true;
 }
 
+#if defined(KAON_OPENVR)
 // SteamVR only remembers applications that ship a manifest. The binary path
 // depends on how Kaon was installed (system package, AppImage, ...), so the
 // manifest is written next to Kaon's data with the path of this process.
@@ -493,6 +579,70 @@ void VrOverlay::updateMouseScale()
     const vr::HmdVector2_t scale{static_cast<float>(qMax(m_uploadWidth, 1)), static_cast<float>(qMax(m_uploadHeight, 1))};
     vr::VROverlay()->SetOverlayMouseScale(m_mainHandle, &scale);
 }
+#endif
+
+#if defined(KAON_OPENXR)
+void VrOverlay::beginOpenXr()
+{
+    m_connecting = true;
+    m_backend = Backend::OpenXr;
+    m_lastAttemptMs = QDateTime::currentMSecsSinceEpoch();
+    if (!takeOverlayLock())
+    {
+        m_connecting = false;
+        m_backend = Backend::None;
+        return;
+    }
+    setStatus("Connecting to the OpenXR runtime."_L1);
+    m_openXr->start(m_initGeneration);
+}
+
+void VrOverlay::onOpenXrConnected(bool overlaySession, quint64 generation)
+{
+    m_connecting = false;
+    if (generation != m_initGeneration || !m_enabled)
+        return;
+    m_failCount = 0;
+    m_connected = true;
+    m_backend = Backend::OpenXr;
+    m_showOnConnect = false;
+    m_eventTimer->start();
+    m_frameTimer->start();
+    setStatus(overlaySession ? "Kaon is floating in the headset, on top of other apps."_L1 :
+                               "Kaon has the headset. This runtime has no overlay session, so it takes the view itself."_L1);
+    pushFrame(true);
+    emit changed();
+}
+
+void VrOverlay::onOpenXrFailed(const QString &message, quint64 generation)
+{
+    m_connecting = false;
+    if (generation != m_initGeneration)
+        return;
+    ++m_failCount;
+    m_overlayLock.reset();
+    m_backend = Backend::None;
+    m_connected = false;
+    setStatus(message);
+    emit changed();
+}
+
+void VrOverlay::onOpenXrLost(quint64 generation)
+{
+    if (generation != m_initGeneration)
+        return;
+    m_connecting = false;
+    m_connected = false;
+    m_backend = Backend::None;
+    m_overlayLock.reset();
+    m_frameTimer->stop();
+    m_lastUploaded = {};
+    m_uploadWidth = 0;
+    m_uploadHeight = 0;
+    setStatus("The OpenXR runtime stopped. This will reconnect when it is back."_L1);
+    emit changed();
+}
+#endif
 
 void VrOverlay::shutdownVr()
 {
@@ -514,6 +664,31 @@ void VrOverlay::shutdownVr()
     // Hold off the reconnect timer a little; SteamVR may still be on its way
     // down (or up).
     m_lastAttemptMs = QDateTime::currentMSecsSinceEpoch();
+
+#if defined(KAON_OPENXR)
+    if (m_backend == Backend::OpenXr)
+    {
+        m_backend = Backend::None;
+        m_connected = false;
+        m_connecting = false;
+        if (m_openXr != nullptr)
+            m_openXr->stop();
+        if (m_dashboardVisible)
+        {
+            m_dashboardVisible = false;
+            emit changed();
+        }
+        qCInfo(VrOverlayLog) << "Closed the OpenXR session";
+        return;
+    }
+#endif
+
+#if !defined(KAON_OPENVR)
+    m_connected = false;
+    m_settling = false;
+    m_backend = Backend::None;
+    return;
+#else
     // A settle wait holds an open session without being "connected" yet.
     if (!m_connected && !m_settling)
         return;
@@ -534,12 +709,14 @@ void VrOverlay::shutdownVr()
         m_glContext->doneCurrent();
     m_connected = false;
     m_settling = false;
+    m_backend = Backend::None;
     if (m_dashboardVisible)
     {
         m_dashboardVisible = false;
         emit changed();
     }
     qCInfo(VrOverlayLog) << "Closed the SteamVR overlay connection";
+#endif
 }
 
 void VrOverlay::onEventTick()
@@ -559,6 +736,10 @@ void VrOverlay::onEventTick()
         return;
     }
 
+#if defined(KAON_OPENVR)
+    if (m_backend != Backend::OpenVr)
+        return;
+
     auto *overlay = vr::VROverlay();
     if (overlay == nullptr)
         return;
@@ -575,6 +756,7 @@ void VrOverlay::onEventTick()
         if (visible)
             pushFrame();
     }
+#endif
 }
 
 void VrOverlay::onFrameTick()
@@ -585,10 +767,97 @@ void VrOverlay::onFrameTick()
         pushFrame();
 }
 
+QImage VrOverlay::captureWindow()
+{
+    QQuickWindow *window = overlayWindow();
+    if (window == nullptr || !window->isExposed() || window->width() <= 0)
+        return {};
+    QImage image = window->grabWindow();
+    // A grab taken mid-render can come back empty; uploading it would blank
+    // the panel. The next tick tries again.
+    if (image.isNull() || isBlank(image))
+        return {};
+    if (image.width() > MaxUploadWidth)
+        image = image.scaledToWidth(MaxUploadWidth, Qt::FastTransformation);
+    if (image.format() != QImage::Format_RGBA8888)
+        image = image.convertToFormat(QImage::Format_RGBA8888);
+    return image;
+}
+
+#if defined(KAON_OPENXR)
+void VrOverlay::pushOpenXrFrame(bool force)
+{
+    QQuickWindow *window = overlayWindow();
+    QImage image = captureWindow();
+    if (image.isNull() || window == nullptr)
+        return;
+    if (!force && image == m_lastUploaded)
+        return;
+    m_uploadWidth = image.width();
+    m_uploadHeight = image.height();
+    m_uploadScale = static_cast<float>(image.width()) / static_cast<float>(window->width());
+    m_openXr->submitFrame(image, window->size());
+    m_lastUploaded = image;
+}
+
+void VrOverlay::pointerMove(const QPointF &windowPos)
+{
+    QQuickWindow *window = overlayWindow();
+    if (window == nullptr)
+        return;
+    m_lastMouse = windowPos;
+    const QPointF global = window->mapToGlobal(windowPos.toPoint());
+    QMouseEvent event{QEvent::MouseMove, windowPos, windowPos, global, Qt::NoButton, m_mouseButtons, Qt::NoModifier};
+    event.setTimestamp(eventTimestamp());
+    QCoreApplication::sendEvent(window, &event);
+}
+
+void VrOverlay::pointerButton(const QPointF &windowPos, bool down)
+{
+    QQuickWindow *window = overlayWindow();
+    if (window == nullptr)
+        return;
+    const auto qtButton = Qt::LeftButton;
+    if (down)
+        m_mouseButtons |= qtButton;
+    else
+        m_mouseButtons &= ~qtButton;
+    m_lastMouse = windowPos;
+    if (down)
+        window->requestActivate();
+    const QPointF global = window->mapToGlobal(windowPos.toPoint());
+    QMouseEvent event{down ? QEvent::MouseButtonPress : QEvent::MouseButtonRelease,
+                      windowPos,
+                      windowPos,
+                      global,
+                      qtButton,
+                      m_mouseButtons,
+                      Qt::NoModifier};
+    event.setTimestamp(eventTimestamp());
+    QCoreApplication::sendEvent(window, &event);
+    boostFrames();
+    pushFrame();
+}
+
+void VrOverlay::pointerScroll(const QPointF &windowPos, float dx, float dy)
+{
+    m_lastMouse = windowPos;
+    handleScroll(dx, dy, 0);
+}
+#endif
+
 void VrOverlay::pushFrame(bool force)
 {
     if (!m_enabled || !m_connected)
         return;
+#if defined(KAON_OPENXR)
+    if (m_backend == Backend::OpenXr)
+    {
+        pushOpenXrFrame(force);
+        return;
+    }
+#endif
+#if defined(KAON_OPENVR)
     auto *overlay = vr::VROverlay();
     if (overlay == nullptr || m_mainHandle == vr::k_ulOverlayHandleInvalid)
         return;
@@ -596,20 +865,11 @@ void VrOverlay::pushFrame(bool force)
         return;
 
     QQuickWindow *window = overlayWindow();
-    if (window == nullptr || !window->isExposed() || window->width() <= 0)
-        return;
-
-    QImage image = window->grabWindow();
-    if (image.isNull())
-        return;
     // A grab taken mid-render can come back empty; uploading it would blank
     // the tab. The next tick tries again.
-    if (isBlank(image))
+    QImage image = captureWindow();
+    if (image.isNull() || window == nullptr)
         return;
-    if (image.width() > MaxUploadWidth)
-        image = image.scaledToWidth(MaxUploadWidth, Qt::FastTransformation);
-    if (image.format() != QImage::Format_RGBA8888)
-        image = image.convertToFormat(QImage::Format_RGBA8888);
 
     if (image.width() != m_uploadWidth || image.height() != m_uploadHeight)
     {
@@ -626,8 +886,10 @@ void VrOverlay::pushFrame(bool force)
 
     if (uploadTexture(image))
         m_lastUploaded = image;
+#endif
 }
 
+#if defined(KAON_OPENVR)
 bool VrOverlay::uploadTexture(const QImage &image)
 {
     if (!makeGlCurrent())
@@ -845,6 +1107,7 @@ void VrOverlay::handleMouseButton(float x, float y, uint32_t button, bool down)
     boostFrames();
     pushFrame();
 }
+#endif
 
 void VrOverlay::handleScroll(float dx, float dy, float ageSeconds)
 {
@@ -882,6 +1145,7 @@ void VrOverlay::handleScroll(float dx, float dy, float ageSeconds)
 // Like a phone: clicking a text field brings up SteamVR's keyboard, and
 // clicking anywhere else puts it away. Focus that moves without a click (Tab,
 // a page focusing its own field) leaves the keyboard alone.
+#if defined(KAON_OPENVR)
 void VrOverlay::updateKeyboard(QQuickWindow *window)
 {
     auto *overlay = vr::VROverlay();
@@ -982,6 +1246,7 @@ void VrOverlay::handleKeyboardInput(const QByteArray &input)
     boostFrames();
     pushFrame();
 }
+#endif
 
 void VrOverlay::boostFrames()
 {

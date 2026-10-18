@@ -33,6 +33,7 @@
 #include "VrOverlay.h"
 #include "VrPerfKit.h"
 #include "Wine.h"
+#include "WivrnLauncher.h"
 
 namespace
 {
@@ -137,6 +138,7 @@ int main(int argc, char *argv[])
     UUVRLegacy::instance();
     UpdateChecker::instance();
     VrOverlay::instance();
+    ensureWivrnLauncherEntry();
     VrPerfKit::instance();
     Wine::instance();
 
