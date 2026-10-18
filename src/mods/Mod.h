@@ -2,9 +2,9 @@
 
 #include <QAbstractListModel>
 #include <QSet>
-#include <QVariant>
 #include <QSortFilterProxyModel>
 #include <QUrl>
+#include <QVariant>
 
 #include "Game.h"
 
@@ -94,6 +94,8 @@ class Mod : public QAbstractListModel
 
     Q_PROPERTY(bool hasRepairOption READ hasRepairOption CONSTANT FINAL)
     Q_PROPERTY(bool providesVr READ providesVr CONSTANT FINAL)
+    // The mods page uses this to separate engine-wide mods from ones written for particular games.
+    Q_PROPERTY(bool gameSpecific READ gameSpecific CONSTANT FINAL)
     // Optional tools download like other mods. Each game turns one on itself, and it is not a setup step.
     Q_PROPERTY(bool optional READ optional CONSTANT FINAL)
     // Which VR runtime this tool works with, e.g. "OpenVR" or "OpenXR". Empty when the mod isn't a
@@ -143,6 +145,9 @@ public:
     // False for mods that only exist to support other mods, like the .NET runtime. Those aren't offered as a way to play
     // in VR; they show up as a setup step of the mod that needs them.
     virtual bool providesVr() const { return true; }
+    // True for a mod written for particular games, such as Portal 2 VR. False for one mod that covers every game on
+    // an engine, such as UEVR.
+    virtual bool gameSpecific() const { return false; }
     virtual bool optional() const { return false; }
     virtual QString vrRuntime() const { return {}; }
     virtual bool supportsPlugins() const { return false; }
@@ -236,6 +241,13 @@ public:
 
     Q_INVOKABLE virtual bool isInstalledForGame(const Game *game) const = 0;
     Q_INVOKABLE bool dependenciesSatisfied(const Game *game) const;
+    // True when this mod was written for this game, even if it can't be installed yet. Engine-wide mods return false.
+    // The mods page uses it to hide a mod when that game isn't in the library.
+    Q_INVOKABLE virtual bool targetsGame(const Game *game) const
+    {
+        Q_UNUSED(game)
+        return false;
+    }
     Q_INVOKABLE bool isCompatibleWith(const Game *game) const
     {
         return game && !acceptableInstallCandidates(game).isEmpty();

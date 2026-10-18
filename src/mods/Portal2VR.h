@@ -25,6 +25,11 @@ public:
     const QLoggingCategory &logger() const final;
 
     Game::Engines compatibleEngines() const override { return Game::Engine::Source; }
+    bool gameSpecific() const override { return true; }
+    bool targetsGame(const Game *game) const override
+    {
+        return game && game->store() == Game::Store::Steam && (game->id() == "620"_L1 || game->id() == "317400"_L1);
+    }
     virtual bool isInstalledForGame(const Game *game) const override;
     QString configFileForGame(const Game *game) const final;
     QString shippedConfigMember() const final { return "VR/config.txt"_L1; }

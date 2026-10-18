@@ -73,6 +73,13 @@ void GamesFilterModel::registerStore(Store *store)
     m_models->addSourceModel(store);
     m_stores.push_back(store);
     connect(store, &Store::scanningChanged, this, &GamesFilterModel::updateScanning);
+    const auto note = [this] {
+        ++m_libraryRevision;
+        emit libraryRevisionChanged();
+    };
+    connect(store, &QAbstractItemModel::modelReset, this, note);
+    connect(store, &QAbstractItemModel::rowsInserted, this, [note](const QModelIndex &, int, int) { note(); });
+    connect(store, &QAbstractItemModel::rowsRemoved, this, [note](const QModelIndex &, int, int) { note(); });
     updateScanning();
 }
 
@@ -204,6 +211,14 @@ QList<Game *> GamesFilterModel::games() const
     return list;
 }
 
+QList<Game *> GamesFilterModel::library() const
+{
+    QList<Game *> list;
+    for (const auto *store : m_stores)
+        list += store->games();
+    return list;
+}
+
 Game *GamesFilterModel::gameByIdentity(int store, const QString &id) const
 {
     if (id.isEmpty())
@@ -280,8 +295,8 @@ bool GamesFilterModel::filtersActive() const
     stores.setFlag(Game::Store::Heroic);
     stores.setFlag(Game::Store::Custom);
 
-    return m_engineFilter != engines || m_typeFilter != types || m_featureFilter != features || m_storeFilter != stores
-        || m_featureFilterType != FilterType::HasAnyFilter;
+    return m_engineFilter != engines || m_typeFilter != types || m_featureFilter != features || m_storeFilter != stores ||
+           m_featureFilterType != FilterType::HasAnyFilter;
 }
 
 void GamesFilterModel::clearFilters()

@@ -19,6 +19,8 @@ class GamesFilterModel : public QSortFilterProxyModel
     Q_PROPERTY(Game::Stores storeFilter READ storeFilter NOTIFY storeFilterChanged FINAL)
     Q_PROPERTY(QString search READ search WRITE setSearch NOTIFY searchChanged FINAL)
     Q_PROPERTY(bool scanning READ scanning NOTIFY scanningChanged FINAL)
+    // Goes up when the unfiltered library changes. Bindings that call library() read this so they run again.
+    Q_PROPERTY(int libraryRevision READ libraryRevision NOTIFY libraryRevisionChanged FINAL)
     // Goes up whenever one of the filters above is switched. QML can't read the flags themselves, so a binding that
     // asks isEngineFilterSet() and friends passes this as the last argument to be run again when the answer changes.
     Q_PROPERTY(int filterRevision READ filterRevision NOTIFY filterRevisionChanged FINAL)
@@ -55,6 +57,7 @@ public:
     Game::Stores storeFilter() const { return m_storeFilter; }
     QString search() const { return m_search; }
     bool scanning() const { return m_scanning; }
+    int libraryRevision() const { return m_libraryRevision; }
     int filterRevision() const { return m_filterRevision; }
     bool filtersActive() const;
 
@@ -78,6 +81,8 @@ public:
 
     // The games that pass the filters, in display order
     Q_INVOKABLE QList<Game *> games() const;
+    // Every game Kaon found, ignoring search and the library filters
+    Q_INVOKABLE QList<Game *> library() const;
     // Ignores search and filters, so an open game can be found again after a rescan replaces its object
     Q_INVOKABLE Game *gameByIdentity(int store, const QString &id) const;
 
@@ -93,6 +98,7 @@ signals:
     void storeFilterChanged();
     void searchChanged();
     void scanningChanged();
+    void libraryRevisionChanged();
     void filterRevisionChanged();
     // Emitted whenever games() would return something different
     void gamesChanged();
@@ -116,6 +122,7 @@ private:
     QList<Store *> m_stores;
     bool m_scanning = false;
     int m_filterRevision = 0;
+    int m_libraryRevision = 0;
 
     Game::Engines m_engineFilter;
     Game::AppTypes m_typeFilter;
