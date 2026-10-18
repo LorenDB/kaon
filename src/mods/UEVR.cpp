@@ -29,9 +29,9 @@ UEVR::UEVR(QObject *parent)
     // Execute downloads on the first event tick to give time for the download
     // manager to initialize
     QTimer::singleShot(0, this, [this] {
-        // What was saved last time is there at once; the answer from GitHub replaces it when it differs
+        // What was saved last time is there at once. GitHub is asked when that copy is old enough to be worth a request.
         parseReleaseInfoJson();
-        refreshReleases();
+        fetchReleases(GitHub::releaseListMaxAgeSeconds);
     });
 }
 
@@ -211,11 +211,16 @@ QString UEVR::path(const Paths path) const
 
 void UEVR::refreshReleases()
 {
+    fetchReleases(0);
+}
+
+void UEVR::fetchReleases(int maxAgeSeconds)
+{
     // Releases and nightlies are two repositories. The list is rebuilt once, after both have answered.
     auto settled = std::make_shared<int>(0);
     auto anyChanged = std::make_shared<bool>(false);
 
-    const auto impl = [this, settled, anyChanged](QUrl url, const QString cachePath) {
+    const auto impl = [this, settled, anyChanged, maxAgeSeconds](QUrl url, const QString cachePath) {
         QNetworkRequest req{url};
         req.setRawHeader("X-GitHub-Api-Version"_ba, "2022-11-28"_ba);
 
@@ -235,7 +240,8 @@ void UEVR::refreshReleases()
             [done](const QString &errorMessage) {
                 qCInfo(UEVRLog) << "Error while fetching releases:" << errorMessage;
                 done();
-            });
+            },
+            maxAgeSeconds);
     };
 
     impl({"https://api.github.com/repos/praydog/UEVR/releases"_L1}, path(Paths::CachedReleasesJSON));

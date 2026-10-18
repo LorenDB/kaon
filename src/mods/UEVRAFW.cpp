@@ -173,9 +173,9 @@ UEVRAFW::UEVRAFW(QObject *parent)
     // Execute downloads on the first event tick to give time for the download
     // manager to initialize
     QTimer::singleShot(0, this, [this] {
-        // What was saved last time is there at once; the answer from GitHub replaces it when it differs
+        // What was saved last time is there at once. GitHub is asked when that copy is old enough to be worth a request.
         parseReleaseInfoJson();
-        refreshReleases();
+        fetchReleases(GitHub::releaseListMaxAgeSeconds);
     });
 }
 
@@ -537,6 +537,11 @@ QString UEVRAFW::path(const Paths p) const
 
 void UEVRAFW::refreshReleases()
 {
+    fetchReleases(0);
+}
+
+void UEVRAFW::fetchReleases(int maxAgeSeconds)
+{
     QNetworkRequest req{{"https://api.github.com/repos/PureDark/UEVR/releases?per_page=100"_L1}};
     req.setRawHeader("X-GitHub-Api-Version"_ba, "2022-11-28"_ba);
 
@@ -548,7 +553,8 @@ void UEVRAFW::refreshReleases()
             if (changed || m_releases.isEmpty())
                 parseReleaseInfoJson();
         },
-        [](const QString &errorMessage) { qCInfo(UEVRAFWLog) << "Error while fetching releases:" << errorMessage; });
+        [](const QString &errorMessage) { qCInfo(UEVRAFWLog) << "Error while fetching releases:" << errorMessage; },
+        maxAgeSeconds);
 }
 
 void UEVRAFW::parseReleaseInfoJson()

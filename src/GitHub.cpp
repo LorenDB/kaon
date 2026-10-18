@@ -3,11 +3,13 @@
 #include <QCoreApplication>
 #include <QDateTime>
 #include <QFile>
+#include <QFileInfo>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QLocale>
 #include <QLoggingCategory>
 #include <QNetworkReply>
+#include <QSaveFile>
 #include <QSettings>
 #include <QTimer>
 
@@ -204,7 +206,40 @@ QJsonDocument GitHub::readCachedList(const QString &path)
     cached.close();
     QFile::remove(path);
     QFile::remove(path + ".etag"_L1);
+    QFile::remove(path + ".checked"_L1);
     return {};
+}
+
+bool GitHub::cacheIsFresh(const QString &path, int maxAgeSeconds)
+{
+    if (maxAgeSeconds <= 0 || path.isEmpty() || !QFileInfo::exists(path))
+        return false;
+
+    QFile stamp{path + ".checked"_L1};
+    if (!stamp.open(QIODevice::ReadOnly))
+        return false;
+    bool ok = false;
+    const auto when = stamp.readAll().trimmed().toLongLong(&ok);
+    stamp.close();
+    if (!ok || when <= 0)
+        return false;
+    // A clock step backwards would otherwise look infinitely fresh.
+    const auto age = QDateTime::currentSecsSinceEpoch() - when;
+    if (age < 0 || age >= maxAgeSeconds)
+        return false;
+
+    return readCachedList(path).isArray();
+}
+
+void GitHub::noteCacheChecked(const QString &path)
+{
+    if (path.isEmpty())
+        return;
+
+    QSaveFile stamp{path + ".checked"_L1};
+    const auto body = QByteArray::number(QDateTime::currentSecsSinceEpoch());
+    if (!stamp.open(QIODevice::WriteOnly) || stamp.write(body) != body.size() || !stamp.commit())
+        qCWarning(GitHubLog).noquote() << "Couldn't record when" << path << "was checked:" << stamp.errorString();
 }
 
 void GitHub::noteLimit(QNetworkReply *reply, bool announce)

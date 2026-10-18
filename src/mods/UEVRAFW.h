@@ -88,6 +88,7 @@ private:
 
     virtual QList<ModRelease *> releases() const override { return m_releases; }
 
+    void fetchReleases(int maxAgeSeconds);
     void parseReleaseInfoJson();
 
     QList<ModRelease *> m_releases;

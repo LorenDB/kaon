@@ -41,7 +41,8 @@ void DownloadManager::download(const QNetworkRequest &request,
                      notifyOnFailure,
                      [successCallback](QNetworkReply *, const QByteArray &data) { successCallback(data); },
                      failureCallback,
-                     finallyCallback});
+                     finallyCallback,
+                     {}});
     emit newDownloadEnqueued();
 }
 
@@ -49,7 +50,8 @@ void DownloadManager::refreshCached(const QNetworkRequest &request,
                                     const QString &prettyName,
                                     const QString &cacheFile,
                                     std::function<void(bool)> successCallback,
-                                    std::function<void(QString)> failureCallback)
+                                    std::function<void(QString)> failureCallback,
+                                    int maxAgeSeconds)
 {
     const auto etagFile = cacheFile + ".etag"_L1;
 
@@ -68,6 +70,7 @@ void DownloadManager::refreshCached(const QNetworkRequest &request,
                      [=](QNetworkReply *reply, const QByteArray &data) {
                          if (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt() == 304)
                          {
+                             GitHub::noteCacheChecked(cacheFile);
                              qCDebug(DownloadLog).noquote() << prettyName << "has not changed";
                              successCallback(false);
                              return;
@@ -99,10 +102,20 @@ void DownloadManager::refreshCached(const QNetworkRequest &request,
                              saved.write(etag);
                          else
                              QFile::remove(etagFile);
+                         GitHub::noteCacheChecked(cacheFile);
                          successCallback(true);
                      },
                      [failureCallback](QNetworkReply::NetworkError, const QString &message) { failureCallback(message); },
-                     [] {}});
+                     [] {},
+                     // The check happens when this download's turn comes, so a list another mod just confirmed is reused
+                     // instead of asked for again.
+                     [=] {
+                         if (!GitHub::cacheIsFresh(cacheFile, maxAgeSeconds))
+                             return false;
+                         qCDebug(DownloadLog).noquote() << prettyName << "was checked recently; using the saved copy";
+                         successCallback(false);
+                         return true;
+                     }});
     emit newDownloadEnqueued();
 }
 
@@ -132,10 +145,20 @@ void DownloadManager::finishCurrent()
 
 void DownloadManager::downloadNextInQueue()
 {
+    const auto download = m_queue.dequeue();
+    if (download.satisfyLocally && download.satisfyLocally())
+    {
+        download.finallyCallback();
+        if (!m_queue.empty())
+            downloadNextInQueue();
+        else if (m_downloading)
+            finishCurrent();
+        return;
+    }
+
     m_downloading = true;
     emit downloadingChanged();
 
-    const auto download = m_queue.dequeue();
     m_currentDownloadName = download.prettyName;
     // The downloads people start are the ones that report a failure to them
     m_background = !download.notifyOnFailure;
@@ -171,9 +194,12 @@ void DownloadManager::downloadNextInQueue()
     });
     connect(reply, &QNetworkReply::finished, reply, [=, this] {
         const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        // 304 has no body. Qt sometimes reports that as a transport error, which would discard a list that is still
+        // current and ask for it again on the next launch.
+        const bool notModified = status == 304;
         // Some answers carry an error document with a transport error left unset. That document must not be saved
         // over a release list, and it must not end the process.
-        if (reply->error() != QNetworkReply::NoError || status >= 400)
+        if (!notModified && (reply->error() != QNetworkReply::NoError || status >= 400))
         {
             const auto body = reply->readAll();
             auto message = GitHub::instance()->observe(reply, body);
@@ -192,7 +218,7 @@ void DownloadManager::downloadNextInQueue()
         else
         {
             GitHub::instance()->observe(reply, {});
-            const auto data = reply->readAll();
+            const auto data = notModified ? QByteArray{} : reply->readAll();
             download.successCallback(reply, data);
         }
         download.finallyCallback();

@@ -52,6 +52,15 @@ public:
     // error, is deleted so the next fetch is unconditional.
     static QJsonDocument readCachedList(const QString &path);
 
+    // Automatic checks reuse a list this new. Asking on every launch spends the hourly limit, and a conditional
+    // request is still a hit. Somebody asking again is not held to this.
+    static constexpr int releaseListMaxAgeSeconds = 60 * 60;
+
+    // True when path is a release list GitHub confirmed within maxAgeSeconds. A missing or broken file is never fresh.
+    static bool cacheIsFresh(const QString &path, int maxAgeSeconds);
+    // path was just confirmed, so the next launch can skip the request. A failure must not call this.
+    static void noteCacheChecked(const QString &path);
+
 signals:
     void tokenChanged();
     void rateLimitedChanged(bool limited);

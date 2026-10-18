@@ -192,7 +192,7 @@ Flickable {
 
         SwitchRow {
             checked: UpdateChecker.enabled
-            detail: "Kaon checks GitHub when it starts."
+            detail: "Kaon checks GitHub when it starts, and reuses that answer for an hour."
             text: "Tell me about new Kaon versions"
 
             onToggled: UpdateChecker.enabled = !UpdateChecker.enabled

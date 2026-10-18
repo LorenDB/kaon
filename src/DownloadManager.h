@@ -32,14 +32,16 @@ public:
 
     // Keeps a copy of what a URL returns in cacheFile, for lists that are read again on every start. The saved ETag is
     // sent along, and a server that answers "not modified" leaves the file as it is. GitHub doesn't count those answers
-    // against its hourly limit. changed says whether the file was rewritten. A failure, including GitHub's hourly
-    // limit, leaves the file as it is and does not stop Kaon.
+    // against its hourly limit, but it does count the request. maxAgeSeconds skips the request when this file was
+    // confirmed that recently; 0 always asks. changed says whether the file was rewritten. A failure, including
+    // GitHub's hourly limit, leaves the file as it is and does not stop Kaon.
     void refreshCached(
         const QNetworkRequest &request,
         const QString &prettyName,
         const QString &cacheFile,
         std::function<void(bool changed)> successCallback,
-        std::function<void(QString)> failureCallback = [](const QString &) {});
+        std::function<void(QString)> failureCallback = [](const QString &) {},
+        int maxAgeSeconds = 0);
 
     bool downloading() const { return m_downloading; }
     QString currentDownloadName() const { return m_currentDownloadName; }
@@ -71,6 +73,8 @@ private:
         std::function<void(QNetworkReply *, QByteArray)> successCallback;
         std::function<void(QNetworkReply::NetworkError, QString)> failureCallback;
         std::function<void()> finallyCallback;
+        // Runs when this download's turn comes, before anything is sent. True means the answer was already on disk.
+        std::function<bool()> satisfyLocally;
     };
 
     QQueue<Download> m_queue;

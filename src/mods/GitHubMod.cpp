@@ -221,13 +221,18 @@ GitHubMod::GitHubMod(QObject *parent)
         // This gets executed here so we can actually call the virtual settingsGroup(). I love C++! /s
         QDir{QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)}.mkdir(settingsGroup());
 
-        // What was saved last time is there at once; the answer from GitHub replaces it when it differs
+        // What was saved last time is there at once. GitHub is asked when that copy is old enough to be worth a request.
         parseReleaseInfoJson();
-        refreshReleases();
+        fetchReleases(GitHub::releaseListMaxAgeSeconds);
     });
 }
 
 void GitHubMod::refreshReleases()
+{
+    fetchReleases(0);
+}
+
+void GitHubMod::fetchReleases(int maxAgeSeconds)
 {
     QNetworkRequest req{githubUrl()};
     req.setRawHeader("X-GitHub-Api-Version"_ba, "2022-11-28"_ba);
@@ -240,7 +245,8 @@ void GitHubMod::refreshReleases()
             if (changed || m_releases.isEmpty())
                 parseReleaseInfoJson();
         },
-        [this](const QString &errorMessage) { qCInfo(logger()) << "Error while fetching releases:" << errorMessage; });
+        [this](const QString &errorMessage) { qCInfo(logger()) << "Error while fetching releases:" << errorMessage; },
+        maxAgeSeconds);
 }
 
 void GitHubMod::parseReleaseInfoJson()

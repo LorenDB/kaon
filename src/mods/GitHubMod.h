@@ -37,13 +37,14 @@ protected:
     virtual ModRelease::Asset chooseAssetToInstall(const Game *game, const Game::LaunchOption &exe) const;
     // False for mods whose prereleases must never be offered, not even behind the version menu's switch
     virtual bool offersPrereleases() const { return true; }
-    // Names the saved copy of the release list. Mods that read the same repository share one copy, and only the first of
-    // them to ask downloads it.
+    // Names the saved copy of the release list. Mods that read the same repository share one copy, and a second ask
+    // reuses it instead of calling GitHub again.
     virtual QString releaseListName() const { return settingsGroup(); }
 
 private:
     virtual QList<ModRelease *> releases() const final { return m_releases; }
 
+    void fetchReleases(int maxAgeSeconds);
     void parseReleaseInfoJson();
     bool showsPrereleases() const;
     // The release a mod starts out on when it has no saved one: the newest that the version menu shows

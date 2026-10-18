@@ -98,5 +98,7 @@ void UpdateChecker::checkUpdates(bool announce)
         [this, announce](const QString &) {
             if (announce)
                 emit checkFailed();
-        });
+        },
+        // A check somebody asked for always goes to GitHub. The one at startup reuses a recent answer.
+        announce ? 0 : GitHub::releaseListMaxAgeSeconds);
 }
