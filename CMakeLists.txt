@@ -7,7 +7,7 @@ add_compile_definitions(KAON_APP_VERSION="${PROJECT_VERSION}"_L1)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_STANDARD 23)
 
-find_package(Qt6 REQUIRED COMPONENTS Concurrent Core Quick Widgets Sql)
+find_package(Qt6 REQUIRED COMPONENTS Concurrent Core Quick QuickControls2 Widgets Sql)
 
 qt_standard_project_setup(REQUIRES 6.10)
 

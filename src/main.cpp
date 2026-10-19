@@ -5,6 +5,7 @@
 #include <QIcon>
 #include <QMutex>
 #include <QMutexLocker>
+#include <QQuickStyle>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QSettings>
@@ -143,6 +144,8 @@ int main(int argc, char *argv[])
     ensureWivrnLauncherEntry();
     VrPerfKit::instance();
     Wine::instance();
+
+    QQuickStyle::setStyle("Basic"_L1);
 
     QQmlApplicationEngine engine;
     QObject::connect(
