@@ -2,7 +2,7 @@
 
 #include <QDesktopServices>
 #include <QDir>
-#include <QDirIterator>
+#include <QElapsedTimer>
 #include <QFile>
 #include <QFileInfo>
 #include <QFileSystemWatcher>
@@ -521,6 +521,9 @@ namespace
             const QDir steamapps{library.path + "/steamapps"_L1};
             if (!steamapps.exists())
                 continue;
+            // Only the manifests in this directory. Game files live under common/ and are not listed;
+            // walking those trees is what made a library on a second, slower drive take minutes.
+            // Match the manifest prefix in the loop so an odd casing still counts.
             const auto files = steamapps.entryList(QDir::Files);
             for (const auto &file : files)
             {
@@ -528,8 +531,15 @@ namespace
                     !file.endsWith(".acf"_L1, Qt::CaseInsensitive))
                     continue;
                 ++acfCount;
-                auto manifest = readManifest(steamapps.absoluteFilePath(file), library.path);
-                if (!manifest || !isInstalled(*manifest))
+                const auto acfPath = steamapps.absoluteFilePath(file);
+                auto manifest = readManifest(acfPath, library.path);
+                if (!manifest)
+                {
+                    if (log)
+                        qCWarning(SteamLog) << "Could not parse" << acfPath;
+                    continue;
+                }
+                if (!isInstalled(*manifest))
                     continue;
                 consider(*manifest);
             }
@@ -623,6 +633,66 @@ namespace
     }
 } // namespace
 
+// One pass over each library's compatdata. The prefix Proton last used is not always on the drive the
+// game is installed to, so every library is checked, but not once per game: stating every drive for
+// every app is what a large library spread across a hard disk feels as a long stall.
+struct PrefixHit
+{
+    QString compatdata;
+    QDateTime used;
+};
+
+class PrefixIndex
+{
+public:
+    void addLibrary(const QString &library)
+    {
+        if (m_byLibrary.contains(library))
+            return;
+        auto &apps = m_byLibrary[library];
+        const QDir compatdata{library + "/steamapps/compatdata"_L1};
+        if (!compatdata.exists())
+            return;
+        const auto entries = compatdata.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot);
+        for (const auto &entry : entries)
+        {
+            if (!QFileInfo{entry.filePath() + "/pfx"_L1}.isDir())
+                continue;
+            apps.insert(entry.fileName(), {entry.filePath(), QFileInfo{entry.filePath() + "/version"_L1}.lastModified()});
+        }
+    }
+
+    // installDrive wins a tie, matching the old search that started there and kept the first equal mtime.
+    QString newest(const QString &appId, const QString &installDrive, const QStringList &libraries) const
+    {
+        QStringList drives{installDrive};
+        for (const auto &library : libraries)
+            if (!drives.contains(library))
+                drives << library;
+
+        QString found;
+        QDateTime last;
+        for (const auto &drive : std::as_const(drives))
+        {
+            const auto library = m_byLibrary.constFind(drive);
+            if (library == m_byLibrary.cend())
+                continue;
+            const auto hit = library->constFind(appId);
+            if (hit == library->cend())
+                continue;
+            if (found.isEmpty() || hit->used > last)
+            {
+                found = hit->compatdata;
+                last = hit->used;
+            }
+        }
+        return found;
+    }
+
+private:
+    QHash<QString, QHash<QString, PrefixHit>> m_byLibrary;
+};
+
 class SteamGame : public Game
 {
     Q_OBJECT
@@ -635,6 +705,7 @@ public:
               const QString &flatpakAppId,
               const CompatTools &compat,
               const Manifest &manifest,
+              const PrefixIndex &prefixes,
               bool *missingAppInfo,
               QObject *parent)
         : Game{parent}
@@ -664,23 +735,35 @@ public:
         if (QFileInfo::exists(imageDir + "/logo.png"_L1))
             m_logoImage = "file://"_L1 + imageDir + "/logo.png"_L1;
 
+        // Some apps nest these one directory down. One level is enough; a recursive walk of every
+        // app's cache runs once per installed game before the library can appear.
         if (m_cardImage.isEmpty() || m_heroImage.isEmpty() || m_logoImage.isEmpty())
         {
-            QDirIterator images{imageDir, QDirIterator::Subdirectories};
-            while (images.hasNext() && (m_cardImage.isEmpty() || m_heroImage.isEmpty() || m_logoImage.isEmpty()))
+            const auto takeImage = [this](const QString &fileName, const QString &filePath) {
+                if ((fileName == "library_600x900.jpg"_L1 || fileName == "library_capsule.jpg"_L1) && m_cardImage.isEmpty())
+                    m_cardImage = "file://"_L1 + filePath;
+                else if (fileName == "library_hero.jpg"_L1 && m_heroImage.isEmpty())
+                    m_heroImage = "file://"_L1 + filePath;
+                else if (fileName == "logo.png"_L1 && m_logoImage.isEmpty())
+                    m_logoImage = "file://"_L1 + filePath;
+            };
+            const auto entries = QDir{imageDir}.entryInfoList(QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot);
+            for (const auto &fi : entries)
             {
-                images.next();
-                if ((images.fileName() == "library_600x900.jpg"_L1 || images.fileName() == "library_capsule.jpg"_L1) &&
-                    m_cardImage.isEmpty())
-                    m_cardImage = "file://"_L1 + images.filePath();
-                else if (images.fileName() == "library_hero.jpg"_L1 && m_heroImage.isEmpty())
-                    m_heroImage = "file://"_L1 + images.filePath();
-                else if (images.fileName() == "logo.png"_L1 && m_logoImage.isEmpty())
-                    m_logoImage = "file://"_L1 + images.filePath();
+                if (fi.isDir())
+                {
+                    const auto nested = QDir{fi.filePath()}.entryInfoList(QDir::Files | QDir::NoDotAndDotDot);
+                    for (const auto &child : nested)
+                        takeImage(child.fileName(), child.filePath());
+                }
+                else
+                    takeImage(fi.fileName(), fi.filePath());
+                if (!m_cardImage.isEmpty() && !m_heroImage.isEmpty() && !m_logoImage.isEmpty())
+                    break;
             }
         }
 
-        findPrefix(steamDrive, libraries);
+        findPrefix(steamDrive, libraries, prefixes);
 
         if (!m_flatpakAppId.isEmpty())
         {
@@ -889,39 +972,15 @@ public:
     }
 
 private:
-    void findPrefix(const QString &steamDrive, const QStringList &libraries)
+    void findPrefix(const QString &steamDrive, const QStringList &libraries, const PrefixIndex &prefixes)
     {
-        // The prefix is normally in the library the game is installed to, but that isn't guaranteed. Search every library
-        // and take the prefix Proton ran in most recently; it rewrites the version file on each launch.
-        QStringList drives{steamDrive};
-        for (const auto &library : libraries)
-            if (!drives.contains(library))
-                drives << library;
-
-        QString compatdata;
-        QDateTime lastUsed;
-        QStringList looked;
-        for (const auto &drive : std::as_const(drives))
-        {
-            const auto dir = drive + "/steamapps/compatdata/"_L1 + m_id;
-            if (!QFileInfo{dir + "/pfx"_L1}.isDir())
-            {
-                // Steam also makes an empty compatdata folder for games that never ran through Proton
-                looked << dir + (QFileInfo::exists(dir) ? " (no pfx inside)"_L1 : " (missing)"_L1);
-                continue;
-            }
-            const auto used = QFileInfo{dir + "/version"_L1}.lastModified();
-            if (compatdata.isEmpty() || used > lastUsed)
-            {
-                compatdata = dir;
-                lastUsed = used;
-            }
-        }
-
+        // The prefix is normally in the library the game is installed to, but that isn't guaranteed.
+        // prefixes lists the one Proton ran in most recently; it rewrites the version file on each launch.
+        const auto compatdata = prefixes.newest(m_id, steamDrive, libraries);
         if (compatdata.isEmpty())
         {
             m_winePrefix = steamDrive + "/steamapps/compatdata/"_L1 + m_id + "/pfx"_L1;
-            qCDebug(SteamLog) << "No Proton prefix for" << m_name << "- looked in" << looked;
+            qCDebug(SteamLog) << "No Proton prefix for" << m_name;
             return;
         }
         m_winePrefix = compatdata + "/pfx"_L1;
@@ -1242,11 +1301,17 @@ bool Steam::readLibrary(QList<Game *> &games)
         auto compat = valveCompat;
         readChosenCompatTools(install.path, compat);
 
+        QElapsedTimer elapsed;
+        elapsed.start();
         const auto scanned = scanSteamClient(install.path, install.flatpakAppId, install.name, true);
         watchPaths += scanned.watchPaths;
         if (scanned.appInfoMtime > appInfoMtime)
             appInfoMtime = scanned.appInfoMtime;
         installed += scanned.manifests;
+
+        PrefixIndex prefixes;
+        for (const auto &library : scanned.libraryPaths)
+            prefixes.addLibrary(library);
 
         for (const auto &manifest : scanned.manifests)
         {
@@ -1260,6 +1325,7 @@ bool Steam::readLibrary(QList<Game *> &games)
                                            install.flatpakAppId,
                                            compat,
                                            manifest,
+                                           prefixes,
                                            &missingAppInfo,
                                            nullptr};
                 if (missingAppInfo)
@@ -1282,6 +1348,8 @@ bool Steam::readLibrary(QList<Game *> &games)
                 qCWarning(SteamLog) << "Failure while reading Steam app" << manifest.appId << e.what();
             }
         }
+        qCInfo(SteamLog) << install.name << "scanned" << scanned.libraryPaths.size() << "libraries and"
+                         << scanned.manifests.size() << "installed apps in" << elapsed.elapsed() << "ms";
     }
 
     QStringList signatures;

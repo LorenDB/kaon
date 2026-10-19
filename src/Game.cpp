@@ -84,6 +84,101 @@ namespace
         return machine;
     }
 
+    // Folders that can hold an engine, anticheat, or upscaler sign. Content, paks, and movies are not in
+    // this list: descending into those is what made a large game on a slow drive stall the library scan.
+    bool descendForProbe(const QString &name)
+    {
+        static const QStringList exact{"bin"_L1,
+                                       "Binaries"_L1,
+                                       "Win64"_L1,
+                                       "Win32"_L1,
+                                       "x64"_L1,
+                                       "linux64"_L1,
+                                       "osx64"_L1,
+                                       "Engine"_L1,
+                                       "Plugins"_L1,
+                                       "Runtime"_L1,
+                                       "ThirdParty"_L1,
+                                       "EasyAntiCheat"_L1,
+                                       "BattlEye"_L1,
+                                       "AntiCheatExpert"_L1,
+                                       "AceAntibotClient"_L1,
+                                       "FredaikisAntiCheat"_L1,
+                                       "HShield"_L1,
+                                       "Punkbuster"_L1,
+                                       "PunkBuster"_L1,
+                                       "GameGuard"_L1,
+                                       "DLSS"_L1,
+                                       "NGX"_L1,
+                                       "Streamline"_L1,
+                                       "FidelityFX"_L1,
+                                       "XeSS"_L1,
+                                       "NVIDIA"_L1,
+                                       "Nvidia"_L1,
+                                       "nvngx"_L1};
+        if (exact.contains(name))
+            return true;
+        const auto lower = name.toLower();
+        return lower == "dlss"_L1 || lower == "ngx"_L1 || lower == "streamline"_L1 || lower == "nvdlss"_L1 ||
+               lower.startsWith("fsr"_L1) || lower == "fidelityfx"_L1 || lower.contains("fidelityfx"_L1) ||
+               lower.startsWith("xess"_L1);
+    }
+
+    // Same names the full-tree walk matched. Directory hits are the folders those rules treated as decisive
+    // on their own; the file names are matched exactly, case-sensitive, as the old comparisons were.
+    bool anticheatHit(const QString &name, const QString &path, bool isDir)
+    {
+        if (isDir)
+            return name == "AntiCheatExpert"_L1 || name == "AceAntibotClient"_L1 || name == "FredaikisAntiCheat"_L1 ||
+                   name == "Punkbuster"_L1;
+        static const QStringList files{"anybrainSDK.dll"_L1,
+                                       "BEService.exe"_L1,
+                                       "BEService_x64.exe"_L1,
+                                       "BlackCall.aes"_L1,
+                                       "BlackCall64.aes"_L1,
+                                       "BlackCat64.sys"_L1,
+                                       "EasyAntiCheat_Setup.exe"_L1,
+                                       "EasyAntiCheat_EOS_Setup.exe"_L1,
+                                       "EasyAntiCheat.dll"_L1,
+                                       "EasyAntiCheat_x64.dll"_L1,
+                                       "eac_server64.dll"_L1,
+                                       "EAAntiCheat.Installer.exe"_L1,
+                                       "equ8_conf.json"_L1,
+                                       "gameguard.des"_L1,
+                                       "PnkBstrA.exe"_L1,
+                                       "pbsvc.exe"_L1,
+                                       "pbsv.dll"_L1,
+                                       "Randgrid.sys"_L1,
+                                       "TP3Helper.exe"_L1};
+        return files.contains(name) || name.endsWith(".xem"_L1) || path.endsWith("/HShield/HSInst.dll"_L1);
+    }
+
+    void noteUpscaler(bool &dlss, bool &fsr, bool &xess, const QString &name, bool isDir)
+    {
+        if (dlss && fsr && xess)
+            return;
+        const auto lower = name.toLower();
+        if (!isDir && lower.endsWith(".dll"_L1))
+        {
+            if (!dlss)
+                dlss = lower.contains("dlss"_L1) || lower == "sl.dll"_L1;
+            if (!xess)
+                xess = lower.contains("xess"_L1);
+            if (!fsr)
+                fsr = lower.contains("fidelityfx"_L1) || lower.startsWith("ffx_"_L1) || lower.contains("amd_fsr"_L1) ||
+                      lower.contains("fsr"_L1);
+        }
+        if (isDir)
+        {
+            if (!dlss)
+                dlss = lower == "dlss"_L1 || lower == "ngx"_L1 || lower == "streamline"_L1 || lower == "nvdlss"_L1;
+            if (!fsr)
+                fsr = lower.startsWith("fsr"_L1) || lower == "fidelityfx"_L1 || lower.contains("fidelityfx"_L1);
+            if (!xess)
+                xess = lower.startsWith("xess"_L1);
+        }
+    }
+
     // Unity writes its version near the start of these files, e.g. "2019.4.30f1". The same files Rai Pal reads:
     // https://github.com/Raicuparta/rai-pal/blob/51157fdae6b1d87760580d85082ccd5026bb0320/backend/core/src/game_engines/unity.rs
     QVersionNumber unityVersion(const QString &dataDir)
@@ -238,81 +333,67 @@ QString Game::windowsBinaryDir(const LaunchOption &exe) const
 
 const Game::InstallScan &Game::installScan() const
 {
-    // One walk over the install directory collects what detectGameEngine() and detectAnticheat() each used
-    // to gather with their own full walk. The filename comparisons are exactly equivalent to the regexes
-    // they replace: every one of those was anchored at a path separator and case-sensitive, and the
-    // relative path always starts with '/' (it is the full path with the install dir removed).
+    // Listing the install root, each executable directory, and a few known child folders. .pck files count
+    // only in those starting directories: the Godot fallback used to require the single data.pck in the
+    // whole tree, and counting every .pck we happen to pass while descending would change that.
     if (!m_installScan)
     {
         InstallScan scan;
-        for (QDirIterator it{m_installDir, QDirIterator::Subdirectories}; it.hasNext();)
+        if (!m_installDir.isEmpty() && QFileInfo{m_installDir}.isDir())
         {
-            const QString path = it.next();
-            const QString name = it.fileName();
-
-            if (!scan.source)
-                scan.source = name == "vphysics.dll"_L1 || name == "vphysics.so"_L1 || name == "vphysics.dylib"_L1 ||
-                              name == "bsppack.dll"_L1 || name == "bsppack.so"_L1 || name == "bsppack.dylib"_L1;
-
-            if (!scan.unityCrashHandler)
-                scan.unityCrashHandler = name == "UnityCrashHandler64.exe"_L1 || name == "UnityCrashHandler32.exe"_L1;
-
-            if (path.endsWith(".pck"_L1, Qt::CaseInsensitive))
-                scan.pcks.push_back(path);
-
-            if (!scan.anticheat)
+            struct Frame
             {
-                // QString::remove drops every occurrence, matching what the regexes used to see
-                auto local = path;
-                local.remove(m_installDir);
-                scan.anticheat =
-                    local.contains("/AntiCheatExpert/"_L1) || local.contains("/AceAntibotClient/"_L1) ||
-                    local.contains("/FredaikisAntiCheat/"_L1) || local.endsWith("/HShield/HSInst.dll"_L1) ||
-                    local.endsWith("/Punkbuster"_L1) || local.contains("/Punkbuster/"_L1) || local.endsWith(".xem"_L1) ||
-                    name == "anybrainSDK.dll"_L1 || name == "BEService.exe"_L1 || name == "BEService_x64.exe"_L1 ||
-                    name == "BlackCall.aes"_L1 || name == "BlackCall64.aes"_L1 || name == "BlackCat64.sys"_L1 ||
-                    name == "EasyAntiCheat_Setup.exe"_L1 || name == "EasyAntiCheat_EOS_Setup.exe"_L1 ||
-                    name == "EasyAntiCheat.dll"_L1 || name == "EasyAntiCheat_x64.dll"_L1 || name == "eac_server64.dll"_L1 ||
-                    name == "EAAntiCheat.Installer.exe"_L1 || name == "equ8_conf.json"_L1 || name == "gameguard.des"_L1 ||
-                    name == "PnkBstrA.exe"_L1 || name == "pbsvc.exe"_L1 || name == "pbsv.dll"_L1 ||
-                    name == "Randgrid.sys"_L1 || name == "TP3Helper.exe"_L1;
-            }
+                QString dir;
+                int depth = 0;
+                bool atRoot = false;
+            };
+            QSet<QString> seen;
+            QList<Frame> pending;
+            for (const auto &root : layoutRoots())
+                pending.append({root, 8, true});
 
-            if (!scan.hasDlssFile || !scan.hasFsrFile || !scan.hasXessFile)
+            while (!pending.isEmpty())
             {
-                // Upscaler DLL names are Windows names; compare case-insensitively. DLSS always
-                // ships one (nvngx_dlss*, sl.dlss*, or the sl.dll Streamline loader). XeSS ships
-                // libxess/XeSS. FSR ships fidelityfx/ffx_/amd_fsr DLLs unless statically linked.
-                const QString lower = name.toLower();
-                if (lower.endsWith(".dll"_L1))
-                {
-                    if (!scan.hasDlssFile)
-                        scan.hasDlssFile = lower.contains("dlss"_L1) || lower == "sl.dll"_L1;
-                    if (!scan.hasXessFile)
-                        scan.hasXessFile = lower.contains("xess"_L1);
-                    if (!scan.hasFsrFile)
-                        scan.hasFsrFile = lower.contains("fidelityfx"_L1) || lower.startsWith("ffx_"_L1) ||
-                                          lower.contains("amd_fsr"_L1) || lower.contains("fsr"_L1);
-                }
-                // Plugin folders catch DLLs packed where the walk can't see them. Directory entries
-                // only, so this costs one compare per folder, not per file.
-                if ((!scan.hasDlssFile || !scan.hasFsrFile || !scan.hasXessFile) && it.fileInfo().isDir())
-                {
-                    if (!scan.hasDlssFile)
-                        scan.hasDlssFile =
-                            lower == "dlss"_L1 || lower == "ngx"_L1 || lower == "streamline"_L1 || lower == "nvdlss"_L1;
-                    if (!scan.hasFsrFile)
-                        scan.hasFsrFile =
-                            lower.startsWith("fsr"_L1) || lower == "fidelityfx"_L1 || lower.contains("fidelityfx"_L1);
-                    if (!scan.hasXessFile)
-                        scan.hasXessFile = lower.startsWith("xess"_L1);
-                }
-            }
+                const auto frame = pending.takeLast();
+                const auto clean = QDir::cleanPath(frame.dir);
+                if (clean.isEmpty() || seen.contains(clean))
+                    continue;
+                seen.insert(clean);
+                if (QFileInfo info{clean}; !info.exists() || !info.isDir())
+                    continue;
 
-            // Everything is decided: the Godot fallback needs exactly one .pck, so a second one rules it out.
-            if (scan.source && scan.unityCrashHandler && scan.anticheat && scan.pcks.size() > 1 && scan.hasDlssFile &&
-                scan.hasFsrFile && scan.hasXessFile)
-                break;
+                const auto settled = [&scan] {
+                    return scan.anticheat && (scan.source || scan.unityCrashHandler || scan.pcks.size() > 1) &&
+                           scan.hasDlssFile && scan.hasFsrFile && scan.hasXessFile;
+                };
+
+                const auto entries = QDir{clean}.entryInfoList(QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot);
+                for (const auto &fi : entries)
+                {
+                    const auto name = fi.fileName();
+                    const auto path = fi.filePath();
+                    const bool isDir = fi.isDir();
+
+                    if (!scan.source)
+                        scan.source = name == "vphysics.dll"_L1 || name == "vphysics.so"_L1 || name == "vphysics.dylib"_L1 ||
+                                      name == "bsppack.dll"_L1 || name == "bsppack.so"_L1 || name == "bsppack.dylib"_L1;
+                    if (!scan.unityCrashHandler)
+                        scan.unityCrashHandler =
+                            name == "UnityCrashHandler64.exe"_L1 || name == "UnityCrashHandler32.exe"_L1;
+                    if (frame.atRoot && name.endsWith(".pck"_L1, Qt::CaseInsensitive))
+                        scan.pcks.push_back(path);
+                    if (!scan.anticheat)
+                        scan.anticheat = anticheatHit(name, path, isDir);
+                    noteUpscaler(scan.hasDlssFile, scan.hasFsrFile, scan.hasXessFile, name, isDir);
+
+                    if (isDir && frame.depth > 0 && descendForProbe(name))
+                        pending.append({path, frame.depth - 1, false});
+                    if (settled())
+                        break;
+                }
+                if (settled())
+                    break;
+            }
         }
         m_installScan = std::move(scan);
     }

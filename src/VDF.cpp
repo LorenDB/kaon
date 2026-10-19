@@ -35,7 +35,6 @@
 #include <QLoggingCategory>
 #include <QMutexLocker>
 #include <QStandardPaths>
-#include <QTimer>
 
 #include "stores/Steam.h"
 
@@ -44,6 +43,9 @@ Q_LOGGING_CATEGORY(VDFLog, "vdf")
 namespace
 {
     constexpr uint32_t LAST_STEAM_APP = 0;
+    // One app's binary KV. Larger than this is a corrupt size field; scanning it walks off the record
+    // and looks like a hang on that app id.
+    constexpr size_t MaxAppKvBytes = 64 * 1024 * 1024;
 
     // Which library's string table Section::parse should read. appinfo.vdf v0x29 keeps
     // strings in a table that belongs to that file, and two Steam installs can differ.
@@ -71,14 +73,6 @@ AppInfoVDF::AppInfoVDF(const QString &path)
         return;
 
     refresh();
-
-    // Dumping clears the cache directory, so only the first library schedules it.
-    static bool dumpScheduled = false;
-    if (base != nullptr && !dumpScheduled)
-    {
-        dumpScheduled = true;
-        QTimer::singleShot(0, [this] { dumpAppInfo(); });
-    }
 }
 
 void AppInfoVDF::refresh()
@@ -254,109 +248,126 @@ void AppInfoVDF::dumpAppInfo()
 
 void AppInfoVDF::AppInfo::Section::parse(SectionDesc &desc)
 {
-    static std::map<_TokenOp, size_t> operand_sizes = {{Int32, sizeof(int32_t)}, {Int64, sizeof(int64_t)}};
+    if (desc.blob == nullptr || desc.size == 0)
+        return;
+
+    // Stay inside this app's blob. A missing NUL or an unknown token used to keep reading, and a
+    // static flag then made every later app skip parsing for the rest of the process.
+    const auto *const end = static_cast<const uint8_t *>(desc.blob) + desc.size;
+    auto *cur = static_cast<uint8_t *>(desc.blob);
     std::vector<SectionData> raw_sections;
-    static bool exception = false;
 
-    if (!exception)
+    while (cur < end)
     {
-        for (uint8_t *cur = (uint8_t *)desc.blob; cur < (uint8_t *)desc.blob + desc.size; cur++)
+        const auto op = static_cast<_TokenOp>(*cur);
+        const char *name = reinterpret_cast<const char *>(cur + 1);
+        if (op != SectionEnd)
         {
-            auto op = (_TokenOp)(*cur);
-            auto name = (char *)(cur + 1);
-            if (op != SectionEnd)
+            // String Table Lookup (June 2024+)
+            if (currentLibrary()->vdf_version >= 0x29)
             {
-                // String Table Lookup (June 2024+)
-                //
-                if (currentLibrary()->vdf_version >= 0x29)
-                {
-                    name = (char *)currentLibrary()->table->strings;
+                if (cur + 5 > end || currentLibrary()->table == nullptr)
+                    return;
+                name = reinterpret_cast<char *>(currentLibrary()->table->strings);
 
-                    const auto str_idx = *(uint32_t *)(cur + 1);
+                const auto str_idx = *reinterpret_cast<uint32_t *>(cur + 1);
 
 #ifdef DEBUG
-                    qCDebug(VDFLog) << "String Table Index:  " << str_idx << ", op=" << op;
+                qCDebug(VDFLog) << "String Table Index:  " << str_idx << ", op=" << op;
 #endif
 
-                    if (str_idx < currentLibrary()->table->num_strings)
-                    {
-                        name = currentLibrary()->m_strs[str_idx];
+                if (str_idx < currentLibrary()->m_strs.size())
+                {
+                    name = currentLibrary()->m_strs[static_cast<qsizetype>(str_idx)];
 #ifdef DEBUG
-                        qCDebug(VDFLog) << "String=" << name;
+                    qCDebug(VDFLog) << "String=" << name;
 #endif
-                    }
-                    else
-                        qCritical() << "String Table Index (" << str_idx << ") Out-of-Range!";
-
-                    cur += 4;
                 }
-
-                // Legacy: null-terminated name is serialized inline after token type
-                //
                 else
-                {
-                    // Skip past name declarations, except for </Section> because it has no name.
-                    cur++;
-                    while (*cur != '\0')
-                        ++cur;
-                }
-            }
+                    qCritical() << "String Table Index (" << str_idx << ") Out-of-Range!";
 
-            if (op == SectionBegin)
-            {
-                if (!raw_sections.empty())
-                    raw_sections.push_back({raw_sections.back().name + '.' + name, {(void *)cur, 0}});
-                else
-                    raw_sections.push_back({name, {(void *)cur, 0}});
+                cur += 4;
             }
-            else if (op == SectionEnd)
-            {
-                if (!raw_sections.empty())
-                {
-                    raw_sections.back().desc.size = (uintptr_t)cur - (uintptr_t)raw_sections.back().desc.blob;
-                    finished_sections.push_back(raw_sections.back());
-                    raw_sections.pop_back();
-                }
-            }
+            // Legacy: null-terminated name is serialized inline after token type.
+            // SectionEnd has no name.
             else
             {
+                if (cur + 1 >= end)
+                    return;
                 ++cur;
-
-                switch (op)
-                {
-                case String:
-                    if (!raw_sections.empty())
-                        raw_sections.back().keys.push_back({name, {String, (void *)cur}});
-                    else
-                        exception = true;
-
-                    while (*cur != '\0')
-                        ++cur;
-                    break;
-
-                case Int32:
-                case Int64:
-                    if (!raw_sections.empty())
-                        raw_sections.back().keys.push_back({name, {op, (void *)cur}});
-                    else
-                        exception = true;
-
-                    cur += (operand_sizes[op] - 1);
-                    break;
-
-                default:
-                    qWarning() << "Unknown VDF Token Operator: " << op;
-                    exception = true;
-                    break;
-                }
+                while (cur < end && *cur != '\0')
+                    ++cur;
+                if (cur >= end)
+                    return;
             }
         }
+
+        if (op == SectionBegin)
+        {
+            if (!raw_sections.empty())
+                raw_sections.push_back({raw_sections.back().name + '.' + name, {cur, 0}});
+            else
+                raw_sections.push_back({name, {cur, 0}});
+        }
+        else if (op == SectionEnd)
+        {
+            if (!raw_sections.empty())
+            {
+                raw_sections.back().desc.size = static_cast<size_t>(
+                    reinterpret_cast<uintptr_t>(cur) - reinterpret_cast<uintptr_t>(raw_sections.back().desc.blob));
+                finished_sections.push_back(raw_sections.back());
+                raw_sections.pop_back();
+            }
+        }
+        else
+        {
+            if (cur + 1 >= end)
+                return;
+            ++cur;
+
+            auto width = size_t{0};
+            switch (op)
+            {
+            case String:
+                if (!raw_sections.empty())
+                    raw_sections.back().keys.push_back({name, {String, cur}});
+                while (cur < end && *cur != '\0')
+                    ++cur;
+                if (cur >= end)
+                    return;
+                break;
+
+            case Int32:
+                width = sizeof(int32_t);
+                break;
+            case Int64:
+                width = sizeof(int64_t);
+                break;
+
+            default:
+                qWarning() << "Unknown VDF Token Operator: " << static_cast<int>(op);
+                return;
+            }
+
+            if (op == Int32 || op == Int64)
+            {
+                if (cur + width > end)
+                    return;
+                if (!raw_sections.empty())
+                    raw_sections.back().keys.push_back({name, {op, cur}});
+                cur += width - 1;
+            }
+        }
+
+        if (cur >= end)
+            return;
+        ++cur;
     }
 }
 
 void *AppInfoVDF::AppInfo::getRootSection(size_t *pSize)
 {
-    size_t vdf_header_size = (vdf_version > 0x27 ? sizeof(AppInfo) : sizeof(AppInfo27));
+    const size_t vdf_header_size = (vdf_version > 0x27 ? sizeof(AppInfo) : sizeof(AppInfo27));
 
     static bool runOnce = true;
     if (runOnce)
@@ -379,23 +390,30 @@ void *AppInfoVDF::AppInfo::getRootSection(size_t *pSize)
         }
     }
 
-    size_t kv_size = (size - vdf_header_size + 8);
+    // `size` counts the bytes after the appid and size fields, so the record is size + 8 bytes from appid.
+    // Subtracting an unsigned header larger than that used to wrap and parse until the process fell over.
+    size_t kv_size = 0;
+    if (static_cast<size_t>(size) + 8 >= vdf_header_size)
+        kv_size = static_cast<size_t>(size) + 8 - vdf_header_size;
+    if (kv_size > MaxAppKvBytes)
+        kv_size = 0;
 
     if (pSize != nullptr)
         *pSize = kv_size;
 
-    return (uint8_t *)&appid + vdf_header_size;
+    return reinterpret_cast<uint8_t *>(&appid) + vdf_header_size;
 }
 
 AppInfoVDF::AppInfo *AppInfoVDF::AppInfo::getNextApp(void)
 {
-    SectionDesc root_sec{};
+    const size_t header = vdf_version > 0x27 ? sizeof(AppInfo) : sizeof(AppInfo27);
+    const auto record = static_cast<size_t>(size) + 8;
+    // A zero-length step here loops on the same app forever.
+    if (record < header || record > header + MaxAppKvBytes)
+        return nullptr;
 
-    root_sec.blob = getRootSection(&root_sec.size);
-
-    auto *pNext = (AppInfo *)((uint8_t *)root_sec.blob + root_sec.size);
-
-    return (pNext->appid == LAST_STEAM_APP) ? nullptr : pNext;
+    auto *pNext = reinterpret_cast<AppInfo *>(reinterpret_cast<uint8_t *>(&appid) + record);
+    return pNext->appid == LAST_STEAM_APP ? nullptr : pNext;
 }
 
 AppInfoVDF *AppInfoVDF::load(const QString &path)
@@ -454,9 +472,29 @@ AppInfoVDF::AppInfo *AppInfoVDF::game(int steamId)
         if (!library->m_gameIndexValid)
         {
             library->m_gameIndex.clear();
-            for (auto *info = library->root; info && info->appid != LAST_STEAM_APP; info = info->getNextApp())
+            const auto *const fileBegin = library->m_data.constData();
+            const auto *const fileEnd = fileBegin + library->m_data.size();
+            const size_t header = library->m_fileVersion > 0x27 ? sizeof(AppInfo) : sizeof(AppInfo27);
+            for (auto *info = library->root;;)
+            {
+                const auto *at = reinterpret_cast<const char *>(info);
+                if (at < fileBegin || at + sizeof(uint32_t) * 2 > fileEnd)
+                    break;
+                if (info->appid == LAST_STEAM_APP)
+                    break;
+
+                const auto record = static_cast<size_t>(info->size) + 8;
+                if (record < header || record > header + MaxAppKvBytes || at + record > fileEnd)
+                {
+                    qCWarning(VDFLog) << "Stopped reading appinfo at app" << info->appid << "in" << library->m_appInfoPath
+                                      << "- that record is truncated or larger than expected. Later apps in this file "
+                                         "are skipped.";
+                    break;
+                }
                 if (!library->m_gameIndex.contains(info->appid))
                     library->m_gameIndex.insert(info->appid, info);
+                info = reinterpret_cast<AppInfo *>(const_cast<char *>(at + record));
+            }
             library->m_gameIndexValid = true;
         }
         if (auto *info = library->m_gameIndex.value(static_cast<AppId_t>(steamId), nullptr))

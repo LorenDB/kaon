@@ -240,10 +240,10 @@ private:
     Engine m_engine = Engine::UnknownEngine;
     QVersionNumber m_engineVersion;
 
-    // Signals gathered from a single walk over the install directory. detectGameEngine() used to walk the
-    // tree up to three times (Source signs, Unity crash handler, Godot .pck files) and detectAnticheat()
-    // walked it a fourth time, matching nineteen regexes against every file. One pass with cheap string
-    // comparisons replaces all of that; the result is cached because both detectors need it.
+    // Signals gathered without walking the whole install. A full recursive walk reads every file of every
+    // installed game, and on a second drive (a spinning disk in particular) that is minutes of startup
+    // with the window still empty. Probe the install root, the executable's directories, and a short list
+    // of known subfolders instead. The result is cached because engine, anticheat, and upscaler checks share it.
     struct InstallScan
     {
         bool source = false;
