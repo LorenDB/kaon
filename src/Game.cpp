@@ -1,7 +1,8 @@
 #include "Game.h"
 
+#include <functional>
+
 #include <QDir>
-#include <QDirIterator>
 #include <QFileInfo>
 #include <QRegularExpression>
 #include <QSet>
@@ -126,6 +127,168 @@ namespace
 
     // Same names the full-tree walk matched. Directory hits are the folders those rules treated as decisive
     // on their own; the file names are matched exactly, case-sensitive, as the old comparisons were.
+    bool walkDirAncestors(const QString &installDir,
+                          const QString &startDir,
+                          const std::function<bool(const QString &dir)> &visit)
+    {
+        const auto rooted = QDir::cleanPath(installDir);
+        for (auto dir = QDir::cleanPath(startDir); !dir.isEmpty();)
+        {
+            if (visit(dir))
+                return true;
+            if (!rooted.isEmpty() && dir == rooted)
+                break;
+            const auto parent = QFileInfo{dir}.absolutePath();
+            if (parent == dir)
+                break;
+            dir = QDir::cleanPath(parent);
+            if (!rooted.isEmpty() && dir != rooted && !dir.startsWith(rooted + '/'_L1))
+                break;
+        }
+        return false;
+    }
+
+    bool walkDirsFromExecutables(const QString &installDir,
+                                 const QMap<int, Game::LaunchOption> &executables,
+                                 bool alsoWalkInstallDir,
+                                 const std::function<bool(const QString &dir)> &visit)
+    {
+        const auto rooted = QDir::cleanPath(installDir);
+        QSet<QString> starts;
+        for (const auto &exe : std::as_const(executables))
+        {
+            if (!exe.executable.isEmpty())
+                starts.insert(QDir::cleanPath(QFileInfo{exe.executable}.absolutePath()));
+        }
+        if (alsoWalkInstallDir && !rooted.isEmpty())
+            starts.insert(rooted);
+
+        QSet<QString> visited;
+        for (const auto &start : std::as_const(starts))
+        {
+            if (walkDirAncestors(installDir, start, [&](const QString &dir) {
+                    if (visited.contains(dir))
+                        return false;
+                    visited.insert(dir);
+                    return visit(dir);
+                }))
+                return true;
+        }
+        return false;
+    }
+
+    bool dirHasUnrealEngineTree(const QString &dir)
+    {
+        for (const auto &platform : {"Win64"_L1, "Win32"_L1, "ThirdParty"_L1})
+        {
+            if (QFileInfo fi{dir + "/Engine/Binaries/"_L1 + platform}; fi.exists() && fi.isDir())
+                return true;
+        }
+        return false;
+    }
+
+    bool detectUnrealEngine(const QString &installDir, const QMap<int, Game::LaunchOption> &executables)
+    {
+        return walkDirsFromExecutables(
+            installDir, executables, true, [](const QString &dir) { return dirHasUnrealEngineTree(dir); });
+    }
+
+    bool dirHasSourceEngineFiles(const QString &dir)
+    {
+        for (const auto &name :
+             {"vphysics.dll"_L1, "vphysics.so"_L1, "vphysics.dylib"_L1, "bsppack.dll"_L1, "bsppack.so"_L1, "bsppack.dylib"_L1})
+        {
+            if (QFileInfo fi{dir + '/' + name}; fi.exists() && fi.isFile())
+                return true;
+        }
+        return false;
+    }
+
+    bool detectSourceEngine(const QString &installDir, const QMap<int, Game::LaunchOption> &executables)
+    {
+        return walkDirsFromExecutables(
+            installDir, executables, true, [](const QString &dir) { return dirHasSourceEngineFiles(dir); });
+    }
+
+    bool dirHasGodotPck(const QString &dir, const QString &pckName)
+    {
+        for (const auto &fi : QDir{dir}.entryInfoList(QDir::Files))
+        {
+            if (fi.fileName().compare(pckName, Qt::CaseInsensitive) == 0)
+                return true;
+        }
+        return false;
+    }
+
+    // Unity writes its version near the start of these files, e.g. "2019.4.30f1". The same files Rai Pal reads:
+    // https://github.com/Raicuparta/rai-pal/blob/51157fdae6b1d87760580d85082ccd5026bb0320/backend/core/src/game_engines/unity.rs
+    QVersionNumber unityVersion(const QString &dataDir)
+    {
+        static const QRegularExpression version{R"((\d+)\.(\d+)\.(\d+)[abfp]\d+)"_L1};
+        for (const auto name : {"globalgamemanagers"_L1, "mainData"_L1, "data.unity3d"_L1})
+        {
+            QFile file{dataDir + '/' + name};
+            if (!file.open(QFile::ReadOnly))
+                continue;
+            const auto match = version.match(QString::fromLatin1(file.read(4096)));
+            if (match.hasMatch())
+                return {match.captured(1).toInt(), match.captured(2).toInt(), match.captured(3).toInt()};
+        }
+        return {};
+    }
+
+    bool detectGodotEngine(const QString &installDir, const QMap<int, Game::LaunchOption> &executables)
+    {
+        for (const auto &opt : std::as_const(executables))
+        {
+            if (opt.executable.isEmpty())
+                continue;
+            const QFileInfo exe{opt.executable};
+            const auto pck = exe.completeBaseName() + ".pck"_L1;
+            if (walkDirAncestors(installDir, exe.absolutePath(), [&](const QString &dir) {
+                    return dirHasGodotPck(dir, pck);
+                }))
+                return true;
+        }
+        return walkDirsFromExecutables(installDir, executables, true, [](const QString &dir) {
+            return dirHasGodotPck(dir, "data.pck"_L1);
+        });
+    }
+
+    bool detectUnityEngine(const QString &installDir,
+                           const QMap<int, Game::LaunchOption> &executables,
+                           QVersionNumber *versionOut)
+    {
+        const auto unityInDir = [&](const QString &dir, const QStringList &dataNames) {
+            for (const auto &name : dataNames)
+            {
+                if (QFileInfo data{dir + '/' + name + "_Data"_L1}; data.exists() && data.isDir())
+                {
+                    if (versionOut != nullptr)
+                        *versionOut = unityVersion(data.absoluteFilePath());
+                    return true;
+                }
+            }
+            return QFileInfo{dir + "/UnityCrashHandler64.exe"_L1}.exists() ||
+                   QFileInfo{dir + "/UnityCrashHandler32.exe"_L1}.exists();
+        };
+
+        for (const auto &opt : std::as_const(executables))
+        {
+            if (opt.executable.isEmpty())
+                continue;
+            const QFileInfo exe{opt.executable};
+            const QStringList names{exe.completeBaseName(), exe.baseName()};
+            if (walkDirAncestors(installDir, exe.absolutePath(), [&](const QString &dir) { return unityInDir(dir, names); }))
+                return true;
+        }
+
+        const auto rooted = QDir::cleanPath(installDir);
+        if (!rooted.isEmpty())
+            return walkDirAncestors(installDir, rooted, [&](const QString &dir) { return unityInDir(dir, {}); });
+        return false;
+    }
+
     bool anticheatHit(const QString &name, const QString &path, bool isDir)
     {
         if (isDir)
@@ -177,23 +340,6 @@ namespace
             if (!xess)
                 xess = lower.startsWith("xess"_L1);
         }
-    }
-
-    // Unity writes its version near the start of these files, e.g. "2019.4.30f1". The same files Rai Pal reads:
-    // https://github.com/Raicuparta/rai-pal/blob/51157fdae6b1d87760580d85082ccd5026bb0320/backend/core/src/game_engines/unity.rs
-    QVersionNumber unityVersion(const QString &dataDir)
-    {
-        static const QRegularExpression version{R"((\d+)\.(\d+)\.(\d+)[abfp]\d+)"_L1};
-        for (const auto name : {"globalgamemanagers"_L1, "mainData"_L1, "data.unity3d"_L1})
-        {
-            QFile file{dataDir + '/' + name};
-            if (!file.open(QFile::ReadOnly))
-                continue;
-            const auto match = version.match(QString::fromLatin1(file.read(4096)));
-            if (match.hasMatch())
-                return {match.captured(1).toInt(), match.captured(2).toInt(), match.captured(3).toInt()};
-        }
-        return {};
     }
 } // namespace
 
@@ -415,28 +561,16 @@ QStringList Game::upscalerInputs() const
 
 void Game::detectGameEngine()
 {
-    const auto roots = layoutRoots();
-
     // =======================================
     // Unreal detection
     //
-    // Detection method sourced from Rai Pal
+    // Walk up from each launch executable (and the install dir) looking for Engine/Binaries.
+    // UE4 WindowsNoEditor builds put that tree next to the launcher, not at the Steam install root.
     // https://github.com/Raicuparta/rai-pal/blob/51157fdae6b1d87760580d85082ccd5026bb0320/backend/core/src/game_engines/unreal.rs
-    for (const auto &root : std::as_const(roots))
+    if (detectUnrealEngine(m_installDir, m_executables))
     {
-        const QStringList signsOfUnreal = {
-            root + "/Engine/Binaries/Win64"_L1,
-            root + "/Engine/Binaries/Win32"_L1,
-            root + "/Engine/Binaries/ThirdParty"_L1,
-        };
-        for (const auto &sign : signsOfUnreal)
-        {
-            if (QFileInfo fi{sign}; fi.exists() && fi.isDir())
-            {
-                m_engine = Engine::Unreal;
-                return;
-            }
-        }
+        m_engine = Engine::Unreal;
+        return;
     }
 
     // =======================================
@@ -444,7 +578,7 @@ void Game::detectGameEngine()
     //
     // File names sourced from SteamDB
     // https://github.com/SteamDatabase/FileDetectionRuleSets/blob/ac27c7cfc0a63dc07cc9e65157841857d82f347b/rules.ini#L191
-    if (installScan().source)
+    if (detectSourceEngine(m_installDir, m_executables) || installScan().source)
     {
         m_engine = Engine::Source;
         return;
@@ -455,23 +589,7 @@ void Game::detectGameEngine()
     //
     // Detection method sourced from Rai Pal
     // https://github.com/Raicuparta/rai-pal/blob/51157fdae6b1d87760580d85082ccd5026bb0320/backend/core/src/game_engines/unity.rs
-    for (const auto &e : std::as_const(m_executables))
-    {
-        QFileInfo exe{e.executable};
-        // The folder is named after the executable without its extension, dots in the name included
-        for (const auto &name : {exe.completeBaseName(), exe.baseName()})
-        {
-            if (QFileInfo dataDir{exe.absolutePath() + '/' + name + "_Data"_L1}; dataDir.exists() && dataDir.isDir())
-            {
-                m_engine = Engine::Unity;
-                m_engineVersion = unityVersion(dataDir.absoluteFilePath());
-                return;
-            }
-        }
-    }
-
-    // Unity fallback: if the crash handler exists, it's a dead giveaway
-    if (installScan().unityCrashHandler)
+    if (detectUnityEngine(m_installDir, m_executables, &m_engineVersion) || installScan().unityCrashHandler)
     {
         m_engine = Engine::Unity;
         return;
@@ -482,23 +600,13 @@ void Game::detectGameEngine()
     //
     // Dectection method sourced from SteamDB
     // https://github.com/SteamDatabase/FileDetectionRuleSets/blob/ac27c7cfc0a63dc07cc9e65157841857d82f347b/tests/FileDetector.php#L316
-    for (const auto &e : std::as_const(m_executables))
+    if (detectGodotEngine(m_installDir, m_executables))
     {
-        QFileInfo exe{e.executable};
-        for (QDirIterator pckFinder{exe.absolutePath()}; pckFinder.hasNext();)
-        {
-            pckFinder.next();
-            // completeBaseName keeps dots in the name, so lin_v1.3.x86_64 matches lin_v1.3.pck.
-            // baseName() would stop at the first dot and look for lin_v1.pck.
-            if (pckFinder.fileName().compare(exe.completeBaseName() + ".pck"_L1, Qt::CaseInsensitive) == 0)
-            {
-                m_engine = Engine::Godot;
-                return;
-            }
-        }
+        m_engine = Engine::Godot;
+        return;
     }
 
-    // fall back to looking for a single data.pck file
+    // installScan() still descends into content trees when the signs sit off the exe path
     const auto &pcks = installScan().pcks;
     if (pcks.size() == 1 && pcks.first().endsWith("/data.pck"_L1, Qt::CaseInsensitive))
     {
