@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls.Basic
 
 import dev.lorendb.kaon
 
@@ -268,14 +269,16 @@ Column {
                     MouseArea {
                         id: removeMouse
 
+                        ToolTip.delay: 500
+                        ToolTip.text: "Remove this draw"
+                        ToolTip.visible: containsMouse
+                        anchors.bottom: parent.bottom
                         anchors.right: parent.right
-                        anchors.rightMargin: 8
-                        anchors.verticalCenter: parent.verticalCenter
+                        anchors.top: parent.top
                         cursorShape: Qt.PointingHandCursor
-                        height: 22
                         hoverEnabled: true
                         preventStealing: true
-                        width: 16
+                        width: 32
 
                         onClicked: eyes.removeAt(index)
 
