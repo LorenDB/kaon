@@ -292,14 +292,16 @@ namespace
     // Every prefix with a Wine process in it right now, each with the environment of one such process: the wineserver's
     // when there is one, since that is the one every other process in the prefix has to agree with.
     //
-    // The library asks about every game whenever anything changes. One look a second is enough for all of them, and a
-    // click that lands inside that second still sees a game that is actually running.
-    const QList<Running> &runningPrefixes()
+    // The library asks about every game whenever anything changes. One look a second is enough when it
+    // found a running prefix, so a click inside that second still sees a game that is actually running.
+    // An empty result is not reused: a wineserver that starts in that second would otherwise look idle,
+    // and an edit written then is thrown away when Proton exits.
+    const QList<Running> &runningPrefixes(bool refresh)
     {
         static QList<Running> found;
         static qint64 lookedAt = 0;
         const auto now = QDateTime::currentMSecsSinceEpoch();
-        if (lookedAt != 0 && now >= lookedAt && now - lookedAt < 1000)
+        if (!refresh && lookedAt != 0 && now >= lookedAt && now - lookedAt < 1000 && !found.isEmpty())
             return found;
         lookedAt = now;
         found.clear();
@@ -336,12 +338,12 @@ namespace
         return found;
     }
 
-    const Running *runningIn(const Game *game)
+    const Running *runningIn(const Game *game, bool refresh)
     {
         const auto spellings = prefixSpellings(game);
         if (spellings.isEmpty())
             return nullptr;
-        for (const auto &running : runningPrefixes())
+        for (const auto &running : runningPrefixes(refresh))
             if (spellings.contains(running.prefix) ||
                 (!running.canonical.isEmpty() && spellings.contains(running.canonical)))
                 return &running;
@@ -523,13 +525,18 @@ bool WinePrefix::isSetUp(const Game *game)
 
 bool WinePrefix::inUse(const Game *game)
 {
-    return game && runningIn(game) != nullptr;
+    if (!game)
+        return false;
+    if (runningIn(game, false) != nullptr)
+        return true;
+    // The cached scan did not see this prefix. Look again before anyone writes the registry.
+    return runningIn(game, true) != nullptr;
 }
 
 QStringList WinePrefix::prefixesInUse()
 {
     QStringList prefixes;
-    for (const auto &running : runningPrefixes())
+    for (const auto &running : runningPrefixes(false))
         prefixes << running.prefix;
     prefixes.sort();
     return prefixes;
@@ -537,7 +544,7 @@ QStringList WinePrefix::prefixesInUse()
 
 QHash<QString, QString> WinePrefix::runningEnvironment(const Game *game)
 {
-    const auto running = game ? runningIn(game) : nullptr;
+    const auto running = game ? runningIn(game, false) : nullptr;
     return running ? running->environment : QHash<QString, QString>{};
 }
 
