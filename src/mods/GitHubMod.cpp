@@ -352,27 +352,57 @@ void GitHubZipExtractorMod::uninstallMod(Game *game)
 
     QStringList dirs;
     const auto gameDir = QDir::cleanPath(game->installDir());
+    QString failed;
 
     for (const auto &file : toRemove)
     {
         if (file.isEmpty())
             continue;
         if (file.endsWith('/'))
-            dirs << file;
-        else if (QFile{file}.remove() && !gameDir.isEmpty())
         {
-            // Most zips don't list their folders. The ones this mod's files were in go too, once they are empty and
-            // as long as they are inside the game.
-            for (auto dir = QFileInfo{file}.absolutePath(); dir.startsWith(gameDir + '/') && !dirs.contains(dir);
-                 dir = QFileInfo{dir}.absolutePath())
-                dirs << dir;
+            dirs << file;
+            continue;
         }
+        if (QFileInfo::exists(file) && !QFile{file}.remove())
+        {
+            if (failed.isEmpty())
+                failed = file;
+            continue;
+        }
+        if (gameDir.isEmpty())
+            continue;
+        // Most zips don't list their folders. The ones this mod's files were in go too, once they are empty and
+        // as long as they are inside the game.
+        for (auto dir = QFileInfo{file}.absolutePath(); dir.startsWith(gameDir + '/') && !dirs.contains(dir);
+             dir = QFileInfo{dir}.absolutePath())
+            dirs << dir;
     }
 
     std::sort(dirs.begin(), dirs.end(), [](const auto &l, const auto &r) { return l.count('/') > r.count('/'); });
     for (const auto &dir : std::as_const(dirs))
         if (QDir d{dir}; d.exists() && d.isEmpty())
             d.removeRecursively();
+
+    // A file still in use has to stay on the list. Forgetting it leaves the mod installed with nothing to remove.
+    if (!failed.isEmpty())
+    {
+        QStringList still;
+        for (const auto &file : toRemove)
+        {
+            if (file.isEmpty())
+                continue;
+            if (file.endsWith('/'))
+            {
+                if (QDir{file}.exists())
+                    still << file;
+            }
+            else if (QFileInfo::exists(file))
+                still << file;
+        }
+        settings.setValue("installedFiles"_L1, still);
+        failUninstall("Couldn't remove %1. Quit the game and try again."_L1.arg(QFileInfo{failed}.fileName()));
+        return;
+    }
 
     settings.remove("installedFiles"_L1);
     Mod::uninstallMod(game);
