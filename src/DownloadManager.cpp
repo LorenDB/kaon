@@ -5,9 +5,11 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QLoggingCategory>
+#include <QMetaObject>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QSaveFile>
+#include <QThread>
 
 #include "GitHub.h"
 
@@ -35,7 +37,7 @@ void DownloadManager::download(const QNetworkRequest &request,
                                std::function<void(QNetworkReply::NetworkError, QString)> failureCallback,
                                std::function<void()> finallyCallback)
 {
-    m_queue.enqueue({request,
+    enqueueDownload({request,
                      {},
                      prettyName,
                      notifyOnFailure,
@@ -43,7 +45,6 @@ void DownloadManager::download(const QNetworkRequest &request,
                      failureCallback,
                      finallyCallback,
                      {}});
-    emit newDownloadEnqueued();
 }
 
 void DownloadManager::refreshCached(const QNetworkRequest &request,
@@ -55,7 +56,7 @@ void DownloadManager::refreshCached(const QNetworkRequest &request,
 {
     const auto etagFile = cacheFile + ".etag"_L1;
 
-    m_queue.enqueue({request,
+    enqueueDownload({request,
                      // Two mods that share a list share its file. The second to ask then gets "not modified".
                      [=](QNetworkRequest &conditional) {
                          // An ETag says nothing once the file it describes is gone
@@ -116,7 +117,18 @@ void DownloadManager::refreshCached(const QNetworkRequest &request,
                          successCallback(false);
                          return true;
                      }});
-    emit newDownloadEnqueued();
+}
+
+void DownloadManager::enqueueDownload(const Download &download)
+{
+    const auto run = [this, download]() {
+        m_queue.enqueue(download);
+        emit newDownloadEnqueued();
+    };
+    if (QThread::currentThread() == thread())
+        run();
+    else
+        QMetaObject::invokeMethod(this, run, Qt::QueuedConnection);
 }
 
 void DownloadManager::setProgress(qreal progress)

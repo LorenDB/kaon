@@ -77,6 +77,9 @@ private:
         std::function<bool()> satisfyLocally;
     };
 
+    // m_queue is only touched on this object's thread. Cover art asks from Qt's image thread.
+    void enqueueDownload(const Download &download);
+
     QQueue<Download> m_queue;
     bool m_downloading{false};
     QString m_currentDownloadName;
