@@ -15,11 +15,11 @@ Item {
                                                                                                            GameStatus.revision)
     required property Mod mod
     property int popupEpoch: 0
-    readonly property ModRelease shown: locked ? GameStatus.installedRelease(mod, game, GameStatus.revision) ?? current :
-                                                 current
     // Long lists get a search field so a version can be found without scrolling through all of them.
     // totalCount notifies; a rowCount() call in a binding would run once and go stale.
     readonly property bool showSearch: releases.totalCount > 6
+    readonly property ModRelease shown: locked ? GameStatus.installedRelease(mod, game, GameStatus.revision) ?? current :
+                                                 current
 
     function hideNightlies() {
         releases.showNightlies = false;
@@ -37,8 +37,7 @@ Item {
 
     ToolTip.delay: 500
     ToolTip.text: picker.locked ? "Uninstall it from this game to change the version" : label.truncated && picker.shown
-                                                                                          ? picker.mod.releaseTitle(
-                                                                                                picker.shown) : ""
+                                  ? picker.mod.releaseTitle(picker.shown) : ""
     ToolTip.visible: (picker.locked || (label.truncated && picker.shown !== null)) && mouse.containsMouse
     activeFocusOnTab: !locked
     implicitHeight: 32
@@ -123,396 +122,422 @@ Item {
         x: picker.width - width
         y: picker.height + 6
 
-    enter: Transition {
-        ParallelAnimation {
-            NumberAnimation {
-                property: "opacity"
-                from: 0
-                to: 1
-                duration: Theme.durationFast
-                easing.type: Theme.easeOut
-            }
-            NumberAnimation {
-                property: "scale"
-                from: 0.96
-                to: 1
-                duration: Theme.durationMed
-                easing.type: Theme.easeOut
-            }
-        }
-    }
-    exit: Transition {
-        ParallelAnimation {
-            NumberAnimation {
-                property: "opacity"
-                from: 1
-                to: 0
-                duration: Theme.durationFast
-                easing.type: Theme.easeIn
-            }
-            NumberAnimation {
-                property: "scale"
-                from: 1
-                to: 0.98
-                duration: Theme.durationFast
-                easing.type: Theme.easeIn
-            }
-        }
-    }
-
         background: Rectangle {
             border.color: Theme.glassLine
             border.width: 1.5
             color: Theme.glassPanel
             radius: 18
         }
-        contentItem: Column {
-            spacing: 2
+        contentItem: Flickable {
+            id: sheet
 
-            Item {
-                id: searchRow
+            // The release list used to take up to 320px inside a column that could not scroll, so the
+            // nightly switch and Delete sat below a short window.
+            readonly property real cap: Math.max(160, (Overlay.overlay ? Overlay.overlay.height : 480) - 32)
+            readonly property real footRoom: (picker.showSearch ? 56 : 0) + (releaseList.count === 0 ? 48 : 0) + (
+                                                 picker.mod.hasNightlies ? 42 : 0) + (picker.mod.hasPrereleases ? 42 : 0) + (
+                                                 deleteButton.visible ? 40 : 0) + 16
 
-                height: 34
-                visible: picker.showSearch
-                width: 324
+            boundsBehavior: Flickable.StopAtBounds
+            clip: true
+            contentHeight: body.implicitHeight
+            contentWidth: width
+            flickableDirection: Flickable.VerticalFlick
+            implicitHeight: Math.min(body.implicitHeight, cap)
+            interactive: contentHeight > height
 
-                Rectangle {
-                    anchors.fill: parent
-                    border.color: searchInput.activeFocus ? Theme.glassMuted : Theme.glassLine
-                    border.width: 1.5
-                    color: "transparent"
-                    radius: 12
-                }
+            ScrollBar.vertical: GlassScrollBar {
+            }
 
-                Icon {
-                    anchors.left: parent.left
-                    anchors.leftMargin: 12
-                    anchors.verticalCenter: parent.verticalCenter
-                    color: Theme.glassFaint
-                    name: "search"
-                    size: 15
-                    stroke: 2
-                }
+            Column {
+                id: body
 
-                TextInput {
-                    id: searchInput
-
-                    activeFocusOnTab: true
-                    anchors.left: parent.left
-                    anchors.leftMargin: 34
-                    anchors.right: clearSearch.visible ? clearSearch.left : parent.right
-                    anchors.rightMargin: 4
-                    anchors.verticalCenter: parent.verticalCenter
-                    clip: true
-                    color: Theme.glassText
-                    font.family: Theme.font
-                    font.pixelSize: 13
-                    selectByMouse: true
-                    selectedTextColor: Theme.glass
-                    selectionColor: Theme.glassMuted
-
-                    Keys.onEscapePressed: {
-                        if (text !== "") {
-                            text = "";
-                            releases.filterText = "";
-                        } else {
-                            pop.close();
-                        }
-                    }
-                    onTextEdited: releases.filterText = text
-
-                    VText {
-                        color: Theme.glassFaint
-                        font.pixelSize: 13
-                        text: "Search versions"
-                        visible: parent.text === ""
-                    }
-                }
+                spacing: 2
+                width: sheet.width
 
                 Item {
-                    id: clearSearch
+                    id: searchRow
 
-                    activeFocusOnTab: visible
-                    anchors.right: parent.right
-                    anchors.rightMargin: 6
-                    anchors.verticalCenter: parent.verticalCenter
-                    height: 24
-                    visible: searchInput.text !== ""
-                    width: 24
-
-                    Keys.onReturnPressed: {
-                        searchInput.text = "";
-                        releases.filterText = "";
-                    }
-                    Keys.onSpacePressed: {
-                        searchInput.text = "";
-                        releases.filterText = "";
-                    }
+                    height: 34
+                    visible: picker.showSearch
+                    width: 324
 
                     Rectangle {
                         anchors.fill: parent
-                        border.color: clearSearch.activeFocus ? Theme.ledBlue : "transparent"
-                        border.width: 2
-                        color: clearMouse.containsMouse ? Theme.glassHover : "transparent"
+                        border.color: searchInput.activeFocus ? Theme.glassMuted : Theme.glassLine
+                        border.width: 1.5
+                        color: "transparent"
                         radius: 12
                     }
 
                     Icon {
-                        anchors.centerIn: parent
-                        color: Theme.glassFaint
-                        name: "x"
-                        size: 13
-                        stroke: 2.2
-                    }
-
-                    MouseArea {
-                        id: clearMouse
-
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        hoverEnabled: true
-
-                        onClicked: {
-                            searchInput.text = "";
-                            releases.filterText = "";
-                        }
-                    }
-                }
-            }
-
-            VText {
-                color: Theme.glassFaint
-                elide: Text.ElideRight
-                font.pixelSize: 11
-                text: releases.filterText !== "" ? releaseList.count + " of " + releases.totalCount
-                                                  + " versions" : releaseList.count + (releaseList.count === 1
-                                                                                        ? " version" : " versions")
-                visible: picker.showSearch && releases.totalCount > 0
-                width: 324
-            }
-
-            ListView {
-                id: releaseList
-
-                clip: true
-                height: Math.min(contentHeight, 320)
-                interactive: contentHeight > height
-                model: releases
-                width: 324
-
-                ScrollBar.vertical: GlassScrollBar {
-                }
-                delegate: Item {
-                    id: row
-
-                    readonly property bool downloading: GameStatus.isDownloading(picker.mod, release, GameStatus.revision)
-                    readonly property string kind: !release ? "" : release.nightly ? "Nightly, " : release.prerelease
-                                                                                     ? "Prerelease, " : ""
-                    required property var model
-                    readonly property ModRelease release: picker.mod.releaseFromId(model.id)
-                    readonly property bool selected: picker.current !== null && picker.current.id === model.id
-                    // Whatever the name leaves over on the right: the Get button, else the status, else nothing
-                    readonly property var trail: getButton.visible ? getButton : statusText.visible ? statusText : null
-
-                    activeFocusOnTab: true
-                    height: 46
-                    width: 324
-
-                    Keys.onReturnPressed: picker.mod.setCurrentRelease(row.model.id)
-                    Keys.onSpacePressed: picker.mod.setCurrentRelease(row.model.id)
-
-                    ToolTip.delay: 500
-                    ToolTip.text: row.model.name
-                    ToolTip.visible: rowMouse.containsMouse && nameText.truncated
-
-                    Rectangle {
-                        anchors.fill: parent
-                        color: row.selected || row.activeFocus ? Theme.glassRaised : rowMouse.containsMouse ? Theme.glassHover :
-                                                                                                               "transparent"
-                        radius: 12
-                    }
-
-                    Rectangle {
-                        anchors.fill: parent
-                        anchors.margins: -2
-                        border.color: Theme.ledBlue
-                        border.width: 2
-                        color: "transparent"
-                        radius: 12
-                        visible: row.activeFocus
-                        z: 2
-                    }
-
-                    Led {
-                        anchors.verticalCenter: parent.verticalCenter
-                        blinking: row.downloading
-                        color: row.release && (row.release.downloaded || row.downloading) ? Theme.ledGreen : Theme.ledOff
-                        size: 7
-                        x: 14
-                    }
-
-                    // Long names take whatever the status text and the Get button leave over, and the
-                    // full name is one hover away
-                    Column {
                         anchors.left: parent.left
-                        anchors.leftMargin: 32
-                        anchors.right: row.trail ? row.trail.left : parent.right
-                        anchors.rightMargin: row.trail ? 8 : 14
+                        anchors.leftMargin: 12
                         anchors.verticalCenter: parent.verticalCenter
-                        spacing: 1
+                        color: Theme.glassFaint
+                        name: "search"
+                        size: 15
+                        stroke: 2
+                    }
 
-                        VText {
-                            id: nameText
+                    TextInput {
+                        id: searchInput
 
-                            elide: Text.ElideRight
-                            font.pixelSize: 13
-                            font.weight: row.selected ? Font.ExtraBold : Font.Medium
-                            text: row.model.name
-                            width: parent.width
+                        activeFocusOnTab: true
+                        anchors.left: parent.left
+                        anchors.leftMargin: 34
+                        anchors.right: clearSearch.visible ? clearSearch.left : parent.right
+                        anchors.rightMargin: 4
+                        anchors.verticalCenter: parent.verticalCenter
+                        clip: true
+                        color: Theme.glassText
+                        font.family: Theme.font
+                        font.pixelSize: 13
+                        selectByMouse: true
+                        selectedTextColor: Theme.glass
+                        selectionColor: Theme.glassMuted
+
+                        Keys.onEscapePressed: {
+                            if (text !== "") {
+                                text = "";
+                                releases.filterText = "";
+                            } else {
+                                pop.close();
+                            }
                         }
+                        onTextEdited: releases.filterText = text
 
                         VText {
                             color: Theme.glassFaint
-                            elide: Text.ElideRight
-                            font.pixelSize: 11
-                            text: row.kind + row.model.timestamp.toLocaleDateString(Qt.locale(), Locale.ShortFormat)
-                            width: parent.width
+                            font.pixelSize: 13
+                            text: "Search versions"
+                            visible: parent.text === ""
                         }
                     }
 
-                    MouseArea {
-                        id: rowMouse
+                    Item {
+                        id: clearSearch
 
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        hoverEnabled: true
-
-                        onClicked: picker.mod.setCurrentRelease(row.model.id)
-                    }
-
-                    VText {
-                        id: statusText
-
-                        anchors.right: parent.right
-                        anchors.rightMargin: 14
-                        anchors.verticalCenter: parent.verticalCenter
-                        color: Theme.glassFaint
-                        font.pixelSize: 12
-                        text: row.downloading ? "Downloading" : "On disk"
-                        visible: row.downloading || (row.release !== null && row.release.downloaded)
-                    }
-
-                    VButton {
-                        id: getButton
-
+                        activeFocusOnTab: visible
                         anchors.right: parent.right
                         anchors.rightMargin: 6
                         anchors.verticalCenter: parent.verticalCenter
-                        icon: "download"
-                        small: true
-                        text: "Get"
-                        visible: !row.downloading && row.release !== null && !row.release.downloaded
+                        height: 24
+                        visible: searchInput.text !== ""
+                        width: 24
 
-                        onClicked: GameStatus.download(picker.mod, row.release)
+                        Keys.onReturnPressed: {
+                            searchInput.text = "";
+                            releases.filterText = "";
+                        }
+                        Keys.onSpacePressed: {
+                            searchInput.text = "";
+                            releases.filterText = "";
+                        }
+
+                        Rectangle {
+                            anchors.fill: parent
+                            border.color: clearSearch.activeFocus ? Theme.ledBlue : "transparent"
+                            border.width: 2
+                            color: clearMouse.containsMouse ? Theme.glassHover : "transparent"
+                            radius: 12
+                        }
+
+                        Icon {
+                            anchors.centerIn: parent
+                            color: Theme.glassFaint
+                            name: "x"
+                            size: 13
+                            stroke: 2.2
+                        }
+
+                        MouseArea {
+                            id: clearMouse
+
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            hoverEnabled: true
+
+                            onClicked: {
+                                searchInput.text = "";
+                                releases.filterText = "";
+                            }
+                        }
+                    }
+                }
+
+                VText {
+                    color: Theme.glassFaint
+                    elide: Text.ElideRight
+                    font.pixelSize: 11
+                    text: releases.filterText !== "" ? releaseList.count + " of " + releases.totalCount + " versions" :
+                                                       releaseList.count + (releaseList.count === 1 ? " version" :
+                                                                                                      " versions")
+                    visible: picker.showSearch && releases.totalCount > 0
+                    width: 324
+                }
+
+                ListView {
+                    id: releaseList
+
+                    clip: true
+                    height: Math.min(contentHeight, Math.max(92, sheet.cap - sheet.footRoom))
+                    interactive: contentHeight > height
+                    model: releases
+                    width: 324
+
+                    ScrollBar.vertical: GlassScrollBar {
+                    }
+                    delegate: Item {
+                        id: row
+
+                        readonly property bool downloading: GameStatus.isDownloading(picker.mod, release,
+                                                                                     GameStatus.revision)
+                        readonly property string kind: !release ? "" : release.nightly ? "Nightly, " : release.prerelease
+                                                                                         ? "Prerelease, " : ""
+                        required property var model
+                        readonly property ModRelease release: picker.mod.releaseFromId(model.id)
+                        readonly property bool selected: picker.current !== null && picker.current.id === model.id
+                        // Whatever the name leaves over on the right: the Get button, else the status, else nothing
+                        readonly property var trail: getButton.visible ? getButton : statusText.visible ? statusText : null
+
+                        ToolTip.delay: 500
+                        ToolTip.text: row.model.name
+                        ToolTip.visible: rowMouse.containsMouse && nameText.truncated
+                        activeFocusOnTab: true
+                        height: 46
+                        width: 324
+
+                        Keys.onReturnPressed: picker.mod.setCurrentRelease(row.model.id)
+                        Keys.onSpacePressed: picker.mod.setCurrentRelease(row.model.id)
+
+                        Rectangle {
+                            anchors.fill: parent
+                            color: row.selected || row.activeFocus ? Theme.glassRaised : rowMouse.containsMouse ? Theme.glassHover :
+                                                                                                                  "transparent"
+                            radius: 12
+                        }
+
+                        Rectangle {
+                            anchors.fill: parent
+                            anchors.margins: -2
+                            border.color: Theme.ledBlue
+                            border.width: 2
+                            color: "transparent"
+                            radius: 12
+                            visible: row.activeFocus
+                            z: 2
+                        }
+
+                        Led {
+                            anchors.verticalCenter: parent.verticalCenter
+                            blinking: row.downloading
+                            color: row.release && (row.release.downloaded || row.downloading) ? Theme.ledGreen : Theme.ledOff
+                            size: 7
+                            x: 14
+                        }
+
+                        // Long names take whatever the status text and the Get button leave over, and the
+                        // full name is one hover away
+                        Column {
+                            anchors.left: parent.left
+                            anchors.leftMargin: 32
+                            anchors.right: row.trail ? row.trail.left : parent.right
+                            anchors.rightMargin: row.trail ? 8 : 14
+                            anchors.verticalCenter: parent.verticalCenter
+                            spacing: 1
+
+                            VText {
+                                id: nameText
+
+                                elide: Text.ElideRight
+                                font.pixelSize: 13
+                                font.weight: row.selected ? Font.ExtraBold : Font.Medium
+                                text: row.model.name
+                                width: parent.width
+                            }
+
+                            VText {
+                                color: Theme.glassFaint
+                                elide: Text.ElideRight
+                                font.pixelSize: 11
+                                text: row.kind + row.model.timestamp.toLocaleDateString(Qt.locale(), Locale.ShortFormat)
+                                width: parent.width
+                            }
+                        }
+
+                        MouseArea {
+                            id: rowMouse
+
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            hoverEnabled: true
+
+                            onClicked: picker.mod.setCurrentRelease(row.model.id)
+                        }
+
+                        VText {
+                            id: statusText
+
+                            anchors.right: parent.right
+                            anchors.rightMargin: 14
+                            anchors.verticalCenter: parent.verticalCenter
+                            color: Theme.glassFaint
+                            font.pixelSize: 12
+                            text: row.downloading ? "Downloading" : "On disk"
+                            visible: row.downloading || (row.release !== null && row.release.downloaded)
+                        }
+
+                        VButton {
+                            id: getButton
+
+                            anchors.right: parent.right
+                            anchors.rightMargin: 6
+                            anchors.verticalCenter: parent.verticalCenter
+                            icon: "download"
+                            small: true
+                            text: "Get"
+                            visible: !row.downloading && row.release !== null && !row.release.downloaded
+
+                            onClicked: GameStatus.download(picker.mod, row.release)
+                        }
+                    }
+                }
+
+                VText {
+                    color: Theme.glassMuted
+                    font.pixelSize: 13
+                    text: {
+                        if (releases.totalCount === 0)
+                            return "Looking for releases. Check your connection if this doesn't change.";
+                        if (releases.filterText !== "")
+                            return 'No versions match "' + releases.filterText + '".';
+                        return "No versions to show with these options.";
+                    }
+                    visible: releaseList.count === 0
+                    width: 324
+                    wrapMode: Text.Wrap
+                }
+
+                Rectangle {
+                    color: Theme.glassLine
+                    height: 1
+                    visible: nightlyRow.visible || prereleaseRow.visible || deleteButton.visible
+                    width: 324
+                }
+
+                Item {
+                    id: nightlyRow
+
+                    height: 40
+                    visible: picker.mod.hasNightlies
+                    width: 324
+
+                    VText {
+                        anchors.verticalCenter: parent.verticalCenter
+                        color: Theme.glassMuted
+                        font.pixelSize: 13
+                        text: "Include nightly builds"
+                        x: 14
+                    }
+
+                    ToggleSwitch {
+                        id: nightlySwitch
+
+                        anchors.right: parent.right
+                        anchors.rightMargin: 12
+                        anchors.verticalCenter: parent.verticalCenter
+                        checked: releases.showNightlies
+
+                        onToggled: releases.showNightlies ? picker.hideNightlies() : releases.showNightlies = true
+                    }
+                }
+
+                Item {
+                    id: prereleaseRow
+
+                    height: 40
+                    visible: picker.mod.hasPrereleases
+                    width: 324
+
+                    VText {
+                        anchors.verticalCenter: parent.verticalCenter
+                        color: Theme.glassMuted
+                        font.pixelSize: 13
+                        text: "Include prereleases"
+                        x: 14
+                    }
+
+                    ToggleSwitch {
+                        id: prereleaseSwitch
+
+                        anchors.right: parent.right
+                        anchors.rightMargin: 12
+                        anchors.verticalCenter: parent.verticalCenter
+                        checked: releases.showPrereleases
+
+                        onToggled: releases.showPrereleases ? picker.hidePrereleases() : releases.showPrereleases = true
+                    }
+                }
+
+                VButton {
+                    id: deleteButton
+
+                    ToolTip.delay: 500
+                    ToolTip.text: picker.current ? picker.mod.releaseTitle(picker.current) : ""
+                    ToolTip.visible: hovered && picker.current !== null
+                    icon: "trash"
+                    small: true
+                    text: "Delete this version"
+                    visible: picker.current !== null && picker.current.downloaded
+                    width: Math.min(implicitWidth, 324)
+
+                    onClicked: {
+                        const mod = picker.mod;
+                        const release = picker.current;
+                        pop.close();
+                        Nav.confirm("Delete " + mod.releaseTitle(release) + "?",
+                                    "This removes the downloaded files. You can download it again any time.", "Delete", ()
+                                    => mod.deleteRelease(release), true);
                     }
                 }
             }
-
-            VText {
-                color: Theme.glassMuted
-                font.pixelSize: 13
-                text: {
-                    if (releases.totalCount === 0)
-                        return "Looking for releases. Check your connection if this doesn't change.";
-                    if (releases.filterText !== "")
-                        return 'No versions match "' + releases.filterText + '".';
-                    return "No versions to show with these options.";
-                }
-                visible: releaseList.count === 0
-                width: 324
-                wrapMode: Text.Wrap
-            }
-
-            Rectangle {
-                color: Theme.glassLine
-                height: 1
-                visible: nightlyRow.visible || prereleaseRow.visible || deleteButton.visible
-                width: 324
-            }
-
-            Item {
-                id: nightlyRow
-
-                height: 40
-                visible: picker.mod.hasNightlies
-                width: 324
-
-                VText {
-                    anchors.verticalCenter: parent.verticalCenter
-                    color: Theme.glassMuted
-                    font.pixelSize: 13
-                    text: "Include nightly builds"
-                    x: 14
+        }
+        enter: Transition {
+            ParallelAnimation {
+                NumberAnimation {
+                    duration: Theme.durationFast
+                    easing.type: Theme.easeOut
+                    from: 0
+                    property: "opacity"
+                    to: 1
                 }
 
-                ToggleSwitch {
-                    id: nightlySwitch
-
-                    anchors.right: parent.right
-                    anchors.rightMargin: 12
-                    anchors.verticalCenter: parent.verticalCenter
-                    checked: releases.showNightlies
-
-                    onToggled: releases.showNightlies ? picker.hideNightlies() : releases.showNightlies = true
+                NumberAnimation {
+                    duration: Theme.durationMed
+                    easing.type: Theme.easeOut
+                    from: 0.96
+                    property: "scale"
+                    to: 1
                 }
             }
-
-            Item {
-                id: prereleaseRow
-
-                height: 40
-                visible: picker.mod.hasPrereleases
-                width: 324
-
-                VText {
-                    anchors.verticalCenter: parent.verticalCenter
-                    color: Theme.glassMuted
-                    font.pixelSize: 13
-                    text: "Include prereleases"
-                    x: 14
+        }
+        exit: Transition {
+            ParallelAnimation {
+                NumberAnimation {
+                    duration: Theme.durationFast
+                    easing.type: Theme.easeIn
+                    from: 1
+                    property: "opacity"
+                    to: 0
                 }
 
-                ToggleSwitch {
-                    id: prereleaseSwitch
-
-                    anchors.right: parent.right
-                    anchors.rightMargin: 12
-                    anchors.verticalCenter: parent.verticalCenter
-                    checked: releases.showPrereleases
-
-                    onToggled: releases.showPrereleases ? picker.hidePrereleases() : releases.showPrereleases = true
-                }
-            }
-
-            VButton {
-                id: deleteButton
-
-                ToolTip.delay: 500
-                ToolTip.text: picker.current ? picker.mod.releaseTitle(picker.current) : ""
-                ToolTip.visible: hovered && picker.current !== null
-                icon: "trash"
-                small: true
-                text: "Delete this version"
-                visible: picker.current !== null && picker.current.downloaded
-                width: Math.min(implicitWidth, 324)
-
-                onClicked: {
-                    const mod = picker.mod;
-                    const release = picker.current;
-                    pop.close();
-                    Nav.confirm("Delete " + mod.releaseTitle(release) + "?",
-                                "This removes the downloaded files. You can download it again any time.", "Delete", ()
-                                => mod.deleteRelease(release), true);
+                NumberAnimation {
+                    duration: Theme.durationFast
+                    easing.type: Theme.easeIn
+                    from: 1
+                    property: "scale"
+                    to: 0.98
                 }
             }
         }
