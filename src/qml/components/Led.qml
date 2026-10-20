@@ -13,13 +13,16 @@ Item {
     implicitHeight: size
     implicitWidth: size
 
+    // Not anchors.centerIn, which snaps to whole pixels and leaves the glow half a pixel off the dot
+    // at odd sizes
     Rectangle {
-        anchors.centerIn: parent
         color: led.color
         height: led.size * 2
         opacity: led.color === Theme.ledOff ? 0 : 0.22
         radius: height / 2
         width: led.size * 2
+        x: (led.width - width) / 2
+        y: (led.height - height) / 2
     }
 
     Rectangle {
