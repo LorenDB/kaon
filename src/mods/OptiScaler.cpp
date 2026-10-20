@@ -340,7 +340,7 @@ void OptiScaler::installModImpl(Game *game, const Game::LaunchOption &exe)
     const auto settingsId = game->settingsId();
     const auto gameName = game->name();
     const auto store = static_cast<int>(game->store());
-    const auto gameId = game->id();
+    const auto gameId = settingsId;
     const auto releaseId = release->id();
     const auto releaseName = release->name();
     QSettings snapshot;

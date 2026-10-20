@@ -18,7 +18,8 @@ QtObject {
     property bool discardConfig: false
     property Game game: null
 
-    // Rescans replace every Game object, so the open game is remembered by store and id as well
+    // Rescans replace every Game object, so the open game is remembered by store and settingsId as well.
+    // settingsId tells a Flatpak copy from the native one when both have the same app id.
     property string gameId: ""
     property int gameStore: 0
     property string notice: ""
@@ -141,7 +142,7 @@ QtObject {
 
     function openGame(g) {
         game = g;
-        gameId = g.id;
+        gameId = g.settingsId;
         gameStore = g.store;
         view = "game";
     }

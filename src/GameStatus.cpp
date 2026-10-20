@@ -1092,7 +1092,7 @@ void GameStatus::retargetGames(const QList<Game *> &previous, const QList<Game *
         if (!old || !previous.contains(old))
             return old;
         for (auto *game : current)
-            if (game->store() == old->store() && game->id() == old->id())
+            if (game->store() == old->store() && game->settingsId() == old->settingsId())
                 return game;
         return nullptr;
     };

@@ -14,6 +14,8 @@ class Game : public QObject
     QML_UNCREATABLE("Model only object")
 
     Q_PROPERTY(QString id READ id CONSTANT)
+    // Native and Flatpak copies of one app share id. This keeps them apart: flatpak app id, then the game id.
+    Q_PROPERTY(QString settingsId READ settingsId CONSTANT)
     Q_PROPERTY(QString name READ name CONSTANT)
     Q_PROPERTY(QString installDir READ installDir CONSTANT)
     Q_PROPERTY(QDateTime lastPlayed READ lastPlayed CONSTANT)

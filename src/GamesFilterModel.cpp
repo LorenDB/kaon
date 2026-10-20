@@ -226,7 +226,7 @@ Game *GamesFilterModel::gameByIdentity(int store, const QString &id) const
     const auto which = static_cast<Game::Store>(store);
     for (const auto *source : m_stores)
         for (auto *game : source->games())
-            if (game && game->store() == which && game->id() == id)
+            if (game && game->store() == which && game->settingsId() == id)
                 return game;
     return nullptr;
 }

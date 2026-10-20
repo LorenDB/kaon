@@ -550,7 +550,7 @@ void Mod::installMod(Game *game)
     {
         // The dialog can still be open when a rescan deletes this Game. Install into whichever object replaced it.
         const auto store = static_cast<int>(game->store());
-        const auto id = game->id();
+        const auto id = game->settingsId();
         auto m =
             new GameExecutablePickerModel{this, game, exes, [this, store, id](const Game::LaunchOption &exe) {
                                               if (auto *current = GamesFilterModel::instance()->gameByIdentity(store, id))

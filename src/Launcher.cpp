@@ -189,7 +189,7 @@ bool Launcher::retargetGame(const QList<Game *> &previous, const QList<Game *> &
 
     for (auto *game : current)
     {
-        if (game->store() == m_game->store() && game->id() == m_game->id())
+        if (game->store() == m_game->store() && game->settingsId() == m_game->settingsId())
         {
             if (game == m_game)
                 return false;
