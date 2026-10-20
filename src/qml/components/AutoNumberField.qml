@@ -8,16 +8,10 @@ import dev.lorendb.kaon
 Column {
     id: field
 
-    property string value: "auto"
-    property bool ranged: false
-    property real minimum: 0
-    property real maximum: 1
-    property real step: 0.01
-    property string manualDefault: "0"
-
-    signal edited(string next)
-
     readonly property bool isAuto: value.trim().toLowerCase() === "auto"
+    property string manualDefault: "0"
+    property real maximum: 1
+    property real minimum: 0
     readonly property real numeric: {
         const n = Number(value);
         if (!isFinite(n))
@@ -26,6 +20,11 @@ Column {
             return Math.min(maximum, Math.max(minimum, n));
         return n;
     }
+    property bool ranged: false
+    property real step: 0.01
+    property string value: "auto"
+
+    signal edited(string next)
 
     function formatNumber(n) {
         if (!isFinite(n))
@@ -136,6 +135,15 @@ Column {
                 onMoved: field.edited(field.formatNumber(value))
             }
 
+            Connections {
+                function onValueChanged() {
+                    if (!slider.pressed && Math.abs(slider.value - field.numeric) > Math.max(field.step, 0.0001) / 2)
+                        slider.value = field.numeric;
+                }
+
+                target: field
+            }
+
             VText {
                 id: valueLabel
 
@@ -152,15 +160,25 @@ Column {
         TextBox {
             id: numberBox
 
+            text: field.isAuto ? "" : field.value
             visible: !field.ranged
             width: parent.width
-            text: field.isAuto ? "" : field.value
 
             onTextChanged: {
                 if (!visible || field.isAuto)
                     return;
                 if (text !== field.value)
                     field.edited(text);
+            }
+
+            Connections {
+                function onValueChanged() {
+                    const next = field.isAuto ? "" : field.value;
+                    if (!numberBox.input.activeFocus && numberBox.text !== next)
+                        numberBox.text = next;
+                }
+
+                target: field
             }
         }
     }

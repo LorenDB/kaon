@@ -99,13 +99,13 @@ Item {
                     required property int index
                     required property string kind
                     required property string label
-                    required property string shipped
-                    required property string value
-                    required property bool ranged
-                    required property real minimum
-                    required property real maximum
-                    required property real step
                     required property string manualDefault
+                    required property real maximum
+                    required property real minimum
+                    required property bool ranged
+                    required property string shipped
+                    required property real step
+                    required property string value
 
                     spacing: 6
                     width: column.width
@@ -214,13 +214,32 @@ Item {
                             }
 
                             TextBox {
-                                text: row.kind === "number" || (row.kind === "text" && row.choices.length === 0) ? row.value :
-                                                                                                                   ""
+                                id: valueBox
+
+                                readonly property string modelValue: row.kind === "number" || (row.kind === "text"
+                                                                                               && row.choices.length === 0)
+                                                                     ? row.value : ""
+
+                                // Typing breaks the text binding. Revert and per-field Reset only update the model.
+                                function pull() {
+                                    if (text !== modelValue)
+                                        text = modelValue;
+                                }
+
+                                text: modelValue
                                 visible: row.kind === "number" || (row.kind === "text" && row.choices.length === 0)
                                 width: parent.width
 
-                                onTextChanged: if (visible && text !== row.value)
+                                onTextChanged: if (visible && text !== modelValue)
                                                    view.doc.setField(row.index, text)
+
+                                Connections {
+                                    function onDataChanged() {
+                                        valueBox.pull();
+                                    }
+
+                                    target: view.doc
+                                }
                             }
                         }
                     }
@@ -269,7 +288,6 @@ Item {
                 easing.type: Theme.easeOut
             }
         }
-
         transform: Translate {
             y: saveBar.dirty ? 0 : 12
 
