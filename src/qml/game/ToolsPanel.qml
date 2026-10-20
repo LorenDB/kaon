@@ -9,20 +9,14 @@ Column {
     id: panel
 
     property Game game: null
-    readonly property int onCount: tools.filter(tool => tool.on).length
-    // Rows from GameStatus.tools()
-    property var tools: []
-
-    spacing: 4
-    visible: tools.length > 0
-    width: parent ? parent.width : 0
 
     // Open/closed is remembered per game so leaving one open doesn't open the next.
     readonly property string gameKey: game ? (String(game.store) + "/" + game.id) : ""
+    readonly property int onCount: tools.filter(tool => tool.on).length
+    // Rows from GameStatus.tools()
+    property var tools: []
     property bool toolsOpen: false
     property var toolsOpenByGame: ({})
-
-    onGameKeyChanged: toolsOpen = gameKey !== "" && toolsOpenByGame[gameKey] === true
 
     function setToolsOpen(open) {
         toolsOpen = open;
@@ -32,6 +26,12 @@ Column {
         next[gameKey] = open;
         toolsOpenByGame = next;
     }
+
+    spacing: 4
+    visible: tools.length > 0
+    width: parent ? parent.width : 0
+
+    onGameKeyChanged: toolsOpen = gameKey !== "" && toolsOpenByGame[gameKey] === true
 
     Item {
         id: heading
@@ -214,7 +214,16 @@ Column {
                         checked: row.modelData.on
                         enabled: row.modelData.enabled
 
-                        onToggled: GameStatus.toggleTool(panel.game, row.modelData.mod)
+                        // The switch stays as it is until the removal is confirmed. Turning a tool on does not ask.
+                        onToggled: {
+                            const mod = row.modelData.mod;
+                            if (!row.modelData.on) {
+                                GameStatus.toggleTool(panel.game, mod);
+                                return;
+                            }
+                            Nav.confirm("Turn off " + mod.name + "?", "Turning it off removes " + mod.name + " from this game.", "Turn off",
+                                        () => GameStatus.toggleTool(panel.game, mod), true);
+                        }
                     }
                 }
             }

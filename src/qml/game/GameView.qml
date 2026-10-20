@@ -481,7 +481,21 @@ Item {
                                             text: row.modelData.secondaryLabel ?? ""
                                             visible: !!row.modelData.secondaryAction
 
-                                            onClicked: GameStatus.runStep(view.game, row.modelData.key, true)
+                                            onClicked: {
+                                                const action = row.modelData.secondaryAction;
+                                                if (action === "uninstall" || action === "repair") {
+                                                    const name = row.modelData.title;
+                                                    Nav.confirm(action === "repair" ? "Remove " + name + " from this game?" :
+                                                                                      "Uninstall " + name
+                                                                                      + " from this game?",
+                                                                "This takes it off this game. You can install it again.",
+                                                                action === "repair" ? "Remove" : "Uninstall", ()
+                                                                => GameStatus.runStep(view.game, row.modelData.key, true),
+                                                                true);
+                                                } else {
+                                                    GameStatus.runStep(view.game, row.modelData.key, true);
+                                                }
+                                            }
                                         }
 
                                         VButton {
@@ -560,7 +574,8 @@ Item {
                                     if (r && r.downloaded)
                                         otherMod.modelData.launchMod(view.game);
                                     else
-                                        Nav.notify("Download " + otherMod.modelData.name + " on the Mods page first", "warn");
+                                        Nav.notify("Download " + otherMod.modelData.name + " on the Mods page first",
+                                                   "warn");
                                 }
                             }
 
@@ -870,13 +885,14 @@ Item {
                             text: "Remove"
                             visible: profileSection.profileName !== ""
 
-                            onClicked: {
-                                const err = view.cardMod.removeProfile(view.game);
-                                if (err !== "")
-                                    Nav.notify(err);
-                                else
-                                    Nav.notify("Removed profile for " + view.game.name);
-                            }
+                            onClicked: Nav.confirm("Remove the profile for " + view.game.name + "?",
+                                                   "This deletes the imported profile for this game.", "Remove", () => {
+                                                       const err = view.cardMod.removeProfile(view.game);
+                                                       if (err !== "")
+                                                           Nav.notify(err);
+                                                       else
+                                                           Nav.notify("Removed profile for " + view.game.name);
+                                                   }, true)
                         }
                     }
 
@@ -975,18 +991,23 @@ Item {
                             VButton {
                                 id: pluginRemove
 
+                                ToolTip.delay: 500
+                                ToolTip.text: "Remove " + pluginRow.modelData
+                                ToolTip.visible: hovered
                                 anchors.right: parent.right
                                 anchors.verticalCenter: parent.verticalCenter
                                 icon: "trash"
                                 small: true
 
-                                onClicked: {
-                                    const err = view.cardMod.removePlugin(view.game, pluginRow.modelData);
-                                    if (err !== "")
-                                        Nav.notify(err);
-                                    else
-                                        Nav.notify("Removed " + pluginRow.modelData);
-                                }
+                                onClicked: Nav.confirm("Remove " + pluginRow.modelData + "?",
+                                                       "This deletes the plugin from this game.", "Remove", () => {
+                                                           const err = view.cardMod.removePlugin(view.game,
+                                                                                                 pluginRow.modelData);
+                                                           if (err !== "")
+                                                               Nav.notify(err);
+                                                           else
+                                                               Nav.notify("Removed " + pluginRow.modelData);
+                                                       }, true)
                             }
                         }
                     }
