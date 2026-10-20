@@ -93,25 +93,48 @@ namespace
     }
 
     // Copies a file over one that may already be there. QFile::copy won't overwrite, and the old file may be
-    // the profile being replaced.
-    bool copyOver(const QString &from, const QString &to, QString *error)
+    // the profile being replaced. The previous bytes stay in .kaon-bak until the whole import commits.
+    bool copyOver(const QString &from, const QString &to, QStringList *created, QStringList *backups, QString *error)
     {
-        if (QFileInfo::exists(to) && !QFile::remove(to))
+        const auto staging = to + ".kaon-new"_L1;
+        QFile::remove(staging);
+        if (!QFile::copy(from, staging))
         {
-            qCWarning(UevrProfilesLog) << "Could not replace" << to;
-            *error = "Kaon couldn't replace the profile in this game's prefix. Quit the game and try again."_L1;
+            qCWarning(UevrProfilesLog) << "Could not copy" << from << "to" << to;
+            *error = "Kaon couldn't write this game's Proton prefix."_L1;
+            QFile::remove(staging);
             return false;
         }
-        if (!QFile::copy(from, to))
+        const auto backup = to + ".kaon-bak"_L1;
+        const bool existed = QFileInfo::exists(to);
+        if (existed)
         {
+            QFile::remove(backup);
+            if (!QFile::rename(to, backup))
+            {
+                QFile::remove(staging);
+                qCWarning(UevrProfilesLog) << "Could not replace" << to;
+                *error = "Kaon couldn't replace the profile in this game's prefix. Quit the game and try again."_L1;
+                return false;
+            }
+        }
+        if (!QFile::rename(staging, to))
+        {
+            QFile::remove(staging);
+            if (existed)
+                QFile::rename(backup, to);
             qCWarning(UevrProfilesLog) << "Could not copy" << from << "to" << to;
             *error = "Kaon couldn't write this game's Proton prefix."_L1;
             return false;
         }
+        if (existed)
+            *backups << to;
+        else
+            *created << to;
         return true;
     }
 
-    bool copyTree(const QString &from, const QString &to, QString *error)
+    bool copyTree(const QString &from, const QString &to, QStringList *created, QStringList *backups, QString *error)
     {
         if (!QDir{}.mkpath(to))
         {
@@ -125,13 +148,33 @@ namespace
             const auto target = to + '/'_L1 + name;
             if (QFileInfo{source}.isDir())
             {
-                if (!copyTree(source, target, error))
+                if (!copyTree(source, target, created, backups, error))
                     return false;
             }
-            else if (!copyOver(source, target, error))
+            else if (!copyOver(source, target, created, backups, error))
                 return false;
         }
         return true;
+    }
+
+    void undoProfileImport(const QStringList &created, const QStringList &backups)
+    {
+        for (const auto &file : created)
+            QFile::remove(file);
+        for (const auto &file : backups)
+        {
+            const auto backup = file + ".kaon-bak"_L1;
+            if (!QFile::exists(backup))
+                continue;
+            QFile::remove(file);
+            QFile::rename(backup, file);
+        }
+    }
+
+    void commitProfileImport(const QStringList &backups)
+    {
+        for (const auto &file : backups)
+            QFile::remove(file + ".kaon-bak"_L1);
     }
 } // namespace
 
@@ -258,11 +301,17 @@ QString UevrProfiles::importProfile(Game *game, const QUrl &source)
     if (!settled)
         return "That ZIP has no config.txt in it, so Kaon can't use it as a UEVR profile."_L1;
 
+    QStringList created;
+    QStringList backups;
     for (const auto &dir : dirs)
     {
-        if (!copyTree(root, dir, &error))
+        if (!copyTree(root, dir, &created, &backups, &error))
+        {
+            undoProfileImport(created, backups);
             return error;
+        }
     }
+    commitProfileImport(backups);
     qCInfo(UevrProfilesLog) << "Imported UEVR profile" << picked.fileName() << "for" << (game ? game->name() : QString{});
     return {};
 }
