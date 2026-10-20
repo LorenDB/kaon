@@ -29,7 +29,8 @@ before running UUVR, but it does not choose a compatible .NET or BepInEx version
 ## Requirements
 
 Kaon unpacks zip downloads with `unzip`. If that isn't installed, it uses `bsdtar` or `python3` instead. OptiScaler
-ships as `.7z`, which requires `7z` or `7za` (from p7zip).
+ships as `.7z`, which requires `7z` or `7za` (from p7zip). The AppImage bundles `unzip` and `7z`, so it needs
+neither installed.
 
 ## Screenshot
 

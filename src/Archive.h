@@ -4,7 +4,8 @@
 #include <QStringList>
 
 // Unpacks the archives mods are shipped as (zip, and 7z for OptiScaler). Kaon has no archive code of its own: it
-// runs unzip/bsdtar/python3 for zip, and 7z or 7za for 7z.
+// runs unzip/bsdtar/python3 for zip, and 7z, 7za, 7zz or 7zzs for 7z. Tools shipped next to the executable
+// (the AppImage bundles unzip and 7z) are preferred over the host's PATH.
 namespace Archive
 {
     // Extracts into dest, replacing files that are already there. An empty member list extracts everything; members

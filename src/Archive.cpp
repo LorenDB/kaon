@@ -1,5 +1,6 @@
 #include "Archive.h"
 
+#include <QCoreApplication>
 #include <QDir>
 #include <QFileInfo>
 #include <QLoggingCategory>
@@ -37,6 +38,17 @@ namespace
         return path.endsWith(".7z"_L1, Qt::CaseInsensitive) ? Kind::SevenZip : Kind::Zip;
     }
 
+    // Tools bundled with Kaon (AppImage ships unzip and 7z in usr/bin) win over the host's PATH, so the
+    // AppImage works on systems that don't have them installed. Everywhere else this just finds the
+    // system tool.
+    QString findTool(QLatin1StringView name)
+    {
+        const QString bundled = QCoreApplication::applicationDirPath() + '/' + name;
+        if (QFileInfo::exists(bundled) && QFileInfo{bundled}.isExecutable())
+            return bundled;
+        return QStandardPaths::findExecutable(name);
+    }
+
     // Python's zipfile is the last resort for zip: it is on nearly every desktop, but it doesn't restore file
     // permissions. It cannot read 7z.
     const auto pythonScript = R"(
@@ -68,7 +80,7 @@ with zipfile.ZipFile(path) as z:
         };
         for (const auto &[tool, name] : candidates)
         {
-            if (const auto program = QStandardPaths::findExecutable(name); !program.isEmpty())
+            if (const auto program = findTool(name); !program.isEmpty())
             {
                 found = {tool, program};
                 qCInfo(ArchiveLog) << "Unpacking zip files with" << program;
@@ -84,9 +96,9 @@ with zipfile.ZipFile(path) as z:
         if (found.tool != Tool::None)
             return found;
 
-        for (const auto name : {"7z"_L1, "7za"_L1})
+        for (const auto name : {"7z"_L1, "7za"_L1, "7zz"_L1, "7zzs"_L1})
         {
-            if (const auto program = QStandardPaths::findExecutable(name); !program.isEmpty())
+            if (const auto program = findTool(name); !program.isEmpty())
             {
                 found = {Tool::SevenZip, program};
                 qCInfo(ArchiveLog) << "Unpacking 7z files with" << program;

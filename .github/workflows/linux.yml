@@ -30,8 +30,9 @@ jobs:
 
       - name: Install OpenXR headers
         run: |
+          sudo DEBIAN_FRONTEND=noninteractive apt-add-repository universe
           sudo DEBIAN_FRONTEND=noninteractive apt-get update
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y libopenxr-dev
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y libopenxr-dev p7zip-full unzip
 
       - name: Build
         run: |
@@ -50,7 +51,6 @@ jobs:
 
       - name: Install packages
         run: |
-          sudo DEBIAN_FRONTEND=noninteractive apt-add-repository universe
           sudo DEBIAN_FRONTEND=noninteractive apt install libfuse2t64 -y
 
       - name: Build release package
@@ -59,12 +59,16 @@ jobs:
           rm -f "$QT_ROOT_DIR/plugins/sqldrivers/libqsqlmimer.so"
           rm -f "$QT_ROOT_DIR/plugins/sqldrivers/libqsqloci.so"
 
+          # Bundle unzip and 7z so the AppImage unpacks downloads on systems that don't have them installed.
+          # Archive.cpp prefers these bundled copies over the host's PATH.
           QML_SOURCES_PATHS=src ${{ steps.install-linuxdeploy.outputs.linuxdeploy }} \
               --plugin qt \
               --output appimage \
               --desktop-file dev.lorendb.kaon.desktop \
               --icon-file src/qml/icons/kaon.svg \
               --executable build/src/kaon \
+              --executable /usr/bin/7z \
+              --executable /usr/bin/unzip \
               --appdir appdir
 
       - name: Upload release package
