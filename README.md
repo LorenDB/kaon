@@ -1,34 +1,35 @@
 # Kaon
 
-Kaon is a utility to help you use UEVR and other VR mods on Linux. It is in a pre-alpha state right now
-and under heavy development, so expect things to break.
+Kaon is a utility for using UEVR and other VR mods on Linux. It is pre-alpha and under heavy development, so
+expect breakage.
 
-Kaon collects basic anonymous usage information to help inform development; these analytics
-can be disabled in the settings page.
+Kaon collects basic anonymous usage information to inform development. You can disable this in the settings page.
 
 ## Features
 
 - Scan games installed via Steam, Heroic, and Itch.
-- Install any UEVR release, including nightly builds
-- Install PureDark's UEVR AFW (Alternate Frame Warping): Kaon adds `-dx12`, checks for `PDAFWPlugin.dll`, and can write the recommended in-game settings (AFW rendering method, Ghosting Fix, and Bootstrap on joeyhodge builds). You still enable DLSS/DLAA in the game. AFW needs DX12 and about 500 MB extra VRAM; use the nightly build for older UE titles and joeyhodge for UE 5.5–5.8
-- Install joeyhodge's UEVR fork, with fixes for UE 5.5–5.8 and particular games, including its DIBR/Mono builds. Kaon lists the releases that ship a whole `uevr.zip`; the ones that are only a replacement `UEVRBackend.dll` aren't offered
-- Install the .NET runtime in Proton to make UEVR work
-- Install Left 4 Dead 2, Portal, and Portal 2 VR mods
-- Install UUVR for Unity games, along with the BepInEx setup it needs. Kaon picks the UUVR build for the game's
-  Unity version and sets the game's Proton prefix up to load BepInEx, so there are no launch options to add.
-- Switch OpenXR CAS, VR Performance Toolkit, and OptiScaler on or off for each game. OptiScaler works alone or as the DLSS path for UEVR AFW on AMD/Intel; it conflicts with VR Performance Toolkit (both use dxgi.dll)
-- For mods that need launch options, Kaon reads what a Steam game already has and gives you one line to paste
-  that keeps it
+- Install any UEVR release, including nightly builds.
+- Install PureDark's UEVR AFW (Alternate Frame Warping). AFW requires DX12 and about 500 MB of extra VRAM.
+- Install joeyhodge's UEVR fork.
+- Install the .NET runtime in Proton for UEVR.
+- Install Left 4 Dead 2, Portal, and Portal 2 VR mods.
+- Install UUVR for Unity games, along with the BepInEx setup it requires. Only Mono games are supported for now.
+- Enable or disable OpenXR CAS, VR Performance Toolkit, and OptiScaler per game.
+- For mods that need launch options, Kaon reads the options a Steam game already has and gives you a single line to
+  paste that preserves them.
 - Works on the Steam Frame! (Only UEVR has been confirmed working so far)
-- Mirrors Kaon into the headset (Settings > Headset view), so installs and mod settings can be changed
-  without taking it off. SteamVR gets a dashboard tab. WiVRn and Monado show a floating window, composited
-  on top of another app when the runtime supports an OpenXR overlay session. The laser pointer clicks and
-  scrolls. On WiVRn, Kaon also appears in the in-headset app launcher.
-- Flatpak Steam and Flatpak Heroic are supported, and a native install of the same launcher is listed separately. The Flatpak launcher has to already be running, and user namespaces have to be enabled so Kaon can enter the game sandbox. Snap stores and the Flatpak itch app are still unsupported.
+- Mirrors Kaon into the headset (Settings > Headset view) so you can install mods and change settings without
+  removing the headset. Confirmed working with SteamVR and WiVRn.
+- Supports Flatpak Steam and Flatpak Heroic.
+
+Kaon does not manage dependency versions. It only checks that a dependency is present, not that its version matches
+the mod version you selected. For example, it ensures .NET is installed before running UEVR and BepInEx is installed
+before running UUVR, but it does not choose a compatible .NET or BepInEx version for you.
 
 ## Requirements
 
-Kaon unpacks zip downloads with `unzip`. If that isn't installed, it uses `bsdtar` or `python3` instead. OptiScaler ships as `.7z`, which needs `7z` or `7za` (from p7zip).
+Kaon unpacks zip downloads with `unzip`. If that isn't installed, it uses `bsdtar` or `python3` instead. OptiScaler
+ships as `.7z`, which requires `7z` or `7za` (from p7zip).
 
 ## Screenshot
 
@@ -36,22 +37,22 @@ Kaon unpacks zip downloads with `unzip`. If that isn't installed, it uses `bsdta
 
 ## Download
 
-You can download the latest release of Kaon [on the releases page](https://github.com/LorenDB/kaon/releases/latest).
+Download the latest release from [the releases page](https://github.com/LorenDB/kaon/releases/latest).
 
-Alternatively, bleeding-edge builds are available via CI. To get them, click on the latest workflow run
-[here](https://github.com/LorenDB/kaon/actions) and download the AppImage artifact.
+Bleeding-edge builds are available from CI. Open the latest workflow run on
+[the Actions page](https://github.com/LorenDB/kaon/actions) and download the AppImage artifact.
 
 ## Building from source
 
-You'll need the latest Qt installed to build Kaon. Older Qt versions may work, but I tend to use new Qt
-features as they come out, so I only officially support the most recent release of Qt. The OpenXR headers
-are also required (`libopenxr-dev` on Debian and Ubuntu, `openxr-devel` on Fedora and openSUSE). The
-OpenXR loader itself is only needed at runtime, and only for the WiVRn/Monado headset view.
+You need the latest Qt to build Kaon. Older Qt versions may work, but Kaon uses newer Qt features as they are
+released, so only the most recent Qt release is officially supported. The OpenXR headers are also required
+(`libopenxr-dev` on Debian and Ubuntu, `openxr-devel` on Fedora and openSUSE). The OpenXR loader is needed only at
+runtime, and only for the WiVRn/Monado headset view.
 
-The headset view is on by default. `-DKAON_OPENVR=OFF` skips the SteamVR dashboard tab, and
-`-DKAON_OPENXR=OFF` skips the WiVRn/Monado window and drops the OpenXR header requirement.
+The headset view is enabled by default. `-DKAON_OPENVR=OFF` disables the SteamVR dashboard tab. `-DKAON_OPENXR=OFF`
+disables the WiVRn/Monado window and removes the OpenXR header requirement.
 
-``` bash
+```bash
 git clone https://github.com/LorenDB/kaon.git
 cd kaon
 mkdir build
@@ -62,4 +63,4 @@ cmake --build .
 ./src/kaon
 ```
 
-You can also just open CMakeLists.txt as a project in Qt Creator and press Ctrl+R to run the project.
+You can also open `CMakeLists.txt` as a project in Qt Creator and press Ctrl+R to run it.
