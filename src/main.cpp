@@ -30,6 +30,7 @@
 #include "Steam.h"
 #include "UEVR.h"
 #include "UEVRAFW.h"
+#include "UEVRJoeyhodge.h"
 #include "UUVR.h"
 #include "UpdateChecker.h"
 #include "VrOverlay.h"
@@ -137,6 +138,7 @@ int main(int argc, char *argv[])
     Portal2VR::instance();
     UEVR::instance();
     UEVRAFW::instance();
+    UEVRJoeyhodge::instance();
     UUVR::instance();
     UUVRLegacy::instance();
     UpdateChecker::instance();

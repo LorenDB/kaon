@@ -139,6 +139,8 @@ qt_add_qml_module(kaon
         mods/UEVR.h
         mods/UEVRAFW.cpp
         mods/UEVRAFW.h
+        mods/UEVRJoeyhodge.cpp
+        mods/UEVRJoeyhodge.h
         mods/UevrPlugins.cpp
         mods/UevrPlugins.h
         mods/UevrProfiles.cpp

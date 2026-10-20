@@ -680,6 +680,8 @@ Item {
                     width: parent.width
 
                     VText {
+                        id: cardTitle
+
                         ToolTip.delay: 500
                         ToolTip.text: view.cardMod.name
                         ToolTip.visible: truncated && cardTitleHover.hovered
@@ -705,6 +707,8 @@ Item {
                         game: view.game
                         mod: view.cardMod
                         popupEpoch: view.popupEpoch
+                        // A long release name gives way to the mod's own name, which is the one that says what this card is
+                        width: Math.min(implicitWidth, Math.max(120, parent.width - cardTitle.implicitWidth - 10))
                     }
                 }
 

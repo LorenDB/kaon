@@ -11,6 +11,7 @@ can be disabled in the settings page.
 - Scan games installed via Steam, Heroic, and Itch.
 - Install any UEVR release, including nightly builds
 - Install PureDark's UEVR AFW (Alternate Frame Warping): Kaon adds `-dx12`, checks for `PDAFWPlugin.dll`, and can write the recommended in-game settings (AFW rendering method, Ghosting Fix, and Bootstrap on joeyhodge builds). You still enable DLSS/DLAA in the game. AFW needs DX12 and about 500 MB extra VRAM; use the nightly build for older UE titles and joeyhodge for UE 5.5–5.8
+- Install joeyhodge's UEVR fork, with fixes for UE 5.5–5.8 and particular games, including its DIBR/Mono builds. Kaon lists the releases that ship a whole `uevr.zip`; the ones that are only a replacement `UEVRBackend.dll` aren't offered
 - Install the .NET runtime in Proton to make UEVR work
 - Install Left 4 Dead 2, Portal, and Portal 2 VR mods
 - Install UUVR for Unity games, along with the BepInEx setup it needs. Kaon picks the UUVR build for the game's
