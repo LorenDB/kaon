@@ -139,6 +139,9 @@ void Bepinex::installModImpl(Game *game, const Game::LaunchOption &exe)
         {
             if (QString error; !WinePrefix::setNativeDllOverride(game, doorstopDll, &error))
             {
+                // unpackInto already recorded the files. Without the override the switch stays off,
+                // so uninstall would never be offered.
+                GitHubZipExtractorMod::uninstallMod(game);
                 fail(error);
                 return;
             }
