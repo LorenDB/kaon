@@ -57,11 +57,12 @@ public:
 
     enum class Platform
     {
-        Windows,
-        Linux,
-        MacOS,
+        Windows = 1,
+        Linux = 1 << 1,
+        MacOS = 1 << 2,
     };
     Q_ENUM(Platform)
+    Q_DECLARE_FLAGS(Platforms, Platform)
 
     enum class Architecture
     {
@@ -128,6 +129,12 @@ public:
     bool noWindowsSupport() const;
     // Unlike hasMultiplePlatforms(), this ignores macOS builds, which Steam on Linux never runs.
     bool hasLinuxBuild() const;
+    // Platforms the game has a launch option for, whether or not the launcher installed that build
+    Platforms platforms() const;
+    // The ones of those whose executables are on disk
+    Platforms installedPlatforms() const;
+    // "Windows", "Linux" and "macOS", in that order
+    static QStringList platformNames(Platforms platforms);
     // Whether the launcher starts the Windows build. Without a Linux build there is nothing else to start; with one, only
     // when the store knows the launcher was told to use Proton anyway.
     bool runsWindowsBuild() const;
@@ -164,7 +171,7 @@ public:
 
     struct LaunchOption
     {
-        Platform platform;
+        Platform platform = Platform::Windows;
         Architecture arch = Architecture::UnknownArch;
         QString executable;
     };
@@ -265,4 +272,5 @@ private:
 Q_DECLARE_METATYPE(Game)
 
 Q_DECLARE_OPERATORS_FOR_FLAGS(Game::Engines)
+Q_DECLARE_OPERATORS_FOR_FLAGS(Game::Platforms)
 Q_DECLARE_OPERATORS_FOR_FLAGS(Game::AppTypes)

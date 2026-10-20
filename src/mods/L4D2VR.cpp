@@ -127,7 +127,7 @@ QMap<int, Game::LaunchOption> L4D2VR::acceptableInstallCandidates(const Game *ga
     for (auto it = game->executables().cbegin(); it != game->executables().cend(); ++it)
     {
         const auto &exe = it.value();
-        if (exe.platform != Game::Platform::Windows)
+        if (!supportsPlatform(exe.platform))
             continue;
         const auto leaf = exe.executable.mid(exe.executable.lastIndexOf('/'_L1) + 1);
         if (leaf.compare("left4dead2.exe"_L1, Qt::CaseInsensitive) != 0)

@@ -491,6 +491,35 @@ bool Game::hasLinuxBuild() const
         m_executables.begin(), m_executables.end(), [](const auto &exe) { return exe.platform == Platform::Linux; });
 }
 
+Game::Platforms Game::platforms() const
+{
+    Platforms platforms;
+    for (const auto &exe : m_executables)
+        platforms |= exe.platform;
+    return platforms;
+}
+
+Game::Platforms Game::installedPlatforms() const
+{
+    Platforms platforms;
+    for (const auto &exe : m_executables)
+        if (QFileInfo::exists(exe.executable))
+            platforms |= exe.platform;
+    return platforms;
+}
+
+QStringList Game::platformNames(Platforms platforms)
+{
+    QStringList names;
+    if (platforms.testFlag(Platform::Windows))
+        names << "Windows"_L1;
+    if (platforms.testFlag(Platform::Linux))
+        names << "Linux"_L1;
+    if (platforms.testFlag(Platform::MacOS))
+        names << "macOS"_L1;
+    return names;
+}
+
 bool Game::runsWindowsBuild() const
 {
     if (noWindowsSupport())

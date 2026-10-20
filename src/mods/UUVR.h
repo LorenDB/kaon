@@ -14,10 +14,14 @@ class UuvrBuild : public GitHubZipExtractorMod
 public:
     Mod::Type type() const override { return Mod::Type::Installable; }
     Game::Engines compatibleEngines() const override { return Game::Engine::Unity; }
+    // UUVR's patcher ships Windows-only XR loader DLLs, so an install into a native Linux build would be broken. Games
+    // with one run their Windows build through Proton or Wine instead.
+    Game::Platforms platforms() const override { return Game::Platform::Windows; }
     QList<Mod *> dependencies() const override;
     bool isInstalledForGame(const Game *game) const override;
 
     QMap<int, Game::LaunchOption> acceptableInstallCandidates(const Game *game) const override;
+    bool fitsAnotherBuild(const Game *game) const override;
 
 protected:
     explicit UuvrBuild(QObject *parent = nullptr);

@@ -164,11 +164,7 @@ QMap<int, Game::LaunchOption> Portal2VR::acceptableInstallCandidates(const Game 
     if (game->store() != Game::Store::Steam || (game->id() != "620"_L1 && game->id() != "317400"_L1))
         return {};
 
-    auto options = GitHubZipExtractorMod::acceptableInstallCandidates(game);
-    options.removeIf([this, game](const std::pair<int, Game::LaunchOption> &exe) {
-        return exe.second.platform != Game::Platform::Windows;
-    });
-    return options;
+    return GitHubZipExtractorMod::acceptableInstallCandidates(game);
 }
 
 bool Portal2VR::isThisFileTheActualModDownload(const QString &file) const

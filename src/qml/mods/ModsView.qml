@@ -411,15 +411,36 @@ Flickable {
                                                 font.pixelSize: 15
                                                 font.weight: Font.ExtraBold
                                                 text: row.modelData.name
-                                                width: Math.max(0, Math.min(implicitWidth, versions.x - x - 12))
+                                                width: Math.max(0, Math.min(implicitWidth, versions.x - x - 12 - (platformTag.fits
+                                                                                                                  ? platformTag.implicitWidth
+                                                                                                                    + 10 : 0)))
                                                 x: 40
+                                            }
+
+                                            // The builds of a game the mod works with. The open line says more. It is
+                                            // left out where the name would have to be cut short for it.
+                                            VText {
+                                                id: platformTag
+
+                                                readonly property bool fits: modName.x + modName.implicitWidth + 10 + implicitWidth
+                                                                             + 12 <= versions.x
+
+                                                anchors.left: modName.right
+                                                anchors.leftMargin: fits ? 10 : 0
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                color: Theme.glassFaint
+                                                font.pixelSize: 12
+                                                font.weight: Font.Bold
+                                                text: row.modelData.platformNames.join(" · ")
+                                                visible: fits
+                                                width: fits ? implicitWidth : 0
                                             }
 
                                             VText {
                                                 ToolTip.delay: 500
                                                 ToolTip.text: row.modelData.description
                                                 ToolTip.visible: truncated && lineMouse.containsMouse
-                                                anchors.left: modName.right
+                                                anchors.left: platformTag.right
                                                 anchors.leftMargin: 14
                                                 anchors.right: versions.left
                                                 anchors.rightMargin: 14
@@ -486,6 +507,14 @@ Flickable {
 
                                             LaunchOptions {
                                                 options: row.open ? row.modelData.launchOptions : ""
+                                            }
+
+                                            VText {
+                                                color: Theme.glassFaint
+                                                font.pixelSize: 12
+                                                text: row.modelData.platformNote
+                                                width: parent.width
+                                                wrapMode: Text.Wrap
                                             }
 
                                             VText {

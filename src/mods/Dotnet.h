@@ -32,8 +32,6 @@ public:
     virtual bool isInstalledForGame(const Game *game) const override;
     QString installHoldReason(const Game *game) const override;
 
-    virtual QMap<int, Game::LaunchOption> acceptableInstallCandidates(const Game *game) const override;
-
 public slots:
     void downloadRelease(ModRelease *) override;
     void deleteRelease(ModRelease *release) override;

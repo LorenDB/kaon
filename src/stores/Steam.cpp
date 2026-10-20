@@ -1044,13 +1044,9 @@ private:
         if (!hasLinuxBuild() || noWindowsSupport())
             return;
 
-        const auto installed = [this](Platform platform) {
-            return std::any_of(m_executables.cbegin(), m_executables.cend(), [platform](const LaunchOption &exe) {
-                return exe.platform == platform && QFileInfo::exists(exe.executable);
-            });
-        };
-        const bool windowsBuild = installed(Platform::Windows);
-        const bool linuxBuild = installed(Platform::Linux);
+        const auto installed = installedPlatforms();
+        const bool windowsBuild = installed.testFlag(Platform::Windows);
+        const bool linuxBuild = installed.testFlag(Platform::Linux);
 
         // The player's choice wins. Valve's default only settles it when the installed files don't.
         auto name = compat.chosen.value(m_id);

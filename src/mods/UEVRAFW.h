@@ -34,8 +34,6 @@ public:
     virtual QList<Mod *> dependencies() const override;
     virtual bool isInstalledForGame(const Game *game) const override;
 
-    virtual QMap<int, Game::LaunchOption> acceptableInstallCandidates(const Game *game) const override;
-
     // True when this release name is the joeyhodge-based AFW build (UE 5.5–5.8).
     bool isJoeyhodgeRelease(const ModRelease *release) const;
     // Per-game UEVR config under the Wine prefix, when that file already exists. Empty otherwise.

@@ -40,16 +40,28 @@ QMap<int, Game::LaunchOption> UuvrBuild::acceptableInstallCandidates(const Game 
 
     auto options = GitHubZipExtractorMod::acceptableInstallCandidates(game);
     options.removeIf([this, game](const std::pair<int, Game::LaunchOption> &exe) {
-        // UUVR only supports Windows games (run via Proton/Wine on Linux). Its patcher ships Windows-only XR
-        // loader DLLs, so offering it for native Linux builds would produce a broken install.
-        if (exe.second.platform != Game::Platform::Windows)
-            return true;
         // Filter out IL2CPP builds (I seriously doubt that there are any games with both IL2CPP and Mono builds available at
         // the same time, but who knows. People do crazy things sometimes.
         return QFileInfo::exists(GitHubZipExtractorMod::modInstallDirForGame(game, exe.second) + "/GameAssembly.dll"_L1) ||
                QFileInfo::exists(GitHubZipExtractorMod::modInstallDirForGame(game, exe.second) + "/GameAssembly.so"_L1);
     });
     return options;
+}
+
+bool UuvrBuild::fitsAnotherBuild(const Game *game) const
+{
+    if (!game || !supportsUnity(game->engineVersion()))
+        return false;
+    // An IL2CPP game is IL2CPP whichever build runs, and UUVR can't load into it
+    for (const auto &exe : game->executables())
+    {
+        if (!QFileInfo::exists(exe.executable))
+            continue;
+        const auto dir = GitHubZipExtractorMod::modInstallDirForGame(game, exe);
+        if (QFileInfo::exists(dir + "/GameAssembly.dll"_L1) || QFileInfo::exists(dir + "/GameAssembly.so"_L1))
+            return false;
+    }
+    return GitHubZipExtractorMod::fitsAnotherBuild(game);
 }
 
 QList<Game::LaunchOption> UuvrBuild::preferredInstallCandidates(const Game *game, const QList<Game::LaunchOption> &all) const

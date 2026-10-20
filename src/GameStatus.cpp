@@ -244,7 +244,8 @@ QString GameStatus::group(Game *game, int) const
         return "none"_L1;
     if (game->supportsVr())
         return "native"_L1;
-    if (!preferredMod(game))
+    // A mod that fits once the launcher runs another build still has the switch as its first step
+    if (!preferredMod(game) && otherBuildMods(game).isEmpty())
         return "none"_L1;
 
     bool pending = false;
@@ -268,39 +269,13 @@ QVariantList GameStatus::steps(Game *game, int) const
 
     QVariantList out;
 
-    if (game->noWindowsSupport())
-        out << makeStep("platform"_L1,
-                        "Linux-only build"_L1,
-                        "VR mods attach to a game's Windows build, and this game doesn't ship one."_L1,
-                        "block"_L1);
-    else if (game->hasLinuxBuild() && game->runsWindowsBuild())
-        out << makeStep("platform"_L1, "Runs through Proton"_L1, game->windowsBuildReason(), "ok"_L1);
-    else if (game->hasLinuxBuild())
-    {
-        // Steam's settings say which build it starts, so there this is known and nothing after it can work until it is
-        // dealt with. For other launchers it is a guess, and stays a warning.
-        const bool steam = game->store() == Game::Store::Steam;
-        auto step = makeStep("platform"_L1,
-                             "Native Linux build"_L1,
-                             steam ? "Steam starts this game's Linux build, and the mod can only attach to the Windows one. "
-                                     "Pick a Proton version under Compatibility in the game's Steam properties, then "
-                                     "rescan."_L1 :
-                                     "Run the Windows build through Wine or Proton so the mod can attach."_L1,
-                             steam ? "todo"_L1 : "warn"_L1);
-        if (game->canOpenSettings())
-        {
-            step["action"_L1] = "steamSettings"_L1;
-            step["actionLabel"_L1] = "Steam properties"_L1;
-        }
-        if (steam)
-        {
-            step["secondaryAction"_L1] = "rescan"_L1;
-            step["secondaryLabel"_L1] = "Rescan"_L1;
-        }
-        out << step;
-    }
+    const auto build = modBuild(game);
+    if (build)
+        if (const auto step = platformStep(game, *build); !step.isEmpty())
+            out << step;
 
-    if (!game->noWindowsSupport())
+    // The prefix only matters when the mod runs in it. Without a mod there is no build to go by but the game's own.
+    if (build ? build->platform == Game::Platform::Windows : !game->noWindowsSupport())
     {
         if (game->hasValidWine())
             out << makeStep("proton"_L1,
@@ -628,8 +603,8 @@ QString GameStatus::summary(Game *game, int) const
         return game->vrOnly() ? "VR only"_L1 : "Built-in VR mode"_L1;
     if (g == "none"_L1)
     {
-        if (game->noWindowsSupport())
-            return "No Windows build"_L1;
+        if (const auto missing = missingBuilds(game); missing.toInt() != 0)
+            return "No %1 build"_L1.arg(Game::platformNames(missing).join(" or "_L1));
         const auto engine = engineName(game->engine());
         return engine.isEmpty() ? "Engine not recognized"_L1 : "No %1 mod yet"_L1.arg(engine);
     }
@@ -652,7 +627,13 @@ QString GameStatus::summary(Game *game, int) const
         if (state == "ok"_L1 || state == "warn"_L1)
             continue;
         if (key == "platform"_L1)
-            return "Needs Proton forced in Steam"_L1;
+        {
+            const auto build = modBuild(game);
+            const bool windows = !build || build->platform == Game::Platform::Windows;
+            if (game->store() == Game::Store::Steam)
+                return windows ? "Needs Proton forced in Steam"_L1 : "Needs Proton turned off in Steam"_L1;
+            return windows ? "Needs the Windows build"_L1 : "Needs the Linux build"_L1;
+        }
         if (key == "proton"_L1)
             return game->store() == Game::Store::Custom ? "Wine prefix not found"_L1 :
                                                           "Launch once in %1"_L1.arg(launcherName(game));
@@ -666,6 +647,135 @@ QString GameStatus::summary(Game *game, int) const
         return "Needs %1"_L1.arg(name);
     }
     return {};
+}
+
+QString GameStatus::unsupportedReason(Game *game, int) const
+{
+    if (!game)
+        return {};
+    if (const auto missing = missingBuilds(game); missing.toInt() != 0)
+        return "Kaon's VR mods work with a game's %1 build, and %2 only ships for %3."_L1.arg(
+            Game::platformNames(missing).join(" or "_L1),
+            game->name(),
+            QLocale{}.createSeparatedList(Game::platformNames(game->platforms())));
+    const auto engine = engineName(game->engine());
+    return "No Kaon mod supports %1 yet. You can still play it normally."_L1.arg(
+        engine.isEmpty() ? "this game's engine"_L1 : "%1 games like this one"_L1.arg(engine));
+}
+
+Game::Platforms GameStatus::missingBuilds(const Game *game) const
+{
+    Game::Platforms wanted;
+    for (const auto mod : ModsFilterModel::allMods())
+        if (mod->providesVr())
+            wanted |= mod->platforms();
+    return game->platforms().testAnyFlags(wanted) ? Game::Platforms{} : wanted;
+}
+
+QList<Mod *> GameStatus::otherBuildMods(Game *game) const
+{
+    QList<Mod *> list;
+    if (!game || !vrMods(game).isEmpty())
+        return list;
+    for (const auto mod : ModsFilterModel::allMods())
+        if (mod->providesVr() && mod->fitsAnotherBuild(game))
+            list << mod;
+    std::sort(list.begin(), list.end(), [](Mod *a, Mod *b) { return a->displayName() < b->displayName(); });
+    return list;
+}
+
+std::optional<GameStatus::ModBuild> GameStatus::modBuild(Game *game) const
+{
+    // The build the launcher starts. A game with nothing but a Windows build runs that through Wine or Proton.
+    const auto launched = game->runsWindowsBuild() ? Game::Platform::Windows : Game::Platform::Linux;
+    // Where a mod works with more than one build the game doesn't run, Windows is the one Steam can be told to use
+    const auto pick = [](Game::Platforms platforms) {
+        return platforms.testFlag(Game::Platform::Windows) ? Game::Platform::Windows : Game::Platform::Linux;
+    };
+
+    if (const auto mod = preferredMod(game))
+    {
+        Game::Platforms usable;
+        for (const auto &exe : mod->acceptableInstallCandidates(game))
+            usable |= exe.platform;
+        if (usable.testFlag(launched))
+            return ModBuild{launched, false, {mod}};
+        return ModBuild{pick(usable), true, {mod}};
+    }
+
+    auto mods = otherBuildMods(game);
+    if (mods.isEmpty())
+        return std::nullopt;
+    const auto platform = pick(game->platforms() & mods.constFirst()->platforms());
+    mods.removeIf([platform](Mod *mod) { return !mod->supportsPlatform(platform); });
+    return ModBuild{platform, true, mods};
+}
+
+QVariantMap GameStatus::platformStep(Game *game, const ModBuild &build) const
+{
+    const bool windows = build.platform == Game::Platform::Windows;
+    QStringList names;
+    for (const auto mod : build.mods)
+        names << mod->displayName();
+    const auto mods = QLocale{}.createSeparatedList(names);
+
+    if (!build.switchNeeded)
+    {
+        // Only worth a line when the game has another build that the launcher could have run instead
+        if (!game->hasLinuxBuild() || game->noWindowsSupport())
+            return {};
+        if (windows)
+            return makeStep("platform"_L1, "Runs through Proton"_L1, game->windowsBuildReason(), "ok"_L1);
+        return makeStep("platform"_L1,
+                        "Native Linux build"_L1,
+                        "%1 works with it, so this game doesn't need Proton or Wine"_L1.arg(mods),
+                        "ok"_L1);
+    }
+
+    const auto title = windows ? "Needs the Windows build"_L1 : "Needs the Linux build"_L1;
+    const auto only = (build.mods.size() == 1 ? "%1 only works with"_L1 : "%1 only work with"_L1).arg(mods);
+    const bool onDisk = game->installedPlatforms().testFlag(build.platform);
+    const auto buildName = Game::platformNames(build.platform).constFirst();
+
+    // Steam's settings say which build it starts, so there this is known and nothing after it can work until it is
+    // dealt with
+    if (game->store() == Game::Store::Steam)
+    {
+        const auto download = onDisk ? QString{} : " and let Steam download the %1 build"_L1.arg(buildName);
+        auto step =
+            makeStep("platform"_L1,
+                     title,
+                     windows ? "Steam starts this game's Linux build, and %1 the Windows one. Pick a Proton version "
+                               "under Compatibility in the game's Steam properties%2, then rescan."_L1.arg(only, download) :
+                               "Steam runs this game's Windows build through Proton, and %1 the Linux one. Under "
+                               "Compatibility in the game's Steam properties, stop forcing a Proton version%2, then "
+                               "rescan."_L1.arg(only, download),
+                     "todo"_L1);
+        if (game->canOpenSettings())
+        {
+            step["action"_L1] = "steamSettings"_L1;
+            step["actionLabel"_L1] = "Steam properties"_L1;
+        }
+        step["secondaryAction"_L1] = "rescan"_L1;
+        step["secondaryLabel"_L1] = "Rescan"_L1;
+        return step;
+    }
+
+    // Other launchers don't say which build they start. With both on disk this is a guess, and stays a warning.
+    if (onDisk)
+        return makeStep("platform"_L1,
+                        title,
+                        windows ? "%1 this game's Windows build. Start that one through Wine or Proton, not the Linux "
+                                  "one."_L1.arg(only) :
+                                  "%1 this game's Linux build. Start that one, not the Windows one."_L1.arg(only),
+                        "warn"_L1);
+    return makeStep("platform"_L1,
+                    title,
+                    "%1 this game's %2 build, which isn't installed. Install it in %3, then rescan."_L1.arg(
+                        only, buildName, launcherName(game)),
+                    "todo"_L1,
+                    "rescan"_L1,
+                    "Rescan"_L1);
 }
 
 QList<Mod *> GameStatus::vrMods(Game *game, int) const

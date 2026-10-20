@@ -179,15 +179,6 @@ void UEVR::autoLaunchImpl(Game *game)
     Wine::instance()->runInWine(currentRelease()->name(), game, path(Paths::CurrentUEVRInjector), args, {}, {}, true);
 }
 
-QMap<int, Game::LaunchOption> UEVR::acceptableInstallCandidates(const Game *game) const
-{
-    auto options = Mod::acceptableInstallCandidates(game);
-    options.removeIf([this, game](const std::pair<int, Game::LaunchOption> &exe) {
-        return exe.second.platform != Game::Platform::Windows;
-    });
-    return options;
-}
-
 QString UEVR::path(const Paths path) const
 {
     switch (path)

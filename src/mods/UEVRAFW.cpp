@@ -511,14 +511,6 @@ void UEVRAFW::autoLaunchImpl(Game *game)
     Wine::instance()->runInWine(currentRelease()->name(), game, path(Paths::CurrentInjector), args, {}, {}, true);
 }
 
-QMap<int, Game::LaunchOption> UEVRAFW::acceptableInstallCandidates(const Game *game) const
-{
-    auto options = Mod::acceptableInstallCandidates(game);
-    options.removeIf(
-        [](const std::pair<int, Game::LaunchOption> &exe) { return exe.second.platform != Game::Platform::Windows; });
-    return options;
-}
-
 QString UEVRAFW::path(const Paths p) const
 {
     const auto base = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + '/' + settingsGroup();

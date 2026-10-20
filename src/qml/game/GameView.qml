@@ -297,17 +297,8 @@ Item {
                     lineHeight: 1.4
                     text: !view.game ? "" : view.group === "native" ? view.game.name
                                                                       + " ships with VR support. Its own VR mode will look and run better than a mod, so the button below just starts the game." :
-                                                                      view.game.noWindowsSupport
-                                                                      ? "VR mods attach to a game's Windows build, and "
-                                                                        + view.game.name
-                                                                        + " only ships for other platforms." :
-                                                                        "No Kaon mod supports " + (view.engineName(
-                                                                                                       view.game) === ""
-                                                                                                   ? "this game's engine" :
-                                                                                                     view.engineName(
-                                                                                                         view.game)
-                                                                                                     + " games like this one")
-                                                                        + " yet. You can still play it normally."
+                                                                      GameStatus.unsupportedReason(view.game,
+                                                                                                   GameStatus.revision)
                     visible: view.group === "native" || view.group === "none"
                     width: parent.width
                     wrapMode: Text.Wrap

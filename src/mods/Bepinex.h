@@ -24,6 +24,8 @@ public:
     const QLoggingCategory &logger() const final;
 
     virtual Game::Engines compatibleEngines() const override { return Game::Engine::Unity; }
+    // Releases ship a Linux build next to the Windows one
+    Game::Platforms platforms() const override { return {Game::Platform::Windows, Game::Platform::Linux}; }
     virtual bool isInstalledForGame(const Game *game) const override;
     QString installHoldReason(const Game *game) const override;
 

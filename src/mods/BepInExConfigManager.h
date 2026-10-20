@@ -21,6 +21,8 @@ public:
     const QLoggingCategory &logger() const final;
 
     Game::Engines compatibleEngines() const override { return Game::Engine::Unity; }
+    // A plugin BepInEx loads, so it goes wherever BepInEx does
+    Game::Platforms platforms() const override { return {Game::Platform::Windows, Game::Platform::Linux}; }
     QList<Mod *> dependencies() const override;
     virtual bool isInstalledForGame(const Game *game) const override;
 

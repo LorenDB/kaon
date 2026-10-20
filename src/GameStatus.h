@@ -6,6 +6,8 @@
 #include <QPointer>
 #include <QQmlEngine>
 
+#include <optional>
+
 #include "Game.h"
 #include "Mod.h"
 
@@ -46,6 +48,8 @@ public:
 
     // A short line describing the most important thing about the game's status
     Q_INVOKABLE QString summary(Game *game, int revision = 0) const;
+    // For a game no mod can make VR: why, in a sentence or two
+    Q_INVOKABLE QString unsupportedReason(Game *game, int revision = 0) const;
 
     // Mods that can make this game play in VR, and the one Play in VR uses
     Q_INVOKABLE QList<Mod *> vrMods(Game *game, int revision = 0) const;
@@ -99,8 +103,26 @@ signals:
 private:
     explicit GameStatus(QObject *parent = nullptr);
 
+    // Which of a game's builds its VR mod works with
+    struct ModBuild
+    {
+        Game::Platform platform = Game::Platform::Windows;
+        // True while the launcher runs or installed one of the game's other builds instead
+        bool switchNeeded = false;
+        // The mod Play in VR uses, or when none fits yet, the ones that would after the switch
+        QList<Mod *> mods;
+    };
+
     void invalidate();
     void advanceSetUp();
+    // VR mods that would fit this game if its launcher ran another of the game's builds. Only for when none fits now.
+    QList<Mod *> otherBuildMods(Game *game) const;
+    // Unset when no VR mod would fit the game, whichever of its builds ran
+    std::optional<ModBuild> modBuild(Game *game) const;
+    // Empty when there is nothing to say: no switch is needed, and the game has no other build it could have run
+    QVariantMap platformStep(Game *game, const ModBuild &build) const;
+    // The builds Kaon's VR mods work with, when the game ships none of them. Empty when it ships one.
+    Game::Platforms missingBuilds(const Game *game) const;
     Mod *modForKey(const QString &key) const;
     QVariantMap findStep(Game *game, const QString &key) const;
     // The mods whose launch options this game needs: the one it is played with, and the extras that are on

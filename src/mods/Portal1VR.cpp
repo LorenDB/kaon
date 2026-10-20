@@ -94,7 +94,7 @@ QMap<int, Game::LaunchOption> Portal1VR::acceptableInstallCandidates(const Game 
     for (auto it = game->executables().cbegin(); it != game->executables().cend(); ++it)
     {
         const auto &exe = it.value();
-        if (exe.platform != Game::Platform::Windows)
+        if (!supportsPlatform(exe.platform))
             continue;
         // Portal with RTX is another Windows hl2.exe nested under this app. The mod installs beside the base game.
         const auto leaf = exe.executable.mid(exe.executable.lastIndexOf('/'_L1) + 1);

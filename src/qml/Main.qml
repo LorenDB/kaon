@@ -831,7 +831,8 @@ ApplicationWindow {
             // The button does whatever the first open step needs, and shows which kind of thing that is
             const action = canSetUp || root.openStep === undefined ? "" : root.openStep.action;
             return action === "launchOnce" ? "play" : action === "steamSettings" ? "external" : action === "refresh"
-                                                                                   ? "refresh" : "download";
+                                                                                   || action === "rescan" ? "refresh" :
+                                                                                                            "download";
         }
         label: {
             if (Nav.view === "addGame")

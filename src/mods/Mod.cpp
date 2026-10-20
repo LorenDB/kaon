@@ -317,8 +317,31 @@ QMap<int, Game::LaunchOption> Mod::acceptableInstallCandidates(const Game *game)
     if (!compatibleEngines().testFlag(game->engine()))
         return {};
     auto copy = game->executables();
-    copy.removeIf([](const std::pair<int, Game::LaunchOption> &exe) { return !QFileInfo::exists(exe.second.executable); });
+    copy.removeIf([this](const std::pair<int, Game::LaunchOption> &exe) {
+        return !supportsPlatform(exe.second.platform) || !QFileInfo::exists(exe.second.executable);
+    });
     return copy;
+}
+
+QString Mod::platformNote() const
+{
+    const bool windowsBuild = supportsPlatform(Game::Platform::Windows);
+    const bool linuxBuild = supportsPlatform(Game::Platform::Linux);
+    if (windowsBuild && linuxBuild)
+        return "Works with a game's Windows build, run through Proton or Wine, or with its native Linux build."_L1;
+    if (linuxBuild)
+        return "Works with a game's native Linux build. A game Steam runs through Proton has to be switched back."_L1;
+    return "Works with a game's Windows build, run through Proton or Wine. A game Steam runs natively has to be switched "
+           "to Proton."_L1;
+}
+
+bool Mod::fitsAnotherBuild(const Game *game) const
+{
+    if (!game || !supportsEngine(game->engine()) || (gameSpecific() && !targetsGame(game)))
+        return false;
+    // If a build the mod works with is on disk and the mod still doesn't fit, switching builds won't change that
+    const auto installed = game->installedPlatforms();
+    return game->platforms().testAnyFlags(platforms()) && installed.toInt() != 0 && !installed.testAnyFlags(platforms());
 }
 
 ModReleaseFilter::ModReleaseFilter(QObject *parent)

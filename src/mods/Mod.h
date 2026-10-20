@@ -101,6 +101,9 @@ class Mod : public QAbstractListModel
     // Which VR runtime this tool works with, e.g. "OpenVR" or "OpenXR". Empty when the mod isn't a
     // runtime-specific tool. Shown as "Name · Runtime" on the game's page so players know what each tool supports.
     Q_PROPERTY(QString vrRuntime READ vrRuntime CONSTANT FINAL)
+    // Which of a game's builds the mod works with: "Windows", or "Windows" and "Linux". platformNote says it in a sentence.
+    Q_PROPERTY(QStringList platformNames READ platformNames CONSTANT FINAL)
+    Q_PROPERTY(QString platformNote READ platformNote CONSTANT FINAL)
     // True when the mod loads per-game DLL plugins from the prefix, like UEVR does. The game's page then
     // offers to install them.
     Q_PROPERTY(bool supportsPlugins READ supportsPlugins CONSTANT FINAL)
@@ -237,6 +240,12 @@ public:
     virtual Type type() const = 0;
     virtual Game::Engines compatibleEngines() const = 0;
     Q_INVOKABLE bool supportsEngine(Game::Engine engine) const { return compatibleEngines().testFlag(engine); }
+    // The builds of a game the mod works with. Most VR mods hook Windows DLLs, so they need the game's Windows build,
+    // run through Wine or Proton. acceptableInstallCandidates() leaves out executables of any other build.
+    virtual Game::Platforms platforms() const { return Game::Platform::Windows; }
+    Q_INVOKABLE bool supportsPlatform(Game::Platform platform) const { return platforms().testFlag(platform); }
+    QStringList platformNames() const { return Game::platformNames(platforms()); }
+    QString platformNote() const;
     virtual QList<Mod *> dependencies() const { return {}; }
 
     Q_INVOKABLE virtual bool isInstalledForGame(const Game *game) const = 0;
@@ -252,6 +261,10 @@ public:
     {
         return game && !acceptableInstallCandidates(game).isEmpty();
     }
+    // True when the mod would fit this game if its launcher ran another of the game's builds: the game ships a build the
+    // mod works with, but only builds it doesn't work with are on disk. E.g. UEVR for an Unreal game that Steam runs
+    // natively, where Steam never downloaded the Windows build. Mods with conditions beyond engine and platform add them.
+    virtual bool fitsAnotherBuild(const Game *game) const;
     bool hasNightlies() const;
     bool hasPrereleases() const;
 
