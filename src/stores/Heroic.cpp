@@ -9,6 +9,7 @@
 #include <QLoggingCategory>
 #include <QSettings>
 #include <QStandardPaths>
+#include <QSysInfo>
 #include <QVariant>
 
 #include "DownloadManager.h"
@@ -207,15 +208,20 @@ public:
                 auto protonBase = sandboxBinary;
                 protonBase.remove("/proton"_L1);
                 const auto hostBase = Flatpak::hostPath(m_flatpakAppId, protonBase);
-                QString suffix;
-                if (QFileInfo files{hostBase + "/files"_L1}; files.exists() && files.isDir())
-                    suffix = "/files/bin/wine"_L1;
-                else if (QFileInfo dist{hostBase + "/dist"_L1}; dist.exists() && dist.isDir())
-                    suffix = "/dist/bin/wine"_L1;
-                if (!suffix.isEmpty())
+                // Steam Frame / arm64 Proton runs files/bin-arm64/wine when the prefix was made from
+                // default_pfx_arm64. files/bin/wine on that build is the wrong architecture.
+                const bool arm64 = QSysInfo::currentCpuArchitecture() == "arm64"_L1 ||
+                                   QFileInfo::exists(hostBase + "/files/share/default_pfx_arm64"_L1);
+                QStringList suffixes{"/files/bin/wine"_L1, "/dist/bin/wine"_L1};
+                if (arm64)
+                    suffixes.prepend("/files/bin-arm64/wine"_L1);
+                for (const auto &suffix : suffixes)
                 {
+                    if (!QFileInfo{hostBase + suffix}.isFile())
+                        continue;
                     m_wineBinary = hostBase + suffix;
                     sandboxBinary = protonBase + suffix;
+                    break;
                 }
             }
 
