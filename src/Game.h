@@ -191,6 +191,8 @@ public:
     // Folder Windows loads a dxgi.dll from for this launch option. Unreal games start through a small launcher in their
     // top folder; the game itself is the executable under <Project>/Binaries/Win64 (or Win32).
     QString windowsBinaryDir(const LaunchOption &exe) const;
+    // Every project Binaries/Win64 (then Win32) under this install. Empty for a non-Unreal game.
+    QStringList unrealBinaryDirs() const;
 
     // This is used to detect if a game has fully loaded or if there were errors parsing it.
     bool isValid() const { return m_valid; }

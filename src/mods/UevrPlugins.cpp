@@ -76,15 +76,24 @@ namespace
     {
         if (!game || game->engine() != Game::Engine::Unreal)
             return;
-        const auto dir = game->windowsBinaryDir(launcher);
-        if (dir.isEmpty() || !QFileInfo{dir}.isDir())
-            return;
+
+        // Every project binary dir, not only the one windowsBinaryDir picks. A launcher outside
+        // Binaries/Win64 used to hide *-Win64-Shipping.exe when a game ships more than one tree.
+        QStringList dirs = game->unrealBinaryDirs();
+        const auto own = QFileInfo{launcher.executable}.absolutePath();
+        if (QFileInfo{own}.isDir() && !dirs.contains(own))
+            dirs << own;
 
         QStringList gameExes;
-        for (const auto &name : QDir{dir}.entryList({"*.exe"_L1}, QDir::Files))
+        for (const auto &dir : dirs)
         {
-            if (!isHelperExecutable(name))
-                gameExes << name;
+            if (!QFileInfo{dir}.isDir())
+                continue;
+            for (const auto &name : QDir{dir}.entryList({"*.exe"_L1}, QDir::Files))
+            {
+                if (!isHelperExecutable(name) && !gameExes.contains(name))
+                    gameExes << name;
+            }
         }
         const bool hasShipping = std::any_of(gameExes.cbegin(), gameExes.cend(), [](const QString &name) {
             return name.contains("Shipping"_L1, Qt::CaseInsensitive);

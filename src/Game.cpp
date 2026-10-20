@@ -1,5 +1,6 @@
 #include "Game.h"
 
+#include <algorithm>
 #include <functional>
 
 #include <QDir>
@@ -209,8 +210,12 @@ namespace
 
     bool dirHasSourceEngineFiles(const QString &dir)
     {
-        for (const auto &name :
-             {"vphysics.dll"_L1, "vphysics.so"_L1, "vphysics.dylib"_L1, "bsppack.dll"_L1, "bsppack.so"_L1, "bsppack.dylib"_L1})
+        for (const auto &name : {"vphysics.dll"_L1,
+                                 "vphysics.so"_L1,
+                                 "vphysics.dylib"_L1,
+                                 "bsppack.dll"_L1,
+                                 "bsppack.so"_L1,
+                                 "bsppack.dylib"_L1})
         {
             if (QFileInfo fi{dir + '/' + name}; fi.exists() && fi.isFile())
                 return true;
@@ -324,9 +329,8 @@ namespace
                 continue;
             const QFileInfo exe{opt.executable};
             const auto pck = exe.completeBaseName() + ".pck"_L1;
-            if (walkDirAncestors(installDir, exe.absolutePath(), [&](const QString &dir) {
-                    return dirHasGodotPck(dir, pck);
-                }))
+            if (walkDirAncestors(
+                    installDir, exe.absolutePath(), [&](const QString &dir) { return dirHasGodotPck(dir, pck); }))
                 return true;
         }
         if (walkDirsFromExecutables(
@@ -550,14 +554,12 @@ QStringList Game::layoutRoots() const
     return roots;
 }
 
-QString Game::windowsBinaryDir(const LaunchOption &exe) const
+QStringList Game::unrealBinaryDirs() const
 {
-    const QFileInfo launcher{exe.executable};
-    const auto own = launcher.absolutePath();
-    if (engine() != Engine::Unreal || own.contains("/Binaries/Win"_L1, Qt::CaseInsensitive))
-        return own;
-
     QStringList found;
+    if (engine() != Engine::Unreal)
+        return found;
+
     // A game that has both builds is started from the 64-bit one
     for (const auto platform : {"Binaries/Win64"_L1, "Binaries/Win32"_L1})
     {
@@ -577,6 +579,17 @@ QString Game::windowsBinaryDir(const LaunchOption &exe) const
         if (!found.isEmpty())
             break;
     }
+    return found;
+}
+
+QString Game::windowsBinaryDir(const LaunchOption &exe) const
+{
+    const QFileInfo launcher{exe.executable};
+    const auto own = launcher.absolutePath();
+    if (engine() != Engine::Unreal || own.contains("/Binaries/Win"_L1, Qt::CaseInsensitive))
+        return own;
+
+    const auto found = unrealBinaryDirs();
 
     // The launcher is named after the project, so that settles it when a game ships more than one
     if (found.size() > 1)
@@ -584,6 +597,20 @@ QString Game::windowsBinaryDir(const LaunchOption &exe) const
         const auto named = found.filter('/'_L1 + launcher.completeBaseName() + "/Binaries/"_L1, Qt::CaseInsensitive);
         if (named.size() == 1)
             return named.constFirst();
+
+        // A stub at the install root is not where UEVR or a dxgi hook has to go.
+        QStringList shipping;
+        for (const auto &dir : found)
+        {
+            const auto exes = QDir{dir}.entryList({"*.exe"_L1}, QDir::Files);
+            const auto hasShipping = std::any_of(exes.cbegin(), exes.cend(), [](const QString &name) {
+                return name.contains("Shipping"_L1, Qt::CaseInsensitive);
+            });
+            if (hasShipping)
+                shipping << dir;
+        }
+        if (shipping.size() == 1)
+            return shipping.constFirst();
     }
     return found.size() == 1 ? found.constFirst() : own;
 }
