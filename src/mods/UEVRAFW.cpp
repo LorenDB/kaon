@@ -66,6 +66,16 @@ namespace
         return paths;
     }
 
+    // The stem UEVR attaches to, even when that config.txt does not exist yet. The first existing file
+    // can be the launcher stub, and the Shipping process never reads it.
+    QString configPathToWrite(const Game *game)
+    {
+        const auto candidates = candidateConfigPaths(game);
+        if (candidates.isEmpty())
+            return {};
+        return QFileInfo{candidates.constFirst()}.absoluteFilePath();
+    }
+
     QHash<QString, QString> readConfigValues(const QString &path)
     {
         QHash<QString, QString> values;
@@ -241,7 +251,7 @@ QString UEVRAFW::configFileForGame(const Game *game) const
 
 bool UEVRAFW::recommendedConfigApplied(const Game *game) const
 {
-    const auto path = configFileForGame(game);
+    const auto path = configPathToWrite(game);
     if (path.isEmpty() || !QFileInfo::exists(path))
         return false;
     const auto values = readConfigValues(path);
@@ -291,17 +301,11 @@ bool UEVRAFW::applyRecommendedConfig(Game *game, QString *error)
     if (isJoeyhodgeRelease(currentRelease()))
         wanted.insert(bootstrapKey, "true"_L1);
 
-    QString path = configFileForGame(game);
+    const auto path = configPathToWrite(game);
     if (path.isEmpty())
     {
-        const auto candidates = candidateConfigPaths(game);
-        if (candidates.isEmpty())
-        {
-            *err = "Kaon couldn't find where UEVR stores settings for this game."_L1;
-            return false;
-        }
-        // No config yet. The first candidate is the shipping exe under steamuser.
-        path = QFileInfo{candidates.constFirst()}.absoluteFilePath();
+        *err = "Kaon couldn't find where UEVR stores settings for this game."_L1;
+        return false;
     }
     if (!writeConfigValues(path, wanted, err))
         return false;
