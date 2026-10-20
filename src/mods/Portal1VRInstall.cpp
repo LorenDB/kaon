@@ -1,5 +1,6 @@
 #include "Portal1VRInstall.h"
 
+#include <algorithm>
 #include <utility>
 
 #include <QDateTime>
@@ -55,17 +56,63 @@ namespace
             error = "Couldn't create %1."_L1.arg(QFileInfo{to}.absolutePath());
             return false;
         }
-        if (QFile::exists(to) && !QFile::remove(to))
-        {
-            error = "Couldn't replace %1. Close Portal and try again."_L1.arg(to);
-            return false;
-        }
-        if (!QFile::copy(from, to))
+        const auto staging = to + ".kaon-new"_L1;
+        const auto backup = to + ".kaon-bak"_L1;
+        QFile::remove(staging);
+        if (!QFile::copy(from, staging))
         {
             error = "Couldn't copy %1."_L1.arg(QFileInfo{from}.fileName());
             return false;
         }
+        // Rename aside first so a failed replace does not leave the old file missing.
+        if (QFile::exists(to))
+        {
+            QFile::remove(backup);
+            if (!QFile::rename(to, backup))
+            {
+                QFile::remove(staging);
+                error = "Couldn't replace %1. Close Portal and try again."_L1.arg(to);
+                return false;
+            }
+        }
+        if (!QFile::rename(staging, to))
+        {
+            QFile::remove(staging);
+            if (QFile::exists(backup))
+                QFile::rename(backup, to);
+            error = "Couldn't copy %1."_L1.arg(QFileInfo{from}.fileName());
+            return false;
+        }
         return true;
+    }
+
+    // A later copy can fail after d3d9.dll is already in place. Put originals back and delete files this run added.
+    void rollBackPackage(const QSet<QString> &tracked)
+    {
+        QStringList dirs;
+        for (const auto &path : tracked)
+        {
+            if (path.endsWith('/'_L1))
+            {
+                dirs << path;
+                continue;
+            }
+            const auto backup = path + ".kaon-bak"_L1;
+            QFile::remove(path + ".kaon-new"_L1);
+            if (QFile::exists(backup))
+            {
+                QFile::remove(path);
+                QFile::rename(backup, path);
+            }
+            else
+                QFile::remove(path);
+        }
+        std::sort(dirs.begin(), dirs.end(), [](const auto &left, const auto &right) {
+            return left.count('/'_L1) > right.count('/'_L1);
+        });
+        for (const auto &dir : dirs)
+            if (QDir directory{dir}; directory.exists() && directory.isEmpty())
+                directory.rmdir(dir);
     }
 
     bool copyInto(const QString &portalDir, const QString &from, const QString &to, QSet<QString> &tracked, QString &error)
@@ -278,6 +325,24 @@ bool installPortal1VRPackage(const QString &portalDir,
     };
 
     QSet<QString> tracked;
+    struct Rollback
+    {
+        QSet<QString> *paths = nullptr;
+        bool commit = false;
+        ~Rollback()
+        {
+            if (!paths || commit)
+            {
+                if (paths && commit)
+                    for (const auto &path : *paths)
+                        if (!path.endsWith('/'_L1))
+                            QFile::remove(path + ".kaon-bak"_L1);
+                return;
+            }
+            rollBackPackage(*paths);
+        }
+    } rollback;
+    rollback.paths = &tracked;
     QDir portal{portalDir};
     for (const auto &file : runtime)
     {
@@ -313,5 +378,6 @@ bool installPortal1VRPackage(const QString &portalDir,
         return false;
 
     installedFiles = QStringList{tracked.cbegin(), tracked.cend()};
+    rollback.commit = true;
     return true;
 }
