@@ -6,6 +6,7 @@
 #include <QFileInfo>
 #include <QRegularExpression>
 #include <QSet>
+#include <QtEndian>
 
 #include "Aptabase.h"
 
@@ -49,14 +50,13 @@ namespace
     }
 
     // Some games (e.g. Portal 2) ship a shell script as their Linux launch option, which then starts a binary next to
-    // it. Returns the e_machine the ELF files named in the script agree on, or 0 if this isn't a script, it names none,
-    // or they differ.
-    quint16 elfMachineStartedByScript(QFile &raw)
+    // it. Returns the files the script names, or nothing if this isn't a script.
+    QStringList filesNamedByScript(QFile &raw)
     {
         raw.seek(0);
         const auto script = raw.read(64 * 1024);
         if (!script.startsWith("#!"_ba))
-            return 0;
+            return {};
 
         // Variables are dropped, so "$DIR/bin/game" leaves /bin/game. Every name is then tried relative to the script.
         static const QRegularExpression variable{R"(\$\{[^}]*\}|\$\w+)"_L1};
@@ -64,7 +64,7 @@ namespace
         const auto text = QString::fromLatin1(script).replace(variable, " "_L1);
         const auto dir = QFileInfo{raw}.absolutePath();
         QSet<QString> seen;
-        quint16 machine = 0;
+        QStringList files;
         for (const auto &match : pathLike.globalMatch(text))
         {
             const auto name = match.captured();
@@ -72,8 +72,21 @@ namespace
                 continue;
             seen.insert(name);
 
-            QFile candidate{dir + '/' + name};
-            if (!QFileInfo{candidate}.isFile() || !candidate.open(QFile::ReadOnly))
+            if (const auto path = dir + '/' + name; QFileInfo{path}.isFile())
+                files << path;
+        }
+        return files;
+    }
+
+    // The e_machine the ELF files named in a launch script agree on, or 0 if this isn't a script, it names none, or they
+    // differ.
+    quint16 elfMachineStartedByScript(QFile &raw)
+    {
+        quint16 machine = 0;
+        for (const auto &path : filesNamedByScript(raw))
+        {
+            QFile candidate{path};
+            if (!candidate.open(QFile::ReadOnly))
                 continue;
             const auto found = elfMachine(candidate);
             if (found == 0)
@@ -237,6 +250,71 @@ namespace
         return {};
     }
 
+    // Godot's "Embed PCK" export appends the game's data to the executable, so there is no .pck file. The file then
+    // ends with the size of that data and "GDPC", the magic the data itself starts with. Signing a Windows build adds
+    // the signature after that, and there the PE section named "pck" points at the data instead. Godot's loader looks
+    // in the same two places:
+    // https://github.com/godotengine/godot/blob/1b16fd14e4ce73de1113ea04479fd09b227e9cd7/core/io/file_access_pack.cpp#L233-L280
+    bool hasEmbeddedGodotPck(QFile &raw)
+    {
+        static const auto magic = "GDPC"_ba;
+
+        // The size counts from the start of the data up to the size itself
+        const auto end = raw.size();
+        if (end >= 16 && raw.seek(end - 12))
+        {
+            if (const auto trailer = raw.read(12); trailer.size() == 12 && trailer.endsWith(magic))
+            {
+                const auto dataSize = qFromLittleEndian<quint64>(trailer.constData());
+                if (dataSize <= quint64(end - 12) && raw.seek(end - 12 - qint64(dataSize)) && raw.read(4) == magic)
+                    return true;
+            }
+        }
+
+        if (!raw.seek(0))
+            return false;
+        const auto dos = raw.read(0x40);
+        if (dos.size() != 0x40 || !dos.startsWith("MZ"_ba))
+            return false;
+        const auto peOffset = qFromLittleEndian<quint32>(dos.constData() + 0x3C);
+        if (!raw.seek(peOffset))
+            return false;
+        // Signature, then the file header: NumberOfSections at 6, SizeOfOptionalHeader at 20
+        const auto pe = raw.read(24);
+        if (pe.size() != 24 || !pe.startsWith(QByteArrayView{"PE\0\0", 4}))
+            return false;
+        const auto sections = qMin<quint16>(qFromLittleEndian<quint16>(pe.constData() + 6), 96);
+        if (!raw.seek(peOffset + 24 + qFromLittleEndian<quint16>(pe.constData() + 20)))
+            return false;
+
+        // Section headers are 40 bytes: the name, then PointerToRawData at 20
+        const auto table = raw.read(sections * 40);
+        for (qsizetype at = 0; at + 40 <= table.size(); at += 40)
+        {
+            if (qstrncmp(table.constData() + at, "pck", 4) != 0)
+                continue;
+            // The data can start up to 7 bytes in when its alignment differs from the section's
+            const auto data = qFromLittleEndian<quint32>(table.constData() + at + 20);
+            return data != 0 && raw.seek(data) && raw.read(11).contains(magic);
+        }
+        return false;
+    }
+
+    // A Linux launch option is often a script that starts the game binary, so the files it names count too
+    bool executableEmbedsGodotPck(const QString &executable)
+    {
+        QFile raw{executable};
+        if (!raw.open(QFile::ReadOnly))
+            return false;
+        if (hasEmbeddedGodotPck(raw))
+            return true;
+        const auto started = filesNamedByScript(raw);
+        return std::any_of(started.cbegin(), started.cend(), [](const QString &path) {
+            QFile file{path};
+            return file.open(QFile::ReadOnly) && hasEmbeddedGodotPck(file);
+        });
+    }
+
     bool detectGodotEngine(const QString &installDir, const QMap<int, Game::LaunchOption> &executables)
     {
         for (const auto &opt : std::as_const(executables))
@@ -250,8 +328,11 @@ namespace
                 }))
                 return true;
         }
-        return walkDirsFromExecutables(installDir, executables, true, [](const QString &dir) {
-            return dirHasGodotPck(dir, "data.pck"_L1);
+        if (walkDirsFromExecutables(
+                installDir, executables, true, [](const QString &dir) { return dirHasGodotPck(dir, "data.pck"_L1); }))
+            return true;
+        return std::any_of(executables.cbegin(), executables.cend(), [](const Game::LaunchOption &opt) {
+            return !opt.executable.isEmpty() && executableEmbedsGodotPck(opt.executable);
         });
     }
 
