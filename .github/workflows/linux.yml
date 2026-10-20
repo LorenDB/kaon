@@ -59,15 +59,27 @@ jobs:
           rm -f "$QT_ROOT_DIR/plugins/sqldrivers/libqsqlmimer.so"
           rm -f "$QT_ROOT_DIR/plugins/sqldrivers/libqsqloci.so"
 
-          # Bundle unzip and 7z so the AppImage unpacks downloads on systems that don't have them installed.
+          # Bundle unzip and 7za so the AppImage unpacks downloads on systems that don't have them installed.
           # Archive.cpp prefers these bundled copies over the host's PATH.
+          # Ubuntu 24.04's /usr/bin/7* are shell wrappers (exec /usr/lib/7zip/*); linuxdeploy only
+          # accepts ELF binaries, so find the real one. 7za is self-contained, unlike 7z which
+          # needs 7z.so, and uses the same CLI. Older releases keep the real binary at /usr/bin/7za,
+          # so try the known locations in order and take the first ELF.
+          SEVEN_ZIP_BIN=""
+          for cand in /usr/lib/7zip/7za /usr/lib/7zip/7zz /usr/bin/7za /usr/bin/7zz; do
+            if [ -f "$cand" ] && [ "$(head -c 4 "$cand" | od -An -tx1 | tr -d ' \n')" = "7f454c46" ]; then
+              SEVEN_ZIP_BIN="$cand"
+              break
+            fi
+          done
+          [ -n "$SEVEN_ZIP_BIN" ] || { echo "no 7zip ELF binary found"; exit 1; }
           QML_SOURCES_PATHS=src ${{ steps.install-linuxdeploy.outputs.linuxdeploy }} \
               --plugin qt \
               --output appimage \
               --desktop-file dev.lorendb.kaon.desktop \
               --icon-file src/qml/icons/kaon.svg \
               --executable build/src/kaon \
-              --executable /usr/bin/7z \
+              --executable "$SEVEN_ZIP_BIN" \
               --executable /usr/bin/unzip \
               --appdir appdir
 
