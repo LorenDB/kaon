@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QPointer>
 #include <QQmlEngine>
 
 #include "GitHubMod.h"
@@ -59,4 +60,22 @@ protected:
 private:
     explicit OptiScaler(QObject *parent = nullptr);
     ~OptiScaler() = default;
+
+    // Completion of installModImpl back on the UI thread: records the files the worker laid down (or reports why it
+    // couldn't) and clears the busy flag the switch shows as "Installing".
+    void finishInstall(const QPointer<Game> &guard,
+                       const Game *busyKey,
+                       int store,
+                       const QString &gameId,
+                       const QString &settingsId,
+                       const QString &gameName,
+                       int releaseId,
+                       const QString &releaseName,
+                       const Game::LaunchOption &exe,
+                       const QString &dllDest,
+                       const QString &iniDest,
+                       bool ok,
+                       const QString &error,
+                       const QStringList &written,
+                       bool createdIni);
 };

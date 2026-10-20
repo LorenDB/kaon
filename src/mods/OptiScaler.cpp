@@ -6,10 +6,15 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QLoggingCategory>
+#include <QMetaObject>
+#include <QPointer>
 #include <QSettings>
 #include <QTemporaryDir>
+#include <QtConcurrentRun>
 
+#include "Aptabase.h"
 #include "Archive.h"
+#include "GamesFilterModel.h"
 
 Q_LOGGING_CATEGORY(OptiScalerLog, "optiscaler")
 
@@ -192,6 +197,12 @@ bool OptiScaler::isThisFileTheActualModDownload(const QString &file) const
 
 void OptiScaler::installModImpl(Game *game, const Game::LaunchOption &exe)
 {
+    if (!game)
+        return;
+    // The extract plus copy below blocks for around a second. It runs off the UI thread; the busy flag keeps the
+    // switch from firing again and shows "Installing" meanwhile.
+    if (isBusyForGame(game))
+        return;
     if (!QFileInfo::exists(exe.executable))
     {
         fail("Kaon couldn't find %1. Rescan your libraries and try again."_L1.arg(exe.executable));
@@ -217,98 +228,215 @@ void OptiScaler::installModImpl(Game *game, const Game::LaunchOption &exe)
         return;
     }
 
-    QTemporaryDir extracted;
-    if (!extracted.isValid())
-    {
-        fail("Couldn't create a temporary folder for OptiScaler."_L1);
-        return;
-    }
-    if (QString error; !Archive::extract(archive, extracted.path(), &error))
-    {
-        fail(error);
-        return;
-    }
-
-    const auto sourceDll = extracted.filePath("OptiScaler.dll"_L1);
-    if (!QFileInfo::exists(sourceDll))
-    {
-        fail("This OptiScaler download is missing OptiScaler.dll."_L1);
-        return;
-    }
-
+    // Everything the worker needs is copied out here: the Game object lives on the UI thread and may be replaced by
+    // a rescan while the copy runs. Settings stay on this thread too; QSettings objects must not cross threads.
     const auto dir = game->windowsBinaryDir(exe);
     const auto dllDest = QFileInfo{dir + "/dxgi.dll"_L1}.absoluteFilePath();
     const auto iniDest = QFileInfo{dir + "/OptiScaler.ini"_L1}.absoluteFilePath();
     const auto exeName = QFileInfo{exe.executable}.fileName();
+    const auto settingsId = game->settingsId();
+    const auto gameName = game->name();
+    const auto store = static_cast<int>(game->store());
+    const auto gameId = game->id();
+    const auto releaseId = release->id();
+    const auto releaseName = release->name();
+    QSettings snapshot;
+    snapshot.beginGroup(settingsGroup());
+    snapshot.beginGroup(settingsId);
+    const auto snapshotRecorded = snapshot.value("installedDll"_L1).toString();
+    const auto recordedPath = snapshotRecorded.isEmpty() ? QString{} : QFileInfo{snapshotRecorded}.absoluteFilePath();
+    const QPointer<Game> guard{game};
+    const Game *busyKey = game;
+    setBusyForGame(game, true);
 
-    QSettings settings;
-    settings.beginGroup(settingsGroup());
-    settings.beginGroup(game->settingsId());
-    const auto recorded = settings.value("installedDll"_L1).toString();
-    const auto recordedPath = recorded.isEmpty() ? QString{} : QFileInfo{recorded}.absoluteFilePath();
+    (void)QtConcurrent::run([this,
+                             guard,
+                             busyKey,
+                             exe,
+                             archive,
+                             dir,
+                             dllDest,
+                             iniDest,
+                             exeName,
+                             recordedPath,
+                             settingsId,
+                             gameName,
+                             store,
+                             gameId,
+                             releaseId,
+                             releaseName] {
+        const auto done =
+            [this, guard, busyKey, store, gameId, settingsId, gameName, releaseId, releaseName, exe, dllDest, iniDest](
+                bool ok, const QString &error, const QStringList &written, bool createdIni) {
+                QMetaObject::invokeMethod(
+                    this,
+                    [this,
+                     guard,
+                     busyKey,
+                     store,
+                     gameId,
+                     settingsId,
+                     gameName,
+                     releaseId,
+                     releaseName,
+                     exe,
+                     dllDest,
+                     iniDest,
+                     ok,
+                     error,
+                     written,
+                     createdIni] {
+                        finishInstall(guard,
+                                      busyKey,
+                                      store,
+                                      gameId,
+                                      settingsId,
+                                      gameName,
+                                      releaseId,
+                                      releaseName,
+                                      exe,
+                                      dllDest,
+                                      iniDest,
+                                      ok,
+                                      error,
+                                      written,
+                                      createdIni);
+                    },
+                    Qt::QueuedConnection);
+            };
 
-    // VR Performance Toolkit also installs a dxgi.dll. They cannot share the slot.
-    if (QFileInfo::exists(dir + "/vrperfkit.yml"_L1) && QFileInfo::exists(dllDest) && recordedPath != dllDest)
-    {
-        fail("%1 already has VR Performance Toolkit (also a dxgi.dll). Turn that off for this game first."_L1.arg(exeName));
-        return;
-    }
-    if (QFileInfo::exists(dllDest) && !QFileInfo::exists(iniDest) && recordedPath != dllDest)
-    {
-        fail("%1 already has a dxgi.dll that isn't OptiScaler. Remove that file and try again."_L1.arg(exeName));
-        return;
-    }
-
-    QStringList written;
-    // copyTree records files as it goes. A later failure has to take those back, or they sit
-    // in the game with nothing in settings for uninstall to find.
-    const auto discardWritten = [&written, &dir]() {
-        QStringList parents;
-        for (const auto &file : written)
+        QTemporaryDir extracted;
+        if (!extracted.isValid())
         {
-            QFile::remove(file);
-            const auto parent = QFileInfo{file}.absolutePath();
-            if (parent != dir && parent.startsWith(dir + '/'_L1) && !parents.contains(parent))
-                parents << parent;
+            done(false, "Couldn't create a temporary folder for OptiScaler."_L1, {}, false);
+            return;
         }
-        std::sort(parents.begin(), parents.end(), [](const auto &left, const auto &right) {
-            return left.count('/'_L1) > right.count('/'_L1);
-        });
-        for (const auto &parent : std::as_const(parents))
-            if (QDir parentDir{parent}; parentDir.exists() && parentDir.isEmpty())
-                parentDir.rmdir(parent);
-        written.clear();
-    };
+        if (QString error; !Archive::extract(archive, extracted.path(), &error))
+        {
+            done(false, error, {}, false);
+            return;
+        }
 
-    QString error;
-    if (!copyTree(extracted.path(), dir, &written, &error))
+        const auto sourceDll = extracted.filePath("OptiScaler.dll"_L1);
+        if (!QFileInfo::exists(sourceDll))
+        {
+            done(false, "This OptiScaler download is missing OptiScaler.dll."_L1, {}, false);
+            return;
+        }
+
+        // VR Performance Toolkit also installs a dxgi.dll. They cannot share the slot. The recorded path was read
+        // on the UI thread before this worker started.
+        if (QFileInfo::exists(dir + "/vrperfkit.yml"_L1) && QFileInfo::exists(dllDest) && recordedPath != dllDest)
+        {
+            done(false,
+                 "%1 already has VR Performance Toolkit (also a dxgi.dll). Turn that off for this game first."_L1.arg(
+                     exeName),
+                 {},
+                 false);
+            return;
+        }
+        if (QFileInfo::exists(dllDest) && !QFileInfo::exists(iniDest) && recordedPath != dllDest)
+        {
+            done(false,
+                 "%1 already has a dxgi.dll that isn't OptiScaler. Remove that file and try again."_L1.arg(exeName),
+                 {},
+                 false);
+            return;
+        }
+
+        QStringList written;
+        // copyTree records files as it goes. A later failure has to take those back, or they sit
+        // in the game with nothing in settings for uninstall to find.
+        const auto discardWritten = [&written, &dir]() {
+            QStringList parents;
+            for (const auto &file : written)
+            {
+                QFile::remove(file);
+                const auto parent = QFileInfo{file}.absolutePath();
+                if (parent != dir && parent.startsWith(dir + '/'_L1) && !parents.contains(parent))
+                    parents << parent;
+            }
+            std::sort(parents.begin(), parents.end(), [](const auto &left, const auto &right) {
+                return left.count('/'_L1) > right.count('/'_L1);
+            });
+            for (const auto &parent : std::as_const(parents))
+                if (QDir parentDir{parent}; parentDir.exists() && parentDir.isEmpty())
+                    parentDir.rmdir(parent);
+            written.clear();
+        };
+
+        QString error;
+        if (!copyTree(extracted.path(), dir, &written, &error))
+        {
+            discardWritten();
+            done(false, error, {}, false);
+            return;
+        }
+
+        const bool createdIni = !QFileInfo::exists(iniDest);
+        if (!replaceFile(sourceDll, dllDest))
+        {
+            discardWritten();
+            done(false, "Couldn't place dxgi.dll next to %1. Quit the game and try again."_L1.arg(exeName), {}, false);
+            return;
+        }
+        written << dllDest;
+        done(true, {}, written, createdIni && QFileInfo::exists(iniDest));
+    });
+}
+
+void OptiScaler::finishInstall(const QPointer<Game> &guard,
+                               const Game *busyKey,
+                               int store,
+                               const QString &gameId,
+                               const QString &settingsId,
+                               const QString &gameName,
+                               int releaseId,
+                               const QString &releaseName,
+                               const Game::LaunchOption &exe,
+                               const QString &dllDest,
+                               const QString &iniDest,
+                               bool ok,
+                               const QString &error,
+                               const QStringList &written,
+                               bool createdIni)
+{
+    Q_UNUSED(exe);
+    // The key is only ever hashed, never dereferenced, so clearing it after a rescan deleted the Game is safe.
+    setBusyForGame(busyKey, false);
+    if (!ok)
     {
-        discardWritten();
         fail(error);
         return;
     }
 
-    const bool createdIni = !QFileInfo::exists(iniDest);
-    if (!replaceFile(sourceDll, dllDest))
-    {
-        discardWritten();
-        fail("Couldn't place dxgi.dll next to %1. Quit the game and try again."_L1.arg(exeName));
-        return;
-    }
-    written << dllDest;
-    if (createdIni && QFileInfo::exists(iniDest))
-        settings.setValue("createdIni"_L1, iniDest);
+    // A rescan may have replaced the Game mid-install. Settings are keyed by id, so they land in the right place
+    // either way.
+    Game *target = guard ? guard.data() : GamesFilterModel::instance()->gameByIdentity(store, gameId);
 
+    QSettings settings;
+    settings.beginGroup(settingsGroup());
+    settings.beginGroup(settingsId);
+    if (createdIni)
+        settings.setValue("createdIni"_L1, iniDest);
     settings.setValue("installedDll"_L1, dllDest);
     settings.setValue("installedFiles"_L1, written);
+    settings.setValue("installedVersion"_L1, releaseId);
 
-    Mod::installModImpl(game, exe);
+    Aptabase::instance()->track("install-"_L1 + settingsGroup(), {{"version"_L1, releaseName}, {"game"_L1, gameName}});
+
+    emit installedInGameChanged(target);
 }
 
 void OptiScaler::uninstallMod(Game *game)
 {
     if (!game)
         return;
+    if (isBusyForGame(game))
+    {
+        failUninstall("OptiScaler is still installing for %1. Try again once it finishes."_L1.arg(game->name()));
+        return;
+    }
 
     QSettings settings;
     settings.beginGroup(settingsGroup());
