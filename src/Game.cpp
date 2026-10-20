@@ -107,6 +107,7 @@ namespace
                                        "Win64"_L1,
                                        "Win32"_L1,
                                        "x64"_L1,
+                                       "linux32"_L1,
                                        "linux64"_L1,
                                        "osx64"_L1,
                                        "Engine"_L1,
