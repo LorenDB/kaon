@@ -57,12 +57,14 @@ namespace
 
     constexpr int SteamPlayManifests = 891390;
 
-    CompatTools readValveCompatTools()
+    CompatTools readValveCompatTools(AppInfoVDF *library)
     {
         CompatTools compat;
+        if (!library)
+            return compat;
         // Held across the lookup and the section parse. A reload swaps the bytes those pointers use.
         QMutexLocker lock{&appInfoVdfMutex()};
-        auto *info = AppInfoVDF::instance()->game(SteamPlayManifests);
+        auto *info = library->game(SteamPlayManifests);
         if (!info)
         {
             qCWarning(SteamLog) << "No Steam Play manifests in appinfo.vdf. Only compatibility tools chosen in a game's"
@@ -776,7 +778,8 @@ public:
         const auto numericId = m_id.toInt(&idOk);
         {
             QMutexLocker lock{&appInfoVdfMutex()};
-            auto *info = idOk ? AppInfoVDF::instance()->game(numericId) : nullptr;
+            auto *library = AppInfoVDF::load(steamRoot + "/appcache/appinfo.vdf"_L1);
+            auto *info = idOk && library ? library->game(numericId) : nullptr;
             if (!info)
             {
                 qCWarning(SteamLog) << "No appinfo entry for" << m_id << "under" << steamRoot;
@@ -1285,16 +1288,12 @@ bool Steam::readLibrary(QList<Game *> &games)
     QStringList watchPaths;
     QList<Manifest> installed;
 
-    for (const auto &install : std::as_const(installs))
-        AppInfoVDF::load(install.path + "/appcache/appinfo.vdf"_L1);
-
-    const auto valveCompat = readValveCompatTools();
-
     for (auto &install : installs)
     {
         install.count = 0;
         install.hasSteamVR = false;
-        auto compat = valveCompat;
+        // Each client has its own appinfo. The native cache lists owned apps the Flatpak install may not run.
+        auto compat = readValveCompatTools(AppInfoVDF::load(install.path + "/appcache/appinfo.vdf"_L1));
         readChosenCompatTools(install.path, compat);
 
         QElapsedTimer elapsed;

@@ -462,47 +462,43 @@ AppInfoVDF *AppInfoVDF::instance()
 AppInfoVDF::AppInfo *AppInfoVDF::game(int steamId)
 {
     QMutexLocker lock{&appInfoVdfMutex()};
-    if (g_libraries.isEmpty())
-        instance();
 
-    for (auto *library : g_libraries)
+    // The file holds every app Steam knows about, so a linear walk per installed game made scans
+    // quadratic. Index this library once and look the id up instead. Other installs have their own
+    // appinfo.vdf; searching those first applied the wrong launch entries to a Flatpak copy.
+    if (!m_gameIndexValid)
     {
-        // The file holds every app Steam knows about, so a linear walk per installed game made scans
-        // quadratic. Index each library once and look the id up instead.
-        if (!library->m_gameIndexValid)
+        m_gameIndex.clear();
+        const auto *const fileBegin = m_data.constData();
+        const auto *const fileEnd = fileBegin + m_data.size();
+        const size_t header = m_fileVersion > 0x27 ? sizeof(AppInfo) : sizeof(AppInfo27);
+        for (auto *info = root;;)
         {
-            library->m_gameIndex.clear();
-            const auto *const fileBegin = library->m_data.constData();
-            const auto *const fileEnd = fileBegin + library->m_data.size();
-            const size_t header = library->m_fileVersion > 0x27 ? sizeof(AppInfo) : sizeof(AppInfo27);
-            for (auto *info = library->root;;)
-            {
-                const auto *at = reinterpret_cast<const char *>(info);
-                if (at < fileBegin || at + sizeof(uint32_t) * 2 > fileEnd)
-                    break;
-                if (info->appid == LAST_STEAM_APP)
-                    break;
+            const auto *at = reinterpret_cast<const char *>(info);
+            if (at < fileBegin || at + sizeof(uint32_t) * 2 > fileEnd)
+                break;
+            if (info->appid == LAST_STEAM_APP)
+                break;
 
-                const auto record = static_cast<size_t>(info->size) + 8;
-                if (record < header || record > header + MaxAppKvBytes || at + record > fileEnd)
-                {
-                    qCWarning(VDFLog) << "Stopped reading appinfo at app" << info->appid << "in" << library->m_appInfoPath
-                                      << "- that record is truncated or larger than expected. Later apps in this file "
-                                         "are skipped.";
-                    break;
-                }
-                if (!library->m_gameIndex.contains(info->appid))
-                    library->m_gameIndex.insert(info->appid, info);
-                info = reinterpret_cast<AppInfo *>(const_cast<char *>(at + record));
+            const auto record = static_cast<size_t>(info->size) + 8;
+            if (record < header || record > header + MaxAppKvBytes || at + record > fileEnd)
+            {
+                qCWarning(VDFLog) << "Stopped reading appinfo at app" << info->appid << "in" << m_appInfoPath
+                                  << "- that record is truncated or larger than expected. Later apps in this file "
+                                     "are skipped.";
+                break;
             }
-            library->m_gameIndexValid = true;
+            if (!m_gameIndex.contains(info->appid))
+                m_gameIndex.insert(info->appid, info);
+            info = reinterpret_cast<AppInfo *>(const_cast<char *>(at + record));
         }
-        if (auto *info = library->m_gameIndex.value(static_cast<AppId_t>(steamId), nullptr))
-        {
-            g_parsing = library;
-            vdf_version = library->m_fileVersion;
-            return info;
-        }
+        m_gameIndexValid = true;
+    }
+    if (auto *info = m_gameIndex.value(static_cast<AppId_t>(steamId), nullptr))
+    {
+        g_parsing = this;
+        vdf_version = m_fileVersion;
+        return info;
     }
     return nullptr;
 }
