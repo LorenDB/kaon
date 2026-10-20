@@ -77,5 +77,6 @@ private:
                        bool ok,
                        const QString &error,
                        const QStringList &written,
+                       const QStringList &backedUp,
                        bool createdIni);
 };
