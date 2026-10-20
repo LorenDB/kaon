@@ -548,7 +548,7 @@ Item {
 
                     VButton {
                         small: true
-                        text: view.showOtherMods ? "Hide" : "Engine looks wrong? Open a mod anyway"
+                        text: view.showOtherMods ? "Hide other mods" : "Engine looks wrong? Open a mod anyway"
 
                         onClicked: view.showOtherMods = !view.showOtherMods
                     }

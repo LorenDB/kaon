@@ -201,11 +201,11 @@ Popup {
                 options: [
                     {
                         "id": GamesFilterModel.HasAnyFilter,
-                        "label": "Any"
+                        "label": "Match any"
                     },
                     {
                         "id": GamesFilterModel.HasAllFilters,
-                        "label": "All"
+                        "label": "Match all"
                     }
                 ]
 

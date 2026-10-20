@@ -247,7 +247,7 @@ Item {
                     VButton {
                         quiet: true
                         small: true
-                        text: "Reset"
+                        text: "Use downloaded value"
                         visible: view.doc.defaultsReady && row.value !== row.shipped
 
                         onClicked: view.doc.resetField(row.index)

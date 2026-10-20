@@ -24,7 +24,7 @@ public:
     QString homepage() const final { return "https://github.com/fholger/vrperfkit"_L1; }
     QString info() const final;
     QString launchOptions() const final;
-    QString installedNote() const final { return "On for this game. Configure edits vrperfkit.yml."_L1; }
+    QString installedNote() const final { return "On for this game. Its settings are in vrperfkit.yml."_L1; }
     const QLoggingCategory &logger() const final;
 
     bool optional() const final { return true; }

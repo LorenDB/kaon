@@ -332,7 +332,7 @@ Item {
                     font.pixelSize: 13
                     leftPadding: 6
                     text: row.modelData.found === true ? "Hidden group, shown because it has what you searched for" :
-                                                         "Some games may not be detected properly."
+                                                         "Kaon didn't find a VR mod for these. Open a game if the engine looks wrong."
                     visible: row.modelData.group === "none" || row.modelData.found === true
                     width: Math.min(implicitWidth, view.width - 2 * Theme.pad - 280)
                 }
