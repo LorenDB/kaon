@@ -73,7 +73,7 @@ Item {
                 color: Theme.glassMuted
                 font.pixelSize: 13
                 lineHeight: 1.35
-                text: "For games Kaon doesn't find in Steam, Heroic or itch. Windows games run with the Wine and prefix below."
+                text: "For games Kaon doesn't find in Steam, Heroic, Epic, or itch. Windows games run with the Wine and prefix below."
                 width: parent.width
                 wrapMode: Text.Wrap
             }

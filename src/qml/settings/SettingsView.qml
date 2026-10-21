@@ -13,12 +13,15 @@ Flickable {
     readonly property var libraryRows: {
         const steamLibs = Steam.libraries;
         const heroicLibs = Heroic.libraries;
+        const epicLibs = Epic.libraries;
         const itchRoot = Itch.storeRoot;
         const itchCount = Itch.count;
         const rows = [];
         for (const lib of steamLibs)
             rows.push(lib);
         for (const lib of heroicLibs)
+            rows.push(lib);
+        for (const lib of epicLibs)
             rows.push(lib);
         rows.push({
                       "store": "itch",

@@ -20,6 +20,7 @@
 
 #include "CustomGames.h"
 #include "DownloadManager.h"
+#include "Epic.h"
 #include "GamesFilterModel.h"
 #include "Heroic.h"
 #include "Itch.h"
@@ -60,6 +61,8 @@ namespace
             return game->flatpakAppId().isEmpty() ? "Steam"_L1 : "Flatpak Steam"_L1;
         case Game::Store::Heroic:
             return game->flatpakAppId().isEmpty() ? "Heroic"_L1 : "Flatpak Heroic"_L1;
+        case Game::Store::Epic:
+            return "Epic"_L1;
         case Game::Store::Itch:
             return "Itch"_L1;
         default:
@@ -525,7 +528,7 @@ QVariantMap GameStatus::vrEnvironmentStep(Game *game) const
 {
     // Kaon starts hand-added games itself with plain `wine exe`, never with Steam's
     // `proton run` wrapper, so Proton's VR bridge is missing even when a runtime is
-    // installed. Steam/Heroic/itch games are started by their own launcher, which owns
+    // installed. Steam/Heroic/Epic/itch games are started by their own launcher, which owns
     // that setup, so there is nothing Kaon-specific to warn about there.
     if (!game || game->store() != Game::Store::Custom)
         return {};
@@ -1114,7 +1117,7 @@ void GameStatus::retargetGames(const QList<Game *> &previous, const QList<Game *
 void GameStatus::rescanLibraries()
 {
     for (Store *store :
-         std::initializer_list<Store *>{Steam::instance(), Heroic::instance(), Itch::instance(), CustomGames::instance()})
+         std::initializer_list<Store *>{Steam::instance(), Heroic::instance(), Epic::instance(), Itch::instance(), CustomGames::instance()})
         store->scanStore();
 }
 

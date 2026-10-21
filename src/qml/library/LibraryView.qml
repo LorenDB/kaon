@@ -373,10 +373,10 @@ Item {
 
         function bodyText() {
             if (GamesFilterModel.scanning)
-                return "Steam, Heroic, and itch are being read. Everything appears together when the last one finishes.";
+                return "Steam, Heroic, Epic, and itch are being read. Everything appears together when the last one finishes.";
             if (view.total === 0)
                 return GamesFilterModel.search !== "" ? "Check the spelling, or clear the search to see your whole library." :
-                                                        "Kaon looks for Steam, Heroic and itch libraries. Add a game by hand with the button below, or check the filters.";
+                                                        "Kaon looks for Steam, Heroic, Epic, and itch libraries. Add a game by hand with the button below, or check the filters.";
             return "Turn on a group to see its games.";
         }
 

@@ -8,6 +8,7 @@
 #include <memory>
 
 #include "Aptabase.h"
+#include "Epic.h"
 #include "Flatpak.h"
 #include "Heroic.h"
 #include "Steam.h"
@@ -353,9 +354,9 @@ QString Wine::whichWine() const
     if (whichWineProc.exitCode() == 0)
         result = whichWineProc.readAllStandardOutput().trimmed();
 
-    // If we can't find a system Wine, we might be able to piggyback off Proton installs from Steam or Heroic
+    // If we can't find a system Wine, we might be able to piggyback off Proton installs from Steam, Heroic, or Epic
     if (result.isEmpty())
-        for (const auto g : Heroic::instance()->games() + Steam::instance()->games())
+        for (const auto g : Heroic::instance()->games() + Steam::instance()->games() + Epic::instance()->games())
             if (!g->wineBinary().isEmpty())
                 result = g->wineBinary();
 

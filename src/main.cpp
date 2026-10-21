@@ -17,6 +17,7 @@
 #include "Bepinex.h"
 #include "CustomGames.h"
 #include "Dotnet.h"
+#include "Epic.h"
 #include "Gamepad.h"
 #include "GamesFilterModel.h"
 #include "GitHub.h"
@@ -118,10 +119,11 @@ int main(int argc, char *argv[])
     // initialized immediately. This is quite annoying, e.g. when a mod doesn't show up in the mod list since it hasn't been
     // referred to yet.
 
-    // Steam and Heroic come first. Itch and custom games can fall back to their Proton binaries, and those scans wait
-    // until both launchers have published. The scans themselves run off the UI thread.
+    // Steam, Heroic, and Epic come first. Itch and custom games can fall back to their Proton binaries, and those scans wait
+    // until every launcher has published. The scans themselves run off the UI thread.
     Steam::instance();
     Heroic::instance();
+    Epic::instance();
 
     BepInExConfigManager::instance();
     Bepinex::instance();
@@ -158,6 +160,7 @@ int main(int argc, char *argv[])
         Qt::QueuedConnection);
     engine.addImageProvider("itch-image"_L1, new ItchImageCache);
     engine.addImageProvider("heroic-image"_L1, new HeroicImageCache);
+    engine.addImageProvider("epic-image"_L1, new EpicImageCache);
     engine.loadFromModule("dev.lorendb.kaon"_L1, "Main"_L1);
 
     app.setWindowIcon(QIcon::fromTheme("kaon"_L1, QIcon{":/qt/qml/dev/lorendb/kaon/qml/icons/kaon.svg"_L1}));

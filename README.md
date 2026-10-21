@@ -7,7 +7,7 @@ Kaon collects basic anonymous usage information to inform development. You can d
 
 ## Features
 
-- Scan games installed via Steam, Heroic, and Itch.
+- Scan games installed via Steam, Heroic, Epic, and Itch.
 - Install any UEVR release, including nightly builds.
 - Install PureDark's UEVR AFW (Alternate Frame Warping). AFW requires DX12 and about 500 MB of extra VRAM.
 - Install joeyhodge's UEVR fork.

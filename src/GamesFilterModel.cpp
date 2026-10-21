@@ -266,6 +266,7 @@ void GamesFilterModel::applyDefaultFilters()
     m_storeFilter.setFlag(Game::Store::Steam);
     m_storeFilter.setFlag(Game::Store::Itch);
     m_storeFilter.setFlag(Game::Store::Heroic);
+    m_storeFilter.setFlag(Game::Store::Epic);
     m_storeFilter.setFlag(Game::Store::Custom);
 
     m_featureFilterType = FilterType::HasAnyFilter;
@@ -293,6 +294,7 @@ bool GamesFilterModel::filtersActive() const
     stores.setFlag(Game::Store::Steam);
     stores.setFlag(Game::Store::Itch);
     stores.setFlag(Game::Store::Heroic);
+    stores.setFlag(Game::Store::Epic);
     stores.setFlag(Game::Store::Custom);
 
     return m_engineFilter != engines || m_typeFilter != types || m_featureFilter != features || m_storeFilter != stores ||

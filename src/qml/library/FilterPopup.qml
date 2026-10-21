@@ -7,7 +7,7 @@ import dev.lorendb.kaon
 Popup {
     id: pop
 
-    readonly property bool manyStores: [Steam.count, Heroic.count, Itch.count, CustomGames.count].filter(c => c > 0).length
+    readonly property bool manyStores: [Steam.count, Heroic.count, Epic.count, Itch.count, CustomGames.count].filter(c => c > 0).length
     > 1
 
     function focusFirst() {
@@ -237,6 +237,11 @@ Popup {
                             "value": Game.Heroic,
                             "label": "Heroic",
                             "count": Heroic.count
+                        },
+                        {
+                            "value": Game.Epic,
+                            "label": "Epic",
+                            "count": Epic.count
                         },
                         {
                             "value": Game.Itch,

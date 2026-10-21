@@ -41,13 +41,13 @@ protected:
     {
         // Scan on the next turn of the event loop.
         Now,
-        // Wait until Steam and Heroic have each finished a scan, so Proton binaries exist to fall back on.
+        // Wait until Steam, Heroic, and Epic have each finished a scan, so Proton binaries exist to fall back on.
         AfterLaunchers,
     };
 
     explicit Store(QObject *parent = nullptr, Start start = Start::Now);
 
-    // Steam and Heroic call this so AfterLaunchers stores know when both libraries have been published.
+    // Steam, Heroic, and Epic call this so AfterLaunchers stores know when every library has been published.
     void countAsLauncher();
 
     // UI thread, before the worker starts. Snapshot anything the worker needs from other UI-thread objects.

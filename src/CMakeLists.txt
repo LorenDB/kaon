@@ -154,6 +154,8 @@ qt_add_qml_module(kaon
 
         stores/CustomGames.cpp
         stores/CustomGames.h
+        stores/Epic.cpp
+        stores/Epic.h
         stores/Heroic.cpp
         stores/Heroic.h
         stores/Itch.cpp

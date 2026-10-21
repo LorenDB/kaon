@@ -64,7 +64,7 @@ Item {
 
         const flatpak = g.flatpakAppId ? "Flatpak " : "";
         const where = g.store === Game.Steam ? "on " + flatpak + "Steam" : g.store === Game.Heroic ? "from " + flatpak
-                                                                                                     + "Heroic" : g.store
+                                                                                                     + "Heroic" : g.store === Game.Epic ? "from Epic" : g.store
                                                                                                      === Game.Itch
                                                                                                      ? "from itch" :
                                                                                                        "added by hand";
